@@ -127,7 +127,7 @@ export class Ribbon {
   }
 
   renderButton(it) {
-    const big = it.type === 'big';
+    const big = it.type === 'big' || !!it.big;
     const cls = big ? '.pl-bigbtn' : '.pl-btn-s';
     const iconEl = it.icon ? (typeof it.icon === 'string' ? icon(it.icon, big ? 30 : 17) : it.icon()) : null;
     let colorBar = null;

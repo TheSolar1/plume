@@ -310,7 +310,8 @@ export function insertBlock(node) {
     if (para.isTextblock && $pos.parentOffset > 0 && $pos.parentOffset < para.content.size) tr.split($pos.pos);
     const $p = tr.selection.$from;
     let insertPos;
-    if ($p.parent.isTextblock && $p.parentOffset === 0 && $p.parent.content.size > 0) insertPos = $p.before();
+    // paragraphe vide ou curseur en début de paragraphe : on insère avant
+    if ($p.parent.isTextblock && $p.parentOffset === 0) insertPos = $p.before();
     else if ($p.parent.isTextblock) insertPos = $p.after();
     else insertPos = $p.pos;
     tr.insert(insertPos, node);
@@ -318,7 +319,9 @@ export function insertBlock(node) {
     if (after >= tr.doc.content.size || !tr.doc.resolve(after).nodeAfter || !tr.doc.resolve(after).nodeAfter.isTextblock) {
       tr.insert(after, N.paragraph.create());
     }
-    tr.setSelection(TextSelection.near(tr.doc.resolve(after + 1)));
+    // tableau : curseur dans la première cellule ; sinon après l'objet
+    if (node.type === N.table) tr.setSelection(TextSelection.near(tr.doc.resolve(insertPos + 4)));
+    else tr.setSelection(TextSelection.near(tr.doc.resolve(after + 1)));
     dispatch(tr.scrollIntoView());
     void $from;
     return true;
