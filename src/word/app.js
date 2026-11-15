@@ -330,6 +330,7 @@ export class WordApp {
   onLayout(res) {
     this.layoutInfo = res;
     this.renderSheets();
+    this.renderLineNumbers();
     this.updateFieldsInDom();
     this.updateFootnoteNumbers();
     this.layoutTabs();
@@ -387,6 +388,46 @@ export class WordApp {
       pagesEl.appendChild(sheet);
     }
     if (this.hfEditing) this.mountHFEditor();
+  }
+
+  // Numéros de ligne (Mise en page > Numéros de ligne) dessinés dans la marge
+  renderLineNumbers() {
+    this.pagesEl.querySelectorAll('.pl-linenums').forEach((e) => e.remove());
+    const mode = this.data.settings.lineNumbers;
+    const geo = this.geometry();
+    if (!mode || !geo) return;
+    const stride = geo.pageH + geo.gap;
+    const top = this.zoomEl.getBoundingClientRect().top;
+    const z = this.zoom;
+    const lines = [];
+    this.view.dom.querySelectorAll('p').forEach((p) => {
+      if (p.closest('td,th,.pl-toc,.pl-endnotes')) return;
+      const r = document.createRange();
+      r.selectNodeContents(p);
+      let last = -1e9;
+      const rects = [...r.getClientRects()].filter((x) => x.width > 0 && x.height > 4).sort((a, b) => a.top - b.top);
+      if (!rects.length) { const pr = p.getBoundingClientRect(); rects.push(pr); }
+      for (const rc of rects) {
+        const y = (rc.top - top) / z;
+        if (y - last < 6) continue;
+        last = y;
+        lines.push({ y, h: rc.height / z });
+      }
+    });
+    const perPage = new Map();
+    let n = 0;
+    for (const l of lines) {
+      const page = Math.floor(l.y / stride);
+      if (!perPage.has(page)) { perPage.set(page, []); if (mode !== 'continuous') n = 0; }
+      perPage.get(page).push({ ...l, n: ++n });
+    }
+    for (const [page, ls] of perPage) {
+      const sheet = this.pagesEl.children[page];
+      if (!sheet) continue;
+      const box = h('div.pl-linenums');
+      for (const l of ls) box.appendChild(h('span', { style: { top: l.y - page * stride + 'px', left: geo.ml - 34 + 'px', lineHeight: l.h + 'px' } }, String(l.n)));
+      sheet.appendChild(box);
+    }
   }
 
   hfType(pageIdx) {
