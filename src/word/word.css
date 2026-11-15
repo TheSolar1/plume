@@ -2,7 +2,6 @@
    word.css — Plume Texte : zone de document, feuilles, contenu,
    révisions, commentaires, volets, règle, modes d'affichage.
    ═══════════════════════════════════════════════════════════════ */
-.pl-workspace { flex: 1; display: flex; min-height: 0; position: relative; }
 .pl-center { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .pl-scroll { flex: 1; overflow: auto; background: var(--canvas); position: relative; outline: none; }
 .pl-zoom-outer { margin: 0 auto; padding: 22px 0 40px; position: relative; }

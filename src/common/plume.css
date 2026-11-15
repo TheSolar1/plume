@@ -37,6 +37,7 @@ html, body { margin: 0; height: 100%; }
 body { font-family: var(--font-ui); font-size: 13px; color: var(--ui-text); background: var(--ui-bg); overflow: hidden; }
 button { font: inherit; color: inherit; }
 .pl-app { display: flex; flex-direction: column; height: 100vh; }
+.pl-workspace { flex: 1; display: flex; min-height: 0; position: relative; }
 
 /* ── Barre de titre ── */
 .pl-titlebar { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 10px; background: var(--app); color: #fff; flex: none; }
