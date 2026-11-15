@@ -14,7 +14,7 @@ import { keymap } from 'prosemirror-keymap';
 import { baseKeymap, chainCommands, exitCode } from 'prosemirror-commands';
 import { dropCursor } from 'prosemirror-dropcursor';
 import { gapCursor } from 'prosemirror-gapcursor';
-import { columnResizing, tableEditing, goToNextCell } from 'prosemirror-tables';
+import { columnResizing, tableEditing, goToNextCell, TableView } from 'prosemirror-tables';
 import { splitListItem, liftListItem, sinkListItem } from 'prosemirror-schema-list';
 
 import { schema } from './schema.js';
@@ -240,7 +240,7 @@ export class WordApp {
       history({ depth: 500 }),
       dropCursor({ color: '#2b579a', width: 2 }),
       gapCursor(),
-      columnResizing({ handleWidth: 5, cellMinWidth: 24 }),
+      columnResizing({ handleWidth: 5, cellMinWidth: 24, View: PlTableView }),
       tableEditing(),
       findPlugin(),
       paginationPlugin(() => this.geometry(), (res) => this.onLayout(res)),
@@ -683,6 +683,9 @@ export class WordApp {
     this.panes && this.panes.onUpdate();
     this.updateActiveComment();
     if (this.docRoot.classList.contains('focus-mode')) this.updateFocusParagraph();
+    clearTimeout(this.miniTimer);
+    if (this.view.state.selection.empty) this.hideMini();
+    else this.miniTimer = setTimeout(() => this.updateMiniToolbar(), 350);
   }
 
   // ── Styles du document ──
@@ -1426,6 +1429,41 @@ export class WordApp {
     setTimeout(() => { if (this.printing) done(); }, 60000);
   }
 
+  // ── Objets ──
+  editEquation(pos, tex, block) { D.equationDialog(this, pos, tex, block); }
+  onObjectSelected() { this.scheduleUI(); }
+
+  // ── Mini barre d'outils sur sélection ──
+  updateMiniToolbar() {
+    if (!prefs.get('miniToolbar', true)) return;
+    const st = this.view.state;
+    if (st.selection.empty || !this.view.hasFocus() || this.mode === 'read' || st.selection instanceof NodeSelection) { this.hideMini(); return; }
+    if (!this.mini) {
+      const b = (ic, title, fn, on) => { const el = h('button.pl-btn-s', { type: 'button', title, on: { mousedown: (e) => e.preventDefault(), click: () => { fn(); this.updateUI(); } } }, icon(ic, 16)); el._on = on; return el; };
+      this.mini = h('div.pl-mini-toolbar',
+        b('Bold', 'Gras', () => this.cmd(C.toggle('bold')), () => C.markActive(this.view.state, schema.marks.bold)),
+        b('Italic', 'Italique', () => this.cmd(C.toggle('italic')), () => C.markActive(this.view.state, schema.marks.italic)),
+        b('Underline', 'Souligné', () => this.cmd(C.toggle('underline')), () => C.markActive(this.view.state, schema.marks.underline)),
+        b('Highlighter', 'Surligner', () => this.cmd(C.setMark('highlight', { color: this.lastColor.highlight }))),
+        b('Baseline', 'Couleur de police', () => this.cmd(C.setMark('textColor', { color: this.lastColor.text }))),
+        b('AArrowUp', 'Agrandir', () => this.cmd(C.stepFontSize(1))),
+        b('AArrowDown', 'Réduire', () => this.cmd(C.stepFontSize(-1))),
+        b('Paintbrush', 'Reproduire la mise en forme', () => this.startPainter(false)),
+        b('List', 'Puces', () => this.cmd(C.toggleList('bullet_list'))),
+        b('Link', 'Lien', () => D.linkDialog(this)),
+        b('MessageSquarePlus', 'Nouveau commentaire', () => this.addComment()),
+      );
+      document.body.appendChild(this.mini);
+    }
+    const c = this.view.coordsAtPos(st.selection.from);
+    this.mini.style.display = 'flex';
+    const w = this.mini.offsetWidth || 300;
+    this.mini.style.left = Math.max(4, Math.min(innerWidth - w - 4, c.left - 20)) + 'px';
+    this.mini.style.top = Math.max(4, c.top - 44) + 'px';
+    for (const el of this.mini.children) if (el._on) el.classList.toggle('on', !!el._on());
+  }
+  hideMini() { if (this.mini) this.mini.style.display = 'none'; }
+
   // ── Recherche de commandes (Rechercher Alt+Q) ──
   commandIndex() {
     if (this._cmdIndex) return this._cmdIndex;
@@ -1477,6 +1515,22 @@ export class WordApp {
     if (e.key === 'F5' && !e.ctrlKey) { e.preventDefault(); D.gotoDialog(this); }
     if (e.ctrlKey && e.key === 'g' && e.altKey) { e.preventDefault(); D.gotoDialog(this); }
     if (e.key === 'F1') { e.preventDefault(); D.shortcutsDialog(this); }
+  }
+}
+
+// Vue de tableau : reprend la vue de prosemirror-tables (redimensionnement
+// des colonnes) en y ajoutant les classes et attributs du style de tableau.
+class PlTableView extends TableView {
+  constructor(node, cellMinWidth) { super(node, cellMinWidth); this.applyAttrs(node); }
+  update(node) { const ok = super.update(node); if (ok) this.applyAttrs(node); return ok; }
+  applyAttrs(node) {
+    const a = node.attrs, t = this.table;
+    t.className = 'pl-table tstyle-' + a.style;
+    const set = (k, v) => (v == null ? t.removeAttribute(k) : t.setAttribute(k, v));
+    set('data-tstyle', a.style); set('data-header', a.headerRow ? '1' : '0'); set('data-banded', a.bandedRows ? '1' : '0');
+    set('data-firstcol', a.firstCol ? '1' : '0'); set('data-lastrow', a.lastRow ? '1' : '0'); set('data-align', a.align);
+    this.dom.style.textAlign = '';
+    if (a.width) t.style.width = a.width;
   }
 }
 

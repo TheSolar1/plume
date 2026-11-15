@@ -45,7 +45,9 @@
 .pl-doc .ProseMirror sub, .pl-doc .ProseMirror sup { line-height: 0; }
 .pl-doc .ProseMirror ul, .pl-doc .ProseMirror ol { margin: 0; padding-left: 36pt; }
 .pl-doc .ProseMirror li { position: relative; }
-.pl-doc .ProseMirror li > p { margin: 0; }
+.pl-doc .ProseMirror li > p { margin: 0; padding-top: 0; padding-bottom: 0; }
+.pl-doc .ProseMirror li:last-child > p:last-child { padding-bottom: 0; }
+.pl-doc .ProseMirror > ul, .pl-doc .ProseMirror > ol { padding-bottom: 8pt; }
 .pl-doc .ProseMirror ul.bl-circle { list-style-type: circle; }
 .pl-doc .ProseMirror ul.bl-square { list-style-type: square; }
 .pl-doc .ProseMirror ul.bl-disc ul.bl-disc { list-style-type: circle; }

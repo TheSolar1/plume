@@ -47,7 +47,7 @@ export function buildRegex(q) {
   else if (q.wildcards) src = wildcardToRegex(q.text);
   else {
     src = q.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-      .replace(/\\\^p|\^p/g, '\n').replace(/\^t/g, '\t').replace(/\^l/g, ' ')
+      .replace(/\\\^p|\^p/g, '\n').replace(/\^t/g, '\t').replace(/\^l/g, '\u2028')
       .replace(/\\\^\\\?|\^\?/g, '.').replace(/\^#/g, '\\d').replace(/\^\$/g, '[A-Za-zÀ-ÿ]');
   }
   if (q.ignorePunct) src = src.split('').join('[\\p{P}]*');
@@ -74,7 +74,7 @@ export function findAll(doc, q) {
         text += child.text;
       } else {
         map.push(pos + 1 + off);
-        text += child.type.name === 'tab' ? '\t' : child.type.name === 'hard_break' ? ' ' : '￼';
+        text += child.type.name === 'tab' ? '\t' : child.type.name === 'hard_break' ? '\u2028' : '￼';
       }
     });
     map.push(pos + 1 + node.content.size);

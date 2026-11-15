@@ -97,6 +97,9 @@ const PAGE_FMT = { decimal: 'decimal', 'lower-roman': 'lowerRoman', 'upper-roman
 
 export async function exportDocx(data, { fileName = 'document' } = {}) {
   const zip = new JSZip();
+  // pas d'entrées « dossier » dans le paquet (certains lecteurs les refusent)
+  const rawFile = zip.file.bind(zip);
+  zip.file = (name, data, o = {}) => (data === undefined ? rawFile(name) : rawFile(name, data, { createFolders: false, ...o }));
   const color = makeColorResolver(data.theme);
   const ctx = new ExportContext(data, color);
 
@@ -430,8 +433,8 @@ class ExportContext {
     const rpr = this.rPr(n.marks);
     if (n.isText) {
       // les sauts de ligne Unicode éventuels deviennent <w:br/>
-      const parts = n.text.split(/(\t| )/);
-      return `<w:r>${rpr}${parts.map((p) => (p === '\t' ? '<w:tab/>' : p === ' ' ? '<w:br/>' : p ? `<w:t xml:space="preserve">${esc(p)}</w:t>` : '')).join('')}</w:r>`;
+      const parts = n.text.split(/(\t|\u2028)/);
+      return `<w:r>${rpr}${parts.map((p) => (p === '\t' ? '<w:tab/>' : p === '\u2028' ? '<w:br/>' : p ? `<w:t xml:space="preserve">${esc(p)}</w:t>` : '')).join('')}</w:r>`;
     }
     if (t === 'hard_break') return `<w:r>${rpr}<w:br/></w:r>`;
     if (t === 'tab') return `<w:r>${rpr}<w:tab/></w:r>`;
@@ -695,7 +698,7 @@ class ExportContext {
         const span = rect.right - rect.left;
         const cw = colW.slice(rect.left, rect.right).reduce((s, v) => s + v, 0);
         let fill = cell.attrs.background ? c(cell.attrs.background) : null;
-        let textColor = null, bold = false;
+        let textColor = null, bold = isHeader && cell.type.name === 'table_header';
         if (!fill) {
           if (isHeader && st.header) { fill = st.header.fill ? c(st.header.fill) : null; textColor = st.header.color; bold = st.header.bold; }
           else if (isLast && st.header) { bold = true; }

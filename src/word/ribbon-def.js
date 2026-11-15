@@ -200,7 +200,7 @@ export function buildRibbon(app) {
         ],
       },
       {
-        label: 'Médias', items: [big('Vidéo en ligne', 'Youtube', () => D.onlineVideoDialog(app))],
+        label: 'Médias', items: [big('Vidéo en ligne', 'Video', () => D.onlineVideoDialog(app))],
       },
       {
         label: 'Liens', items: [

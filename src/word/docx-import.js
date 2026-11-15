@@ -428,7 +428,10 @@ async function parseBlocks(ctx, container) {
       if (res.before.length) { flushLists(); out.push(...res.before); }
       const info = res.numPr ? listInfo(ctx, res.numPr.numId, res.numPr.ilvl) : null;
       if (info && res.para) {
+        // nouvelle liste au niveau 0 (autre numérotation ou autre type) : on termine la précédente
+        if (listStack.length && res.numPr.ilvl === 0 && (listStack[0].list.type !== info.type || listStack[0].numId !== res.numPr.numId)) flushLists();
         addToList(listStack, info, res.numPr.ilvl, res.para, out);
+        if (listStack.length === 1 && listStack[0].numId == null) listStack[0].numId = res.numPr.numId;
       } else if (res.para) {
         // paragraphe indenté juste après un élément de liste : continuation
         if (listStack.length && res.para.attrs.indentLeft && res.para.attrs.indentLeft >= 18 && res.para.textContent) {
@@ -481,14 +484,9 @@ function addToList(stack, info, ilvl, para, out) {
     parentItems[parentItems.length - 1].children.push(nested);
     stack.push({ list: nested, ilvl, info });
     top = stack[stack.length - 1];
-  } else if (top.list.type !== info.type || (top.list.attrs.kind !== info.kind && top.ilvl === 0 && stack.length === 1 && info.type === 'ordered_list')) {
-    // type de liste différent au même niveau
-    if (stack.length === 1) {
-      // terminer la liste courante et en ouvrir une nouvelle à côté
-      const finished = stack[0].list;
-      stack[0] = { list: newList(), ilvl, info, prev: [...(stack[0].prev || []), finished] };
-      top = stack[0];
-    } else {
+  } else if (top.list.type !== info.type && stack.length > 1) {
+    // type de liste différent à un niveau imbriqué
+    {
       const parentItems = stack[stack.length - 2].list.items;
       const nested = newList();
       parentItems[parentItems.length - 1].children.push(nested);
@@ -876,8 +874,8 @@ async function parseDrawing(ctx, d) {
 
 async function parseVml(ctx, pict) {
   const V = 'urn:schemas-microsoft-com:vml';
-  const tp = pict.getElementsByTagNameNS(V, 'textpath')[0];
   const shape = pict.getElementsByTagNameNS(V, 'shape')[0];
+  const tp = shape && shape.getElementsByTagNameNS(V, 'textpath')[0];
   if (tp && ctx.inHeader && shape && /WaterMark/i.test(shape.getAttribute('id') || '')) {
     ctx.watermark = { text: tp.getAttribute('string') || '', color: shape.getAttribute('fillcolor') || '#c0c0c0', layout: /rotation:\s*0/.test(shape.getAttribute('style') || '') ? 'horizontal' : 'diagonal' };
     return null;
