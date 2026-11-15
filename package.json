@@ -1,0 +1,32 @@
+{
+  "name": "plume",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plume — suite bureautique web (traitement de texte, présentations, tableur)",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch",
+    "serve": "node serve.mjs"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "jszip": "^3.10.2",
+    "lucide": "^1.73.0",
+    "prosemirror-commands": "^1.7.2",
+    "prosemirror-dropcursor": "^1.8.4",
+    "prosemirror-gapcursor": "^1.4.1",
+    "prosemirror-history": "^1.5.1",
+    "prosemirror-inputrules": "^1.6.0",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-model": "^1.25.13",
+    "prosemirror-schema-list": "^1.6.0",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-tables": "^1.8.5",
+    "prosemirror-transform": "^1.12.5",
+    "prosemirror-view": "^1.42.9"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}
