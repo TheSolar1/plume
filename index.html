@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plume</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23334155'/%3E%3Ctext x='16' y='23' font-size='18' text-anchor='middle' fill='white' font-family='Arial' font-weight='700'%3EP%3C/text%3E%3C/svg%3E">
+<style>
+  :root { --bg: #f4f5f7; --card: #fff; --text: #1f2328; --muted: #6b7280; --border: #e3e5e8; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #16181c; --card: #22252a; --text: #eceef1; --muted: #9aa1ab; --border: #33373d; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, -apple-system, Ubuntu, Arial, sans-serif; background: var(--bg); color: var(--text); }
+  main { max-width: 980px; margin: 0 auto; padding: 48px 16px; }
+  h1 { font-weight: 600; font-size: 34px; margin: 0 0 6px; }
+  p.lead { color: var(--muted); margin: 0 0 32px; font-size: 16px; }
+  .apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+  a.app { display: flex; flex-direction: column; gap: 10px; padding: 22px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); text-decoration: none; color: inherit; transition: transform .12s, box-shadow .12s; }
+  a.app:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+  .ico { width: 52px; height: 52px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 26px; }
+  .app h2 { margin: 0; font-size: 19px; font-weight: 600; }
+  .app span { color: var(--muted); font-size: 14px; line-height: 1.4; }
+  .soon { opacity: .55; pointer-events: none; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Plume</h1>
+  <p class="lead">Suite bureautique dans le navigateur — vos fichiers restent sur votre appareil.</p>
+  <div class="apps">
+    <a class="app" href="texte.html"><div class="ico" style="background:#2b579a">T</div><h2>Plume Texte</h2><span>Traitement de texte compatible .docx : styles, pages, en-têtes, tables des matières, révisions, publipostage…</span></a>
+    <a class="app soon" id="app-pres" href="presentation.html"><div class="ico" style="background:#c43e1c">P</div><h2>Plume Présentation</h2><span>Diaporamas compatibles .pptx (en préparation).</span></a>
+    <a class="app soon" id="app-calc" href="tableur.html"><div class="ico" style="background:#217346">X</div><h2>Plume Tableur</h2><span>Classeurs compatibles .xlsx (en préparation).</span></a>
+  </div>
+  <footer>Plume fonctionne hors ligne une fois chargé. Aucun document n'est envoyé à un serveur.</footer>
+</main>
+</body>
+</html>

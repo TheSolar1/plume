@@ -469,7 +469,7 @@ export function whatsNewDialog() {
 }
 export function feedbackDialog() {
   const area = h('textarea.pl-input', { rows: 5, placeholder: 'Ce qui vous plaît, ce qui manque…', on: { keydown: (e) => e.stopPropagation() } });
-  dialog({ title: 'Commentaires', width: 420, body: area, buttons: [{ label: 'Copier', primary: true, action: () => { navigator.clipboard && navigator.clipboard.writeText(area.value); toast('Copié dans le presse-papiers'); } }, { label: 'Fermer' }] });
+  dialog({ title: 'Commentaires', width: 420, body: area, buttons: [{ label: 'Copier', primary: true, action: () => { navigator.clipboard && navigator.clipboard.writeText(area.value).catch(() => {}); toast('Copié dans le presse-papiers'); } }, { label: 'Fermer' }] });
 }
 export function aboutDialog() {
   dialog({ title: 'À propos de Plume Texte', width: 400, body: h('div', { style: { textAlign: 'center' } }, icon('Feather', 48), h('h2', { style: { margin: '8px 0' } }, 'Plume Texte'), h('p', 'Traitement de texte de la suite Plume.'), h('p.pl-hint', 'Fonctionne entièrement dans le navigateur, sans envoi de vos documents sur un serveur.')), buttons: [{ label: 'OK', primary: true }] });

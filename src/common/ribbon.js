@@ -132,12 +132,12 @@ export class Ribbon {
     const iconEl = it.icon ? (typeof it.icon === 'string' ? icon(it.icon, big ? 30 : 17) : it.icon()) : null;
     let colorBar = null;
     if (it.type === 'color') colorBar = h('span.pl-colorbar', { style: { background: it.color() || 'transparent' } });
+    const hasMenu = it.type === 'split' || it.type === 'color' || it.type === 'menu';
+    const bigSplit = big && hasMenu && it.type !== 'menu';
     const main = h('button' + cls, { type: 'button', title: it.title || it.label + (it.shortcut ? ` (${it.shortcut})` : ''), 'aria-label': it.label },
       h('span.pl-btn-ico', iconEl, colorBar),
-      (big || it.showLabel) && it.label ? h('span.pl-btn-label', it.label) : null,
-      it.type === 'menu' && big ? h('span.pl-caret', '▾') : null,
+      (big && !bigSplit) || (!big && it.showLabel) ? (it.label ? h('span.pl-btn-label', it.label, it.type === 'menu' && big ? h('span.pl-caret', ' ▾') : null) : null) : null,
     );
-    const hasMenu = it.type === 'split' || it.type === 'color' || it.type === 'menu';
     if (it.type === 'menu') {
       main.addEventListener('click', (e) => { e.preventDefault(); this.openItemMenu(it, main); });
     } else {
@@ -146,7 +146,7 @@ export class Ribbon {
     }
     let el = main;
     if (hasMenu && it.type !== 'menu') {
-      const arrow = h('button.pl-split-arrow' + (big ? '.big' : ''), { type: 'button', title: (it.menuTitle || it.label) + ' – options' }, '▾');
+      const arrow = h('button.pl-split-arrow' + (big ? '.big' : ''), { type: 'button', title: (it.menuTitle || it.label) + ' – options' }, big ? h('span.pl-btn-label', it.label, h('span.pl-caret', ' ▾')) : '▾');
       arrow.addEventListener('mousedown', (e) => e.preventDefault());
       arrow.addEventListener('click', () => this.openItemMenu(it, el));
       el = h('div.pl-split' + (big ? '.big' : ''), main, arrow);
