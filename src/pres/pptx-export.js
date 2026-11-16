@@ -25,6 +25,8 @@ const hex = (c) => (c && /^#[0-9a-f]{6}$/i.test(c) ? c.slice(1).toUpperCase() : 
 export const PRST = { rect: 'rect', roundRect: 'roundRect', ellipse: 'ellipse', triangle: 'triangle', rtTriangle: 'rtTriangle', diamond: 'diamond', parallelogram: 'parallelogram', trapezoid: 'trapezoid', pentagon: 'pentagon', hexagon: 'hexagon', octagon: 'octagon', star5: 'star5', star8: 'star8', heart: 'heart', plus: 'plus', donut: 'donut', arrowRight: 'rightArrow', arrowLeft: 'leftArrow', arrowUp: 'upArrow', arrowDown: 'downArrow', leftRight: 'leftRightArrow', chevron: 'chevron', homePlate: 'homePlate', callout: 'wedgeRectCallout', cloud: 'cloud', lightning: 'lightningBolt', moon: 'moon', sun: 'sun', cube: 'cube', can: 'can', frame: 'frame', line: 'line', arrowLine: 'line' };
 const TRANS = { fade: '<p:fade/>', push: (d) => `<p:push dir="${d}"/>`, wipe: (d) => `<p:wipe dir="${d}"/>`, split: '<p:split orient="vert" dir="out"/>', reveal: (d) => `<p:pull dir="${d}"/>`, cover: (d) => `<p:cover dir="${d}"/>`, zoom: '<p:zoom/>', shape: '<p:circle/>', flip: (d) => `<p:cover dir="${d}"/>`, cube: (d) => `<p:push dir="${d}"/>`, morph: '<p:fade/>', curtains: '<p:split orient="vert" dir="out"/>', blinds: '<p:blinds dir="horz"/>' };
 const DIR = { left: 'l', right: 'r', up: 'u', down: 'd' };
+// Trajectoires : [identifiant de préréglage, chemin relatif à la diapositive]
+const MOTION_PATHS = { pathRight: [63, 'M 0 0 L 0.203 0 E'], pathLeft: [35, 'M 0 0 L -0.203 0 E'], pathUp: [64, 'M 0 0 L 0 -0.278 E'], pathDown: [42, 'M 0 0 L 0 0.278 E'], pathDiag: [49, 'M 0 0 L 0.1875 -0.222 E'], pathArc: [37, 'M 0 0 C 0.07 -0.26 0.15 -0.26 0.219 0 E'], pathCircle: [1, 'M 0 0 C 0.097 0 0.097 0.25 0 0.25 C -0.097 0.25 -0.097 0 0 0 Z'], pathZigzag: [50, 'M 0 0 L 0.055 -0.083 L 0.109 0 L 0.164 -0.083 L 0.219 0 E'], pathLoop: [21, 'M 0 0 C 0.09 -0.11 0.09 0.11 0 0 C -0.09 -0.11 -0.09 0.11 0 0 Z'] };
 const ANIM_PRESET = { appear: [1, 'entr'], fade: [10, 'entr'], flyIn: [2, 'entr'], floatIn: [42, 'entr'], wipe: [22, 'entr'], split: [16, 'entr'], zoom: [53, 'entr'], grow: [31, 'entr'], bounce: [26, 'entr'], wheel: [21, 'entr'], swivel: [45, 'entr'], pulse: [26, 'emph'], spin: [8, 'emph'], growShrink: [6, 'emph'], teeter: [32, 'emph'], colorPulse: [27, 'emph'], transparency: [9, 'emph'], boldFlash: [10, 'emph'], disappear: [1, 'exit'], fadeOut: [10, 'exit'], flyOut: [2, 'exit'], zoomOut: [53, 'exit'], shrink: [31, 'exit'], wipeOut: [22, 'exit'] };
 
 export async function exportPptx(pres, { title = '', author = '', show = false } = {}) {
@@ -342,7 +344,8 @@ function timingXml(els, shapeIds) {
     let t = 0;
     const inner = grp.map(({ el, a }, idx) => {
       const spid = shapeIds.get(el.id);
-      const [preset, cls] = ANIM_PRESET[a.effect] || [10, 'entr'];
+      const motion = MOTION_PATHS[a.effect];
+      const [preset, cls] = motion ? [motion[0], 'path'] : ANIM_PRESET[a.effect] || [10, 'entr'];
       const dur = Math.round((a.duration || 0.5) * 1000);
       const delay = Math.round((a.delay || 0) * 1000) + (a.trigger === 'after' ? t : 0);
       if (a.trigger !== 'with') t = delay + dur;
@@ -351,7 +354,8 @@ function timingXml(els, shapeIds) {
       const tgt = `<p:tgtEl><p:spTgt spid="${spid}"/></p:tgtEl>`;
       const setVis = (v) => `<p:set><p:cBhvr><p:cTn id="${ctn++}" dur="1" fill="hold"><p:stCondLst><p:cond delay="${cls === 'exit' ? dur - 1 : 0}"/></p:stCondLst></p:cTn>${tgt}<p:attrNameLst><p:attrName>style.visibility</p:attrName></p:attrNameLst></p:cBhvr><p:to><p:strVal val="${v}"/></p:to></p:set>`;
       let behaviours = '';
-      if (cls === 'entr') behaviours = setVis('visible') + (a.effect === 'appear' ? '' : `<p:animEffect transition="in" filter="${{ wipe: 'wipe(down)', split: 'barn(inVertical)', wheel: 'wheel(1)' }[a.effect] || 'fade'}"><p:cBhvr><p:cTn id="${ctn++}" dur="${dur}"/>${tgt}</p:cBhvr></p:animEffect>`);
+      if (motion) behaviours = `<p:animMotion origin="layout" path="${motion[1]}" pathEditMode="relative" ptsTypes=""><p:cBhvr><p:cTn id="${ctn++}" dur="${dur}" fill="hold"/>${tgt}<p:attrNameLst><p:attrName>ppt_x</p:attrName><p:attrName>ppt_y</p:attrName></p:attrNameLst></p:cBhvr></p:animMotion>`;
+      else if (cls === 'entr') behaviours = setVis('visible') + (a.effect === 'appear' ? '' : `<p:animEffect transition="in" filter="${{ wipe: 'wipe(down)', split: 'barn(inVertical)', wheel: 'wheel(1)' }[a.effect] || 'fade'}"><p:cBhvr><p:cTn id="${ctn++}" dur="${dur}"/>${tgt}</p:cBhvr></p:animEffect>`);
       else if (cls === 'exit') behaviours = (a.effect === 'disappear' ? '' : `<p:animEffect transition="out" filter="${a.effect === 'wipeOut' ? 'wipe(down)' : 'fade'}"><p:cBhvr><p:cTn id="${ctn++}" dur="${dur}"/>${tgt}</p:cBhvr></p:animEffect>`) + setVis('hidden');
       else if (a.effect === 'spin') behaviours = `<p:animRot by="21600000"><p:cBhvr><p:cTn id="${ctn++}" dur="${dur}" fill="hold"/>${tgt}<p:attrNameLst><p:attrName>r</p:attrName></p:attrNameLst></p:cBhvr></p:animRot>`;
       else behaviours = `<p:animScale><p:cBhvr><p:cTn id="${ctn++}" dur="${dur}" autoRev="1" fill="hold"/>${tgt}</p:cBhvr><p:by x="110000" y="110000"/></p:animScale>`;

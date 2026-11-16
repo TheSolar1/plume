@@ -171,11 +171,14 @@ function chartXml(o, d, pal, sheetName) {
     return `<c:ser><c:idx val="${i}"/><c:order val="${i}"/>${tx}${sp}${dpts}${lbl}${cat}${val}${t === 'line' || t === 'scatter' ? '<c:smooth val="0"/>' : ''}</c:ser>`;
   }).join('');
   const ax = '<c:axId val="111111111"/><c:axId val="222222222"/>';
-  const horiz = t === 'hbar';
+  // cascade et entonnoir n'ont pas d'équivalent dans le format de graphique classique : exportés en histogramme / barres
+  const horiz = t === 'hbar' || t === 'funnel';
   let plot;
   if (t === 'pie') plot = `<c:pieChart><c:varyColors val="1"/>${sers}<c:firstSliceAng val="0"/></c:pieChart>`;
   else if (t === 'doughnut') plot = `<c:doughnutChart><c:varyColors val="1"/>${sers}<c:firstSliceAng val="0"/><c:holeSize val="50"/></c:doughnutChart>`;
   else if (t === 'line' || t === 'scatter') plot = `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${sers}<c:marker val="1"/>${ax}</c:lineChart>`;
+  else if (t === 'radar') plot = `<c:radarChart><c:radarStyle val="marker"/><c:varyColors val="0"/>${sers}${ax}</c:radarChart>`;
+  else if (t === 'combo' && d.series.length > 1) { const parts = sers.split('</c:ser>').filter(Boolean).map((x) => x + '</c:ser>'); const lineSer = parts.pop().replace(/<c:spPr>.*?<\/c:spPr>/, `<c:spPr><a:ln w="28575" cap="rnd"><a:solidFill><a:srgbClr val="${hex(pal[(d.series.length - 1) % pal.length])}"/></a:solidFill><a:round/></a:ln></c:spPr><c:marker><c:symbol val="circle"/><c:size val="5"/></c:marker>`); plot = `<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${parts.join('')}<c:gapWidth val="80"/>${ax}</c:barChart><c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${lineSer}<c:marker val="1"/>${ax}</c:lineChart>`; }
   else if (t === 'area') plot = `<c:areaChart><c:grouping val="standard"/><c:varyColors val="0"/>${sers}${ax}</c:areaChart>`;
   else plot = `<c:barChart><c:barDir val="${horiz ? 'bar' : 'col'}"/><c:grouping val="${t === 'stacked' ? 'stacked' : 'clustered'}"/><c:varyColors val="0"/>${sers}<c:gapWidth val="80"/>${t === 'stacked' ? '<c:overlap val="100"/>' : ''}${ax}</c:barChart>`;
   const axes = pie ? '' : `<c:catAx><c:axId val="111111111"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${horiz ? 'l' : 'b'}"/><c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="222222222"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx><c:valAx><c:axId val="222222222"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${horiz ? 'b' : 'l'}"/><c:majorGridlines><c:spPr><a:ln w="9525"><a:solidFill><a:srgbClr val="D9D9D9"/></a:solidFill></a:ln></c:spPr></c:majorGridlines><c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="111111111"/><c:crosses val="autoZero"/><c:crossBetween val="${t === 'area' ? 'midCat' : 'between'}"/></c:valAx>`;
@@ -269,6 +272,7 @@ export async function exportXlsx(native, wb, { title = '', author = '' } = {}) {
         const from = anchorOf(s, o.x, o.y), to = anchorOf(s, o.x + o.w, o.y + o.h);
         const xfrm = `<a:xfrm${o.rot ? ` rot="${Math.round(o.rot * 60000)}"` : ''}><a:off x="${Math.round(o.x * EMU)}" y="${Math.round(o.y * EMU)}"/><a:ext cx="${Math.round(o.w * EMU)}" cy="${Math.round(o.h * EMU)}"/></a:xfrm>`;
         let inner = '';
+        if (o.kind === 'slicer') continue; // les segments restent dans la copie Plume du fichier
         if (o.kind === 'chart') {
           chartN++;
           const src = wb.sheetByName(o.chart.sheet) || s;

@@ -69,6 +69,15 @@ export function animateElement(el, a) {
     case 'flyOut': kf = [{ transform: T('translate(0,0)') }, { transform: T(`translate(${off[0]},${off[1] === '0' ? '0' : off[1]})`), visibility: 'hidden' }]; break;
     case 'zoomOut': kf = [{ transform: T('scale(1)'), opacity: 1 }, { transform: T('scale(.2)'), opacity: 0, visibility: 'hidden' }]; break;
     case 'shrink': kf = [{ transform: T('scale(1) rotate(0)'), opacity: 1 }, { transform: T('scale(.1) rotate(180deg)'), opacity: 0, visibility: 'hidden' }]; break;
+    case 'pathRight': kf = [{ transform: T('translate(0,0)') }, { transform: T('translate(260px,0)') }]; break;
+    case 'pathLeft': kf = [{ transform: T('translate(0,0)') }, { transform: T('translate(-260px,0)') }]; break;
+    case 'pathUp': kf = [{ transform: T('translate(0,0)') }, { transform: T('translate(0,-200px)') }]; break;
+    case 'pathDown': kf = [{ transform: T('translate(0,0)') }, { transform: T('translate(0,200px)') }]; break;
+    case 'pathDiag': kf = [{ transform: T('translate(0,0)') }, { transform: T('translate(240px,-160px)') }]; break;
+    case 'pathArc': kf = Array.from({ length: 13 }, (_, i) => { const t = i / 12; return { transform: T(`translate(${Math.round(280 * t)}px,${Math.round(-140 * Math.sin(Math.PI * t))}px)`) }; }); opt.easing = 'linear'; break;
+    case 'pathCircle': kf = Array.from({ length: 25 }, (_, i) => { const t = (i / 24) * Math.PI * 2; return { transform: T(`translate(${Math.round(90 * Math.sin(t))}px,${Math.round(90 - 90 * Math.cos(t))}px)`) }; }); opt.easing = 'linear'; opt.fill = 'none'; break;
+    case 'pathZigzag': kf = [0, 1, 2, 3, 4].map((i) => ({ transform: T(`translate(${i * 70}px,${i % 2 ? -60 : 0}px)`) })); opt.easing = 'linear'; break;
+    case 'pathLoop': kf = Array.from({ length: 25 }, (_, i) => { const t = (i / 24) * Math.PI * 2; return { transform: T(`translate(${Math.round(120 * Math.sin(t))}px,${Math.round(60 * Math.sin(2 * t))}px)`) }; }); opt.easing = 'linear'; opt.fill = 'none'; break;
     case 'wipeOut': kf = [{ clipPath: 'inset(0 0 0 0)' }, { clipPath: 'inset(0 0 0 100%)', visibility: 'hidden' }]; break;
     default: kf = [{ opacity: 0, visibility: 'visible' }, { opacity: 1, visibility: 'visible' }];
   }

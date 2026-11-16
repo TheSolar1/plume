@@ -310,3 +310,29 @@ export function accessibilityDialog(app) {
 }
 function contrast(a, b) { const lum = (hex) => { const n = parseInt(hex.slice(1), 16); const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f((n >> 16) & 255) + 0.7152 * f((n >> 8) & 255) + 0.0722 * f(n & 255); }; if (!/^#[0-9a-f]{6}$/i.test(a) || !/^#[0-9a-f]{6}$/i.test(b)) return 21; const l1 = lum(a), l2 = lum(b); return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05); }
 export function macroDialog() { alertDlg('Macros', 'Les macros VBA ne sont pas prises en charge par Plume Tableur. Les fichiers .xlsm s’ouvrent normalement, mais leurs macros sont ignorées et ne sont pas réenregistrées.'); }
+
+// ── Tableaux croisés recommandés, segments, affichages personnalisés ──
+export function recommendedPivotsDialog(app) {
+  const recs = F.recommendedPivots(app);
+  if (!recs.length) return toast('Placez-vous dans une liste de données avec des en-têtes (au moins une colonne de texte).');
+  const list = h('div.pl-list', { style: { maxHeight: '260px' } }, ...recs.map((r) => h('div.pl-list-item', { on: { click: () => { dlg.close(); F.createPivot(app, r.cfg); } } }, icon('TableProperties', 15), h('span', r.label))));
+  const dlg = dialog({ title: 'Tableaux croisés dynamiques recommandés', width: 460, body: h('div', h('p', 'Cliquez sur une proposition pour créer le tableau croisé sur une nouvelle feuille.'), list), buttons: [{ label: 'Tableau croisé vide…', action: () => { setTimeout(() => pivotDialog(app), 0); } }, { label: 'Fermer', primary: true }] });
+}
+export function slicerDialog(app) {
+  const s = app.sheet;
+  if (!s.filter) F.toggleFilter(app);
+  const f = s.filter;
+  if (!f) return toast('Placez-vous dans un tableau ou une liste de données.');
+  const boxes = headers(app, s, f).map(([c, l]) => ({ c, el: checkbox(l, c === app.sel.c) }));
+  dialog({ title: 'Insérer des segments', width: 320, body: h('div', h('p', 'Cochez les champs pour lesquels créer un segment (boutons de filtrage).'), h('div.pl-list', { style: { padding: '4px 8px', maxHeight: '220px' } }, ...boxes.map((b) => b.el))), buttons: [{ label: 'OK', primary: true, action: () => { const cols = boxes.filter((b) => val(b.el)).map((b) => b.c); if (!cols.length) { toast('Cochez au moins un champ.', 'error'); return false; } cols.forEach((c, i) => { const o = F.addSlicer(app, c); if (o && i) F.updateObject(app, o.id, { x: o.x + i * 185 }, 'Segment'); }); } }, { label: 'Annuler' }] });
+}
+export function customViewsDialog(app) {
+  const wb = app.wb;
+  const list = h('div.pl-list', { style: { height: '170px', maxHeight: '170px' } });
+  let cur = -1;
+  const views = () => wb.props.views || [];
+  const render = () => { list.innerHTML = ''; views().forEach((v, i) => list.appendChild(h('div.pl-list-item' + (i === cur ? '.sel' : ''), { on: { click: () => { cur = i; render(); }, dblclick: () => { dlg.close(); F.showView(app, v); } } }, icon('Eye', 14), h('b', { style: { flex: 1 } }, v.name), h('span.pl-hint', `${v.sheet} · ${Math.round((v.zoom || 1) * 100)} %`)))); if (!views().length) list.appendChild(h('div.pl-list-item.pl-hint', 'Aucun affichage enregistré.')); };
+  render();
+  const name = text('', '100%', 'Nom du nouvel affichage');
+  const dlg = dialog({ title: 'Affichages personnalisés', width: 420, body: h('div', list, h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px' } }, name, h('button.pl-btn', { type: 'button', on: { click: () => { const n = name.value.trim(); if (!n) return toast('Donnez un nom à l’affichage.', 'error'); F.saveView(app, n); name.value = ''; render(); } } }, 'Ajouter')), h('p.pl-hint', 'Un affichage mémorise le zoom, les volets figés, la position, les lignes et colonnes masquées et l’affichage du quadrillage de la feuille active.')), buttons: [{ label: 'Afficher', primary: true, action: () => { const v = views()[cur]; if (!v) { toast('Sélectionnez un affichage.', 'error'); return false; } F.showView(app, v); } }, { label: 'Supprimer', action: () => { if (cur >= 0) { wb.props = { ...wb.props, views: views().filter((_, i) => i !== cur) }; cur = -1; app.markDirty(); render(); } return false; } }, { label: 'Fermer' }] });
+}

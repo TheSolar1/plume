@@ -7,6 +7,7 @@ import { LAYOUTS, PRES_THEMES, TRANSITIONS, ANIMATIONS, SLIDE_SIZES, makeElement
 import { SHAPES, TABLE_STYLES, shapeGeometry } from './render.js';
 import { WORDART_STYLES } from '../word/nodeviews.js';
 import * as PD from './dialogs.js';
+import * as X from './extras.js';
 
 const btn = (label, ic, run, extra = {}) => ({ type: 'btn', label, icon: ic, run, ...extra });
 const big = (label, ic, run, extra = {}) => ({ type: 'big', label, icon: ic, run, ...extra });
@@ -91,9 +92,10 @@ export function buildRibbon(app) {
       fontGroup, paraGroup, drawingGroup,
       { label: 'Modification', items: [col(
         btn('Rechercher', 'Search', () => PD.findDialog(app), { showLabel: true }),
-        btn('Remplacer', 'Replace', () => PD.findDialog(app, true), { showLabel: true }),
+        { type: 'split', label: 'Remplacer', icon: 'Replace', showLabel: true, run: () => PD.findDialog(app, true), menu: [{ label: 'Remplacer…', icon: 'Replace', action: () => PD.findDialog(app, true) }, { label: 'Remplacer les polices…', icon: 'Type', action: () => X.replaceFontsDialog(app) }] },
         { type: 'menu', label: 'Sélectionner', icon: 'MousePointer2', showLabel: true, menu: [{ label: 'Sélectionner tout', action: () => app.selectAll() }, { label: 'Volet Sélection…', action: () => app.togglePane('selection') }] },
       )] },
+      { label: 'Voix', items: [big('Dicter', 'Mic', () => X.dictate(app), { active: () => X.isDictating() })] },
       { label: 'Concepteur', items: [big('Concepteur', 'Wand', () => app.togglePane('designer'))] },
     ],
   };
@@ -122,6 +124,7 @@ export function buildRibbon(app) {
         col(btn('Date et heure', 'CalendarClock', () => PD.headerFooterDialog(app), { showLabel: true }), btn('Numéro de diapositive', 'Hash', () => { app.pres.footer.slideNumber = true; app.commit('Numéro'); app.renderAll(); }, { showLabel: true }), btn('Objet', 'FileInput', () => PD.insertObject(app), { showLabel: true })),
       ] },
       { label: 'Symboles', items: [big('Équation', 'Sigma', () => PD.equationDialog(app)), big('Symbole', 'Omega', () => PD.symbolDialog(app))] },
+      { label: 'Liens', items: [big('Zoom de résumé', 'LayoutGrid', () => X.summaryZoomDialog(app))] },
       { label: 'Médias', items: [big('Vidéo', 'Video', () => PD.videoDialog(app)), big('Enregistrement d’écran', 'MonitorPlay', () => PD.screenRecord(app))] },
     ],
   };
@@ -171,11 +174,11 @@ export function buildRibbon(app) {
     id: 'animations', label: 'Animations', groups: () => [
       { label: 'Aperçu', items: [big('Aperçu', 'Eye', () => PD.previewAnimations(app))] },
       { label: 'Animation', items: [
-        { type: 'gallery', width: 470, items: () => [...ANIMATIONS.entrance.map((a) => [...a, 'entrance']), ...ANIMATIONS.emphasis.map((a) => [...a, 'emphasis']), ...ANIMATIONS.exit.map((a) => [...a, 'exit'])].map(([k, l, kind]) => ({ label: l, key: k, title: l + ' (' + { entrance: 'ouverture', emphasis: 'accentuation', exit: 'fermeture' }[kind] + ')', preview: () => h('span', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '10.5px', color: { entrance: '#107c10', emphasis: '#c19c00', exit: '#c00000' }[kind] } }, icon('Star', 13), l), run: () => PD.setAnimation(app, k, true) })), current: () => { const e = sel()[0]; return e && e.anim && e.anim[0] ? e.anim[0].effect : null; } },
+        { type: 'gallery', width: 470, items: () => [...ANIMATIONS.entrance.map((a) => [...a, 'entrance']), ...ANIMATIONS.emphasis.map((a) => [...a, 'emphasis']), ...ANIMATIONS.exit.map((a) => [...a, 'exit']), ...ANIMATIONS.path.map((a) => [...a, 'path'])].map(([k, l, kind]) => ({ label: l, key: k, title: l + ' (' + { entrance: 'ouverture', emphasis: 'accentuation', exit: 'fermeture', path: 'trajectoire' }[kind] + ')', preview: () => h('span', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '10.5px', color: { entrance: '#107c10', emphasis: '#c19c00', exit: '#c00000', path: '#2f6fb6' }[kind] } }, icon(kind === 'path' ? 'Route' : 'Star', 13), l), run: () => PD.setAnimation(app, k, true) })), current: () => { const e = sel()[0]; return e && e.anim && e.anim[0] ? e.anim[0].effect : null; } },
         { type: 'menu', big: true, label: 'Options d’effet', icon: 'SlidersHorizontal', enabled: hasSel, menu: () => [['left', 'À partir de la gauche'], ['right', 'À partir de la droite'], ['top', 'À partir du haut'], ['bottom', 'À partir du bas']].map(([k, l]) => ({ label: l, action: () => app.updateSelected((e) => (e.anim || []).forEach((a) => (a.dir = k)), 'Animation') })).concat(['-', { label: 'Par paragraphe', action: () => app.updateSelected((e) => (e.anim || []).forEach((a) => (a.byParagraph = true)), 'Animation') }, { label: 'Comme un seul objet', action: () => app.updateSelected((e) => (e.anim || []).forEach((a) => (a.byParagraph = false)), 'Animation') }]) },
       ] },
       { label: 'Animation avancée', items: [
-        { type: 'menu', big: true, label: 'Ajouter une animation', icon: 'SquarePlus', enabled: hasSel, menu: () => [{ header: 'Ouverture' }, ...ANIMATIONS.entrance.map(([k, l]) => ({ label: l, action: () => PD.setAnimation(app, k, false) })), { header: 'Accentuation' }, ...ANIMATIONS.emphasis.map(([k, l]) => ({ label: l, action: () => PD.setAnimation(app, k, false) })), { header: 'Fermeture' }, ...ANIMATIONS.exit.map(([k, l]) => ({ label: l, action: () => PD.setAnimation(app, k, false) }))] },
+        { type: 'menu', big: true, label: 'Ajouter une animation', icon: 'SquarePlus', enabled: hasSel, menu: () => [{ header: 'Ouverture' }, ...ANIMATIONS.entrance.map(([k, l]) => ({ label: l, action: () => PD.setAnimation(app, k, false) })), { header: 'Accentuation' }, ...ANIMATIONS.emphasis.map(([k, l]) => ({ label: l, action: () => PD.setAnimation(app, k, false) })), { header: 'Fermeture' }, ...ANIMATIONS.exit.map(([k, l]) => ({ label: l, action: () => PD.setAnimation(app, k, false) })), { header: 'Trajectoires' }, ...ANIMATIONS.path.map(([k, l]) => ({ label: l, action: () => PD.setAnimation(app, k, false) }))] },
         col(btn('Volet Animation', 'ListVideo', () => app.togglePane('animations'), { showLabel: true }), { type: 'menu', label: 'Déclencheur', icon: 'Zap', showLabel: true, enabled: hasSel, menu: () => [['click', 'Au clic'], ['with', 'Avec la précédente'], ['after', 'Après la précédente']].map(([k, l]) => ({ label: l, action: () => app.updateSelected((e) => (e.anim || []).forEach((a) => (a.trigger = k)), 'Animation') })) }, btn('Reproduire l’animation', 'Paintbrush', () => PD.animPainter(app), { showLabel: true, enabled: hasSel })),
       ] },
       { label: 'Minutage', items: [col(
@@ -233,6 +236,7 @@ export function buildRibbon(app) {
         btn('Nuances de gris', 'Contrast', () => app.canvasWrap.style.filter = 'grayscale(1)', { showLabel: true }),
         btn('Noir et blanc', 'CircleHalf', () => app.canvasWrap.style.filter = 'grayscale(1) contrast(3)', { showLabel: true }),
       )] },
+      { label: 'Fenêtre', items: [big('Nouvelle fenêtre', 'AppWindow', () => { app.saveLocal().then(() => window.open(location.pathname + (app.docId ? '?doc=' + app.docId : ''), '_blank')); })] },
       { label: 'Mode', items: [big('Mode sombre', 'Moon', () => { const on = !document.documentElement.classList.contains('dark'); document.documentElement.classList.toggle('dark', on); prefs.set('dark', on); app.refreshUI(); }, { active: () => document.documentElement.classList.contains('dark') })] },
     ],
   };

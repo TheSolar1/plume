@@ -117,3 +117,12 @@
   .pc-print-page:last-child { page-break-after: auto; break-after: auto; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* segments */
+.pc-slicer { flex: 1; overflow: auto; padding: 6px; display: flex; flex-direction: column; gap: 4px; cursor: default; }
+.pc-slicer-head { display: flex; align-items: center; justify-content: space-between; padding: 5px 8px; border-bottom: 1px solid #c8c8c8; font-size: 13px; cursor: move; color: var(--ui-text, #222); }
+.pc-slicer-clear { border: 0; background: none; cursor: pointer; color: #c00000; padding: 2px; display: inline-flex; }
+.pc-slicer-clear:disabled { color: #b0b0b0; cursor: default; }
+.pc-slicer-btn { border: 1px solid #c8c8c8; background: #fff; color: #888; border-radius: 3px; padding: 4px 8px; text-align: left; cursor: pointer; font: 12.5px Calibri, Carlito, Arial, sans-serif; flex: none; }
+.pc-slicer-btn.on { background: #ddebf7; border-color: #9dc3e6; color: #1f3864; font-weight: 600; }
+.pc-slicer-btn:hover { border-color: #2f75b5; }

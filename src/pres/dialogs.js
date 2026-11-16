@@ -464,7 +464,7 @@ export function setAnimation(app, effect, replace) {
   if (!app.sel.size) return toast('Sélectionnez un objet à animer');
   let order = Math.max(0, ...app.slide.elements.flatMap((e) => (e.anim || []).map((a) => a.order || 0)));
   app.updateSelected((e) => {
-    const a = { id: uid('a'), effect, kind: animKind(effect), trigger: 'click', duration: 0.5, delay: 0, dir: 'bottom', order: ++order };
+    const a = { id: uid('a'), effect, kind: animKind(effect), trigger: 'click', duration: /^path/.test(effect) ? 1.5 : 0.5, delay: 0, dir: 'bottom', order: ++order };
     e.anim = replace ? [a] : [...(e.anim || []), a];
   }, 'Animation');
   previewAnimations(app, app.selected.map((e) => e.id));
@@ -749,7 +749,7 @@ function paneAnimations(app, body) {
   let step = 0;
   all.forEach(({ e, a }, i) => {
     if (a.trigger === 'click' || i === 0) step++;
-    const col = { entrance: '#107c10', emphasis: '#c19c00', exit: '#c00000' }[a.kind] || '#666';
+    const col = { entrance: '#107c10', emphasis: '#c19c00', exit: '#c00000', path: '#2f6fb6' }[a.kind] || '#666';
     const row = h('div.pl-rev-item' + (app.sel.has(e.id) ? '.on' : ''), { style: { borderLeft: `4px solid ${col}` } },
       h('div', h('b', a.trigger === 'click' ? step + ' ' : '   '), animLabel(a.effect), ' — ', e.name || (e.text ? docText(e.text).slice(0, 24) : e.type)),
       h('div', { style: { display: 'flex', gap: '6px', marginTop: '4px', alignItems: 'center' } },
