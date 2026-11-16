@@ -141,7 +141,7 @@ recherche de commandes (Alt+Q), plus de 60 raccourcis clavier façon Word
   zoom, fusion de cellules, lignes et colonnes masquées, ajustement
   automatique, poignée de recopie avec séries (nombres, dates, jours, mois,
   « Produit 1, Produit 2… »).
-- **Formules** : environ 300 fonctions saisies en français avec le
+- **Formules** : plus de 220 fonctions saisies en français avec le
   point-virgule (`=SOMME.SI.ENS(…)`, `=RECHERCHEX(…)`, `=SI.CONDITIONS(…)`,
   `=FILTRE(…)`, `=UNIQUE(…)`…), tableaux dynamiques avec propagation,
   références entre feuilles, noms définis, saisie semi-automatique, info-bulle
