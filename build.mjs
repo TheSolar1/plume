@@ -2,7 +2,7 @@
 import * as esbuild from 'esbuild';
 const watch = process.argv.includes('--watch');
 const opts = {
-  entryPoints: { texte: 'src/word/main.js', presentation: 'src/pres/main.js' },
+  entryPoints: { texte: 'src/word/main.js', presentation: 'src/pres/main.js', tableur: 'src/calc/main.js' },
   bundle: true,
   outdir: 'dist',
   format: 'esm',
