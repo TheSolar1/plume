@@ -300,6 +300,13 @@ export function readabilityDialog(app) {
 // ══════════════════════════════════════════════════════════════════
 // Vérification de compatibilité : aller-retour réel par le format .docx
 // ══════════════════════════════════════════════════════════════════
+// Convertit le document en .docx tel que Word le lira (sans la copie Plume), puis le relit.
+export async function docxRoundTrip(app) {
+  const blob = await exportDocx(app.exportData());
+  const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+  zip.remove('plume/document.json');
+  return importDocx(await zip.generateAsync({ type: 'arraybuffer' }));
+}
 export async function compatDialog(app) {
   toast('Vérification de la compatibilité…');
   const count = (doc) => { const c = {}; let chars = 0; doc.descendants((n) => { c[n.type.name] = (c[n.type.name] || 0) + 1; if (n.isText) chars += n.text.length; }); c.__chars = chars; c.table_cell = (c.table_cell || 0) + (c.table_header || 0); delete c.table_header; return c; };

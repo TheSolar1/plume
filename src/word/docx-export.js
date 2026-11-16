@@ -15,7 +15,7 @@ import { texToMathML } from './math.js';
 import { shapeSvg, WORDART_STYLES } from './nodeviews.js';
 import { TABLE_STYLES } from './tablestyles.js';
 
-const NS = 'xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" mc:Ignorable="w14"';
+const NS = 'xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:w10="urn:schemas-microsoft-com:office:word" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml" xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" mc:Ignorable="w14 w15"';
 const XML_HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
 const REL_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 
@@ -84,14 +84,36 @@ function nearestHighlight(hex) {
 }
 
 // Bordure CSS "1px solid #000" → <w:top w:val="single" w:sz="4" …/>
-function borderXml(side, css, color) {
+function borderXml(side, css, color, space = 1) {
   if (!css) return '';
   const m = /([\d.]+)px\s+(\w+)\s+(.+)/.exec(css);
   if (!m) return '';
   const sz = Math.max(2, Math.round(parseFloat(m[1]) * 0.75 * 8));
   const val = { solid: 'single', dashed: 'dashed', dotted: 'dotted', double: 'double', none: 'nil' }[m[2]] || 'single';
-  return `<w:${side} w:val="${val}" w:sz="${sz}" w:space="1" w:color="${color(m[3]) || 'auto'}"/>`;
+  return `<w:${side} w:val="${val}" w:sz="${sz}" w:space="${space}" w:color="${color(m[3]) || 'auto'}"/>`;
 }
+
+// Effets de texte sans équivalent Word 2003 : extensions Word 2010 (w14)
+const w14Grad = (stops, ang = 0) => `<w14:textFill><w14:gradFill><w14:gsLst>${stops.map((c, i) => `<w14:gs w14:pos="${Math.round((i / (stops.length - 1)) * 100000)}"><w14:srgbClr w14:val="${c}"/></w14:gs>`).join('')}</w14:gsLst><w14:lin w14:ang="${ang}" w14:scaled="0"/></w14:gradFill></w14:textFill>`;
+const w14Glow = (c) => `<w14:glow w14:rad="63500"><w14:srgbClr w14:val="${c}"><w14:alpha w14:val="60000"/></w14:srgbClr></w14:glow>`;
+const W14_SHADOW = '<w14:shadow w14:blurRad="50800" w14:dist="38100" w14:dir="2700000" w14:sx="100000" w14:sy="100000" w14:kx="0" w14:ky="0" w14:algn="tl"><w14:srgbClr w14:val="000000"><w14:alpha w14:val="55000"/></w14:srgbClr></w14:shadow>';
+const W14_EFFECTS = {
+  glow: w14Glow('FFC000'),
+  reflect: '<w14:reflection w14:blurRad="6350" w14:stA="55000" w14:stPos="0" w14:endA="300" w14:endPos="45500" w14:dist="0" w14:dir="5400000" w14:fadeDir="5400000" w14:sx="100000" w14:sy="-100000" w14:kx="0" w14:ky="0" w14:algn="bl"/>',
+  gradient: w14Grad(['4472C4', 'ED7D31']),
+};
+// Styles WordArt → mise en forme de caractères Word
+const WORDART_RPR = {
+  remplissage: '<w:color w:val="4472C4"/>',
+  contour: '<w:color w:val="ED7D31"/><w14:textOutline w14:w="19050" w14:cap="rnd" w14:cmpd="sng" w14:algn="ctr"><w14:solidFill><w14:srgbClr w14:val="ED7D31"/></w14:solidFill><w14:prstDash w14:val="solid"/><w14:round/></w14:textOutline><w14:textFill><w14:noFill/></w14:textFill>',
+  ombre: '<w:color w:val="000000"/>' + W14_SHADOW,
+  degrade: '<w:color w:val="4472C4"/>' + w14Grad(['4472C4', 'ED7D31']),
+  lueur: '<w:color w:val="FFFFFF"/>' + w14Glow('FFC000'),
+  relief: '<w:emboss/><w:color w:val="E7E6E6"/>',
+  neon: '<w:color w:val="00E5FF"/>' + w14Glow('00A2FF'),
+  or: '<w:color w:val="C9A227"/>' + w14Grad(['FFF2A8', 'C9A227', '8A6D00'], 5400000),
+};
+const SHAPE_PRST = { rect: 'rect', rounded: 'roundRect', ellipse: 'ellipse', triangle: 'triangle', diamond: 'diamond', arrow: 'rightArrow', larrow: 'leftArrow', star: 'star5', hexagon: 'hexagon', heart: 'heart', callout: 'wedgeRectCallout', cloud: 'cloud', line: 'line', textbox: 'rect', wordart: 'rect' };
 
 const PAGE_FMT = { decimal: 'decimal', 'lower-roman': 'lowerRoman', 'upper-roman': 'upperRoman', 'lower-alpha': 'lowerLetter', 'upper-alpha': 'upperLetter' };
 
@@ -117,7 +139,9 @@ export async function exportDocx(data, { fileName = 'document' } = {}) {
       if (!needed && !src) continue;
       const node = src ? data.schema.nodeFromJSON(src) : null;
       let inner = node ? await ctx.blocks(node.content, kind) : '<w:p/>';
-      if (kind === 'header' && data.settings.watermark && data.settings.watermark.text) inner = watermarkXml(data.settings.watermark, color) + inner;
+      const wm = data.settings.watermark;
+      if (kind === 'header' && wm && wm.text) inner = watermarkXml(wm, color) + inner;
+      else if (kind === 'header' && wm && wm.image) { ctx.part = kind; inner = (await ctx.imageWatermark(wm.image)) + inner; ctx.part = 'document'; }
       if (!inner) inner = '<w:p/>';
       const tag = kind === 'header' ? 'hdr' : 'ftr';
       const file = `${kind}${ctx.hfCount[kind] = (ctx.hfCount[kind] || 0) + 1}.xml`;
@@ -134,7 +158,7 @@ export async function exportDocx(data, { fileName = 'document' } = {}) {
   const documentXmlFinal = documentXml.replace(sect, ctx.sectPr(true));
 
   zip.file('word/document.xml', documentXmlFinal);
-  zip.file('word/styles.xml', stylesXml(data, color));
+  zip.file('word/styles.xml', stylesXml(data, color, ctx.tableStyles));
   zip.file('word/numbering.xml', ctx.numberingXml());
   zip.file('word/settings.xml', settingsXml(data));
   zip.file('word/fontTable.xml', `${XML_HEAD}<w:fonts ${NS}>${[...ctx.fonts].map((f) => `<w:font w:name="${esc(f)}"/>`).join('')}</w:fonts>`);
@@ -145,6 +169,9 @@ export async function exportDocx(data, { fileName = 'document' } = {}) {
     zip.file('word/comments.xml', ctx.commentsXml());
     ctx.addRel('http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments', 'comments.xml');
     ctx.contentTypes.push('<Override PartName="/word/comments.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml"/>');
+    zip.file('word/commentsExtended.xml', ctx.commentsExtendedXml());
+    ctx.addRel('http://schemas.microsoft.com/office/2011/relationships/commentsExtended', 'commentsExtended.xml');
+    ctx.contentTypes.push('<Override PartName="/word/commentsExtended.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.commentsExtended+xml"/>');
   }
   for (const m of ctx.media) zip.file('word/media/' + m.name, m.data, { binary: true });
 
@@ -168,13 +195,16 @@ export async function exportDocx(data, { fileName = 'document' } = {}) {
     { id: 'rId1', type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument', target: 'word/document.xml' },
     { id: 'rId2', type: 'http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties', target: 'docProps/core.xml' },
     { id: 'rId3', type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties', target: 'docProps/app.xml' },
+    ...(data.settings.final ? [{ id: 'rId4', type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties', target: 'docProps/custom.xml' }] : []),
   ]));
+
+  if (data.settings.final) zip.file('docProps/custom.xml', `${XML_HEAD}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="2" name="_MarkAsFinal"><vt:bool>true</vt:bool></property></Properties>`);
 
   // Copie fidèle Plume
   const native = JSON.stringify({ version: 1, signature: hashString(documentXmlFinal), data: data.toNative() });
   zip.file('plume/document.json', native);
 
-  zip.file('[Content_Types].xml', `${XML_HEAD}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="json" ContentType="application/json"/><Default Extension="png" ContentType="image/png"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="jpg" ContentType="image/jpeg"/><Default Extension="gif" ContentType="image/gif"/><Default Extension="bmp" ContentType="image/bmp"/><Default Extension="webp" ContentType="image/webp"/><Default Extension="svg" ContentType="image/svg+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/><Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/><Override PartName="/word/webSettings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.webSettings+xml"/><Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/><Override PartName="/word/footnotes.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"/><Override PartName="/word/endnotes.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>${ctx.contentTypes.join('')}</Types>`);
+  zip.file('[Content_Types].xml', `${XML_HEAD}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="json" ContentType="application/json"/><Default Extension="png" ContentType="image/png"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="jpg" ContentType="image/jpeg"/><Default Extension="gif" ContentType="image/gif"/><Default Extension="bmp" ContentType="image/bmp"/><Default Extension="webp" ContentType="image/webp"/><Default Extension="svg" ContentType="image/svg+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/><Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/><Override PartName="/word/webSettings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.webSettings+xml"/><Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/><Override PartName="/word/footnotes.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"/><Override PartName="/word/endnotes.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>${data.settings.final ? '<Override PartName="/docProps/custom.xml" ContentType="application/vnd.openxmlformats-officedocument.custom-properties+xml"/>' : ''}${ctx.contentTypes.join('')}</Types>`);
 
   void fileName;
   return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', compression: 'DEFLATE' });
@@ -214,6 +244,8 @@ class ExportContext {
     this.fonts = new Set(['Calibri', 'Calibri Light', 'Times New Roman']);
     this.listDepth = 0;
     this.numStack = [];
+    this.tableStyles = new Set();
+    this.forceHidden = false;
   }
 
   addRel(type, target, external = false) {
@@ -242,7 +274,12 @@ class ExportContext {
     if (t === 'paragraph') return this.paragraph(node, extra);
     if (t === 'bullet_list' || t === 'ordered_list') return this.list(node);
     if (t === 'table') return this.table(node);
-    if (t === 'horizontal_rule') return '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="auto"/></w:pBdr></w:pPr></w:p>';
+    if (t === 'horizontal_rule') {
+      const k = node.attrs.kind;
+      if (k === 'stars') return '<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>* * *</w:t></w:r></w:p>';
+      const [val, sz] = { double: ['double', 6], thick: ['single', 18], dotted: ['dotted', 12] }[k] || ['single', 6];
+      return `<w:p><w:pPr><w:pBdr><w:bottom w:val="${val}" w:sz="${sz}" w:space="1" w:color="auto"/></w:pBdr></w:pPr></w:p>`;
+    }
     if (t === 'page_break') {
       const k = node.attrs.kind;
       if (k === 'page') return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
@@ -289,16 +326,23 @@ class ExportContext {
     if (ind.length) x += `<w:ind ${ind.join(' ')}/>`;
     if (a.align) x += `<w:jc w:val="${{ left: 'left', center: 'center', right: 'right', justify: 'both' }[a.align] || 'left'}"/>`;
     if (a.outlineLevel) x += `<w:outlineLvl w:val="${a.outlineLevel - 1}"/>`;
+    if (a.hidden) x += '<w:rPr><w:vanish/></w:rPr>';
     return `<w:pPr>${x}</w:pPr>`;
   }
 
   async paragraph(node, extra = {}) {
     const a = node.attrs;
     let body = '';
-    if (a.bookmark) {
-      const id = this.bookmarkId++;
-      body += `<w:bookmarkStart w:id="${id}" w:name="${esc(a.bookmark)}"/><w:bookmarkEnd w:id="${id}"/>`;
-    }
+    const bmId = a.bookmark ? this.bookmarkId++ : null;
+    const bmStart = bmId != null ? `<w:bookmarkStart w:id="${bmId}" w:name="${esc(a.bookmark)}"/>` : '';
+    const bmEnd = bmId != null ? `<w:bookmarkEnd w:id="${bmId}"/>` : '';
+    if (a.hidden) this.forceHidden = true;
+    try { return await this.paragraphBody(node, extra, bmStart, bmEnd); } finally { this.forceHidden = false; }
+  }
+
+  async paragraphBody(node, extra, bmStart, bmEnd) {
+    const a = node.attrs;
+    let body = '';
     if (a.dropCap) {
       // Lettrine : premier caractère dans un cadre
       const first = node.textContent.slice(0, 1);
@@ -307,11 +351,11 @@ class ExportContext {
         body = '';
         const dc = `<w:p>${frame}<w:r><w:rPr><w:position w:val="-8"/><w:sz w:val="${(a.dropCap.lines || 3) * 26}"/></w:rPr><w:t>${esc(first)}</w:t></w:r></w:p>`;
         const rest = await this.inlines(node, 1);
-        return dc + `<w:p>${this.pPr(a, extra)}${rest}</w:p>`;
+        return dc + `<w:p>${this.pPr(a, extra)}${bmStart}${rest}${bmEnd}</w:p>`;
       }
     }
     body += await this.inlines(node);
-    return `<w:p>${this.pPr(a, extra)}${body}</w:p>`;
+    return `<w:p>${this.pPr(a, extra)}${bmStart}${body}${bmEnd}</w:p>`;
   }
 
   // Contenu en ligne : regroupe liens, révisions, commentaires
@@ -332,7 +376,7 @@ class ExportContext {
       // commentaires : début/fin de plage
       const cm = new Set(child.marks.filter((m) => m.type.name === 'comment').map((m) => m.attrs.id));
       for (const id of [...openComments]) if (!cm.has(id)) { out += this.commentEnd(id); openComments.delete(id); }
-      for (const id of cm) if (!openComments.has(id)) { out += `<w:commentRangeStart w:id="${this.commentNum(id)}"/>`; openComments.add(id); }
+      for (const id of cm) if (!openComments.has(id)) { out += this.commentStart(id); openComments.add(id); }
 
       let run = await this.inlineNode(child);
       const ins = child.marks.find((m) => m.type.name === 'insertion');
@@ -352,25 +396,32 @@ class ExportContext {
         }
         i = j - 1;
         const href = link.attrs.href;
-        if (href.startsWith('#')) out += `<w:hyperlink w:anchor="${esc(href.slice(1).replace(/^bm-/, ''))}" w:history="1">${group}</w:hyperlink>`;
-        else out += `<w:hyperlink r:id="${this.addRel('http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink', href, true)}" w:history="1">${group}</w:hyperlink>`;
+        const tip = link.attrs.title ? ` w:tooltip="${esc(link.attrs.title)}"` : '';
+        if (href.startsWith('#')) out += `<w:hyperlink w:anchor="${esc(href.slice(1).replace(/^bm-/, ''))}"${tip} w:history="1">${group}</w:hyperlink>`;
+        else out += `<w:hyperlink r:id="${this.addRel('http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink', href, true)}"${tip} w:history="1">${group}</w:hyperlink>`;
       } else out += run;
     }
     for (const id of openComments) out += this.commentEnd(id);
     return out;
   }
 
-  commentNum(id) {
+  // Numéros Word d'un commentaire Plume : le commentaire lui-même puis chacune de ses réponses
+  // (dans Word, une réponse est un commentaire à part entière, rattaché par commentsExtended.xml).
+  commentNums(id) {
     if (!this.commentIds.has(id)) {
-      this.commentIds.set(id, this.commentIds.size);
-      const c = (this.data.comments || {})[id];
-      if (c) this.commentList.push({ num: this.commentIds.get(id), ...c });
+      const c = (this.data.comments || {})[id] || { author: '', text: '' };
+      const nums = [];
+      const add = (item, parent) => { const num = this.commentList.length; const paraId = (0x10000000 + num).toString(16).toUpperCase(); this.commentList.push({ num, paraId, parent, author: item.author, initials: item.initials, date: item.date, text: item.text, done: !!c.done }); nums.push(num); return paraId; };
+      const pid = add(c, null);
+      for (const r of c.replies || []) add(r, pid);
+      this.commentIds.set(id, nums);
     }
     return this.commentIds.get(id);
   }
+  commentNum(id) { return this.commentNums(id)[0]; }
+  commentStart(id) { return this.commentNums(id).map((n) => `<w:commentRangeStart w:id="${n}"/>`).join(''); }
   commentEnd(id) {
-    const n = this.commentNum(id);
-    return `<w:commentRangeEnd w:id="${n}"/><w:r><w:rPr><w:rStyle w:val="CommentReference"/></w:rPr><w:commentReference w:id="${n}"/></w:r>`;
+    return this.commentNums(id).map((n) => `<w:commentRangeEnd w:id="${n}"/><w:r><w:rPr><w:rStyle w:val="CommentReference"/></w:rPr><w:commentReference w:id="${n}"/></w:r>`).join('');
   }
 
   rPr(marks, extraStyle) {
@@ -398,10 +449,9 @@ class ExportContext {
     }
     const lg = has('lang');
     if (lg && lg.attrs.noProof) x += '<w:noProof/>';
-    if (has('hidden')) x += '<w:vanish/>';
+    if (has('hidden') || this.forceHidden) x += '<w:vanish/>';
     const col = has('textColor');
     if (col && c(col.attrs.color)) x += `<w:color w:val="${c(col.attrs.color)}"/>`;
-    else if (has('link')) x += '<w:color w:val="0563C1"/>';
     const ls = has('letterSpacing');
     if (ls) x += `<w:spacing w:val="${tw(ls.attrs.value)}"/>`;
     const sc = has('scale');
@@ -420,11 +470,13 @@ class ExportContext {
     }
     const u = has('underline');
     if (u) x += `<w:u w:val="${{ single: 'single', double: 'double', dotted: 'dotted', dashed: 'dash', wavy: 'wave', thick: 'thick', words: 'words' }[u.attrs.kind] || 'single'}"${u.attrs.color ? ` w:color="${c(u.attrs.color)}"` : ''}/>`;
-    else if (has('link')) x += '<w:u w:val="single"/>';
     x += hlShd;
     if (has('superscript')) x += '<w:vertAlign w:val="superscript"/>';
     if (has('subscript')) x += '<w:vertAlign w:val="subscript"/>';
     if (lg) x += `<w:lang w:val="${esc(lg.attrs.lang)}"/>`;
+    if (fx && W14_EFFECTS[fx.attrs.kind]) x += W14_EFFECTS[fx.attrs.kind];
+    const fc = has('formatChange'); // mise en forme modifiée (suivi des modifications)
+    if (fc) x += `<w:rPrChange w:id="${this.bookmarkId++}" w:author="${esc(fc.attrs.author)}" w:date="${esc(isoDate(fc.attrs.date))}"><w:rPr/></w:rPrChange>`;
     return x ? `<w:rPr>${x}</w:rPr>` : '';
   }
 
@@ -436,7 +488,7 @@ class ExportContext {
       const parts = n.text.split(/(\t|\u2028)/);
       return `<w:r>${rpr}${parts.map((p) => (p === '\t' ? '<w:tab/>' : p === '\u2028' ? '<w:br/>' : p ? `<w:t xml:space="preserve">${esc(p)}</w:t>` : '')).join('')}</w:r>`;
     }
-    if (t === 'hard_break') return `<w:r>${rpr}<w:br/></w:r>`;
+    if (t === 'hard_break') return `<w:r>${rpr}${n.attrs.kind === 'text-wrapping' ? '<w:br w:type="textWrapping" w:clear="all"/>' : '<w:br/>'}</w:r>`;
     if (t === 'tab') return `<w:r>${rpr}<w:tab/></w:r>`;
     if (t === 'image') return this.image(n, rpr);
     if (t === 'field') return this.field(n, rpr);
@@ -451,9 +503,10 @@ class ExportContext {
   field(n, rpr) {
     const a = n.attrs;
     const val = esc(this.data.fieldValue ? this.data.fieldValue(a) ?? a.cached : a.cached);
+    const fmt = a.format ? ` \\@ "${a.format}"` : '';
     const instr = {
-      page: 'PAGE', numpages: 'NUMPAGES', sectionpages: 'SECTIONPAGES', date: `DATE \\@ "${a.format || 'dd/MM/yyyy'}"`, time: `TIME \\@ "${a.format || 'HH:mm'}"`,
-      createdate: `CREATEDATE \\@ "${a.format || 'dd/MM/yyyy'}"`, savedate: `SAVEDATE \\@ "${a.format || 'dd/MM/yyyy'}"`, printdate: 'PRINTDATE',
+      page: 'PAGE', numpages: 'NUMPAGES', sectionpages: 'SECTIONPAGES', date: 'DATE' + fmt, time: 'TIME' + fmt,
+      createdate: 'CREATEDATE' + fmt, savedate: 'SAVEDATE' + fmt, printdate: 'PRINTDATE' + fmt,
       author: 'AUTHOR', title: 'TITLE', subject: 'SUBJECT', keywords: 'KEYWORDS', filename: 'FILENAME', numwords: 'NUMWORDS', numchars: 'NUMCHARS',
       ref: `REF ${a.target} \\h`, pageref: `PAGEREF ${a.target} \\h`, seq: `SEQ ${a.target || 'Figure'} \\* ARABIC`, citation: `CITATION ${a.target} \\l 1036`,
       xe: `XE "${(a.cached || '').replace(/"/g, '')}"`, styleref: `STYLEREF "${a.target || 'heading 1'}"`, symbol: `SYMBOL ${a.target}`,
@@ -487,11 +540,14 @@ class ExportContext {
   commentsXml() {
     const x = this.commentList.map((c) => {
       const initials = c.initials || (c.author || '?').split(/\s+/).map((s) => s[0]).join('').toUpperCase();
-      const paras = [`<w:p><w:pPr><w:pStyle w:val="CommentText"/></w:pPr><w:r><w:rPr><w:rStyle w:val="CommentReference"/></w:rPr><w:annotationRef/></w:r><w:r><w:t xml:space="preserve">${esc(c.text)}</w:t></w:r></w:p>`];
-      for (const r of c.replies || []) paras.push(`<w:p><w:pPr><w:pStyle w:val="CommentText"/></w:pPr><w:r><w:t xml:space="preserve">${esc(`↳ ${r.author} : ${r.text}`)}</w:t></w:r></w:p>`);
+      const lines = String(c.text || '').split('\n');
+      const paras = lines.map((l, i) => `<w:p${i === lines.length - 1 ? ` w14:paraId="${c.paraId}"` : ''}><w:pPr><w:pStyle w:val="CommentText"/></w:pPr>${i === 0 ? '<w:r><w:rPr><w:rStyle w:val="CommentReference"/></w:rPr><w:annotationRef/></w:r>' : ''}<w:r><w:t xml:space="preserve">${esc(l)}</w:t></w:r></w:p>`);
       return `<w:comment w:id="${c.num}" w:author="${esc(c.author)}" w:date="${esc(isoDate(c.date))}" w:initials="${esc(initials)}">${paras.join('')}</w:comment>`;
     }).join('');
     return `${XML_HEAD}<w:comments ${NS}>${x}</w:comments>`;
+  }
+  commentsExtendedXml() {
+    return `${XML_HEAD}<w15:commentsEx ${NS}>${this.commentList.map((c) => `<w15:commentEx w15:paraId="${c.paraId}"${c.parent ? ` w15:paraIdParent="${c.parent}"` : ''} w15:done="${c.done ? 1 : 0}"/>`).join('')}</w15:commentsEx>`;
   }
 
   contentControl(n, rpr) {
@@ -504,11 +560,11 @@ class ExportContext {
       pr = `<w:dropDownList>${(a.options || []).map((o) => `<w:listItem w:displayText="${esc(o)}" w:value="${esc(o)}"/>`).join('')}</w:dropDownList>`;
       content = a.value || a.placeholder || 'Choisissez un élément.';
     } else if (a.kind === 'date') {
-      pr = '<w:date><w:dateFormat w:val="dd/MM/yyyy"/><w:lid w:val="fr-FR"/></w:date>';
+      pr = `${a.value ? '' : '<w:showingPlcHdr/>'}<w:date${/^\d{4}-\d{2}-\d{2}/.test(a.value || '') ? ` w:fullDate="${a.value.slice(0, 10)}T00:00:00Z"` : ''}><w:dateFormat w:val="dd/MM/yyyy"/><w:lid w:val="fr-FR"/><w:storeMappedDataAs w:val="dateTime"/><w:calendar w:val="gregorian"/></w:date>`;
       content = a.value ? a.value.split('-').reverse().join('/') : 'Cliquez pour entrer une date.';
     } else {
-      pr = '<w:text/>';
-      content = a.value || a.placeholder || '';
+      pr = `${a.value ? '' : '<w:showingPlcHdr/>'}<w:text/>`;
+      content = a.value || a.placeholder || 'Cliquez ici';
     }
     return `<w:sdt><w:sdtPr>${pr}</w:sdtPr><w:sdtContent><w:r>${rpr}<w:t xml:space="preserve">${esc(content)}</w:t></w:r></w:sdtContent></w:sdt>`;
   }
@@ -548,14 +604,32 @@ class ExportContext {
     const id = this.drawingId++;
     const cx = Math.round(w * PX2EMU), cy = Math.round(hh * PX2EMU);
     const rot = a.rotate ? ` rot="${Math.round(a.rotate * 60000)}"` : '';
-    const ln = a.border ? `<a:ln w="12700"><a:solidFill><a:srgbClr val="${this.color((/#\w+/.exec(a.border) || ['#000000'])[0]) || '000000'}"/></a:solidFill></a:ln>` : '';
+    const bm = a.border ? /([\d.]+)px\s+(\w+)\s+(.+)/.exec(a.border) : null;
+    const ln = bm ? `<a:ln w="${Math.round(parseFloat(bm[1]) * PX2EMU)}"><a:solidFill><a:srgbClr val="${this.color(bm[3]) || '000000'}"/></a:solidFill>${{ dashed: '<a:prstDash val="dash"/>', dotted: '<a:prstDash val="sysDot"/>' }[bm[2]] || ''}</a:ln>` : '';
     const effect = a.shadow ? '<a:effectLst><a:outerShdw blurRad="63500" dist="38100" dir="2700000" algn="tl" rotWithShape="0"><a:prstClr val="black"><a:alpha val="40000"/></a:prstClr></a:outerShdw></a:effectLst>' : '';
     const geom = a.rounded ? 'roundRect' : 'rect';
-    const graphic = `<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${id}" name="Image ${id}" descr="${esc(a.alt || '')}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rId}"${a.filter && /grayscale/.test(a.filter) ? '><a:grayscl/></a:blip>' : '/>'}<a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm${rot}><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="${geom}"><a:avLst/></a:prstGeom>${ln}${effect}</pic:spPr></pic:pic></a:graphicData></a:graphic>`;
-    const docPr = `<wp:docPr id="${id}" name="Image ${id}" descr="${esc(a.alt || '')}"/>`;
-    const wrap = a.wrap || 'inline';
+    // filtres CSS → effets d'image DrawingML quand ils existent
+    const f = a.filter || '';
+    const num = (name) => { const m = new RegExp(name + '\\(([\\d.]+)').exec(f); return m ? +m[1] : null; };
+    let blipFx = '';
+    if (/grayscale\(1\)/.test(f) || num('saturate') === 0) blipFx += '<a:grayscl/>';
+    else if (/sepia\(1\)/.test(f)) blipFx += '<a:duotone><a:prstClr val="black"/><a:srgbClr val="D9C3A5"/></a:duotone>';
+    const br = num('brightness'), ct = num('contrast');
+    if (br != null || ct != null) blipFx += `<a:lum${br != null ? ` bright="${Math.round((br - 1) * 100000)}"` : ''}${ct != null ? ` contrast="${Math.round((ct - 1) * 100000)}"` : ''}/>`;
+    const op = num('opacity');
+    if (op != null && op < 1) blipFx += `<a:alphaModFix amt="${Math.round(op * 100000)}"/>`;
+    const cr = a.crop && a.crop.w ? a.crop : null;
+    const pc = (v) => Math.max(0, Math.round(v * 100000));
+    const srcRect = cr ? `<a:srcRect l="${pc(cr.x)}" t="${pc(cr.y)}" r="${pc(1 - cr.x - cr.w)}" b="${pc(1 - cr.y - cr.h)}"/>` : '';
+    const graphic = `<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${id}" name="Image ${id}" descr="${esc(a.alt || '')}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rId}"${blipFx ? `>${blipFx}</a:blip>` : '/>'}${srcRect}<a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm${rot}><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="${geom}"><a:avLst/></a:prstGeom>${ln}${effect}</pic:spPr></pic:pic></a:graphicData></a:graphic>`;
+    const docPr = `<wp:docPr id="${id}" name="Image ${id}" descr="${esc(a.alt || '')}"${a.title ? ` title="${esc(a.title)}"` : ''}/>`;
+    return this.drawingFrame(a.wrap || 'inline', cx, cy, docPr, graphic, id, true);
+  }
+
+  // Cadre d'un dessin : en ligne avec le texte, ou ancré (habillage carré, haut et bas, devant, derrière)
+  drawingFrame(wrap, cx, cy, docPr, graphic, id, lockAspect) {
     if (wrap === 'inline') {
-      return `<wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>${docPr}<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr>${graphic}</wp:inline>`;
+      return `<wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>${docPr}<wp:cNvGraphicFramePr>${lockAspect ? '<a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/>' : ''}</wp:cNvGraphicFramePr>${graphic}</wp:inline>`;
     }
     const behind = wrap === 'behind' ? 1 : 0;
     const align = wrap === 'right' ? 'right' : wrap === 'left' ? 'left' : 'center';
@@ -563,36 +637,64 @@ class ExportContext {
     return `<wp:anchor distT="0" distB="0" distL="114300" distR="114300" simplePos="0" relativeHeight="${251658240 + id}" behindDoc="${behind}" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="column"><wp:align>${align}</wp:align></wp:positionH><wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset></wp:positionV><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>${wrapXml}${docPr}<wp:cNvGraphicFramePr/>${graphic}</wp:anchor>`;
   }
 
-  // Formes : zone de texte → cadre de texte ; autres → image (PNG)
+  // Formes, zones de texte et WordArt : vraies formes Word (DrawingML « wps »), donc modifiables
+  // dans Word et LibreOffice ; une image de la forme sert de secours aux lecteurs plus anciens.
   async shape(node) {
     const a = node.attrs;
-    if (a.kind === 'textbox') {
-      const lines = String(a.text || '').split('\n');
-      return lines.map((l) => `<w:p><w:pPr><w:framePr w:w="${tw(a.width * 0.75)}" w:hSpace="180" w:wrap="around" w:vAnchor="text" w:hAnchor="text" w:xAlign="${a.align === 'left' ? 'left' : a.align === 'right' ? 'right' : 'center'}" w:y="1"/><w:pBdr><w:top w:val="single" w:sz="6" w:space="1" w:color="auto"/><w:left w:val="single" w:sz="6" w:space="4" w:color="auto"/><w:bottom w:val="single" w:sz="6" w:space="1" w:color="auto"/><w:right w:val="single" w:sz="6" w:space="4" w:color="auto"/></w:pBdr></w:pPr><w:r><w:t xml:space="preserve">${esc(l)}</w:t></w:r></w:p>`).join('');
+    const c = this.color;
+    const id = this.drawingId++;
+    const cx = Math.round(a.width * PX2EMU), cy = Math.round(a.height * PX2EMU);
+    const isWA = a.kind === 'wordart', isTB = a.kind === 'textbox', isLine = a.kind === 'line';
+    const solid = (v) => (v && v !== 'none' && c(v) ? `<a:solidFill><a:srgbClr val="${c(v)}"/></a:solidFill>` : '<a:noFill/>');
+    const fill = isWA || isLine ? '<a:noFill/>' : solid(isTB ? a.fill || '#ffffff' : a.fill);
+    const line = isWA ? '<a:ln><a:noFill/></a:ln>' : `<a:ln w="${isLine ? 28575 : 12700}">${solid(isTB ? a.stroke || '#000000' : a.stroke)}</a:ln>`;
+    let rpr;
+    if (isWA) { const px = Math.min(a.height * 0.7, 72); rpr = `<w:rPr><w:b/>${(WORDART_RPR[a.wordartStyle || 'remplissage'] || WORDART_RPR.remplissage).replace(/(<w14:|$)/, `<w:sz w:val="${Math.round(px * 1.5)}"/><w:szCs w:val="${Math.round(px * 1.5)}"/>$1`)}</w:rPr>`; }
+    else rpr = `<w:rPr><w:color w:val="${isTB ? '000000' : c(a.color) || 'FFFFFF'}"/><w:sz w:val="21"/><w:szCs w:val="21"/></w:rPr>`;
+    const paras = String(a.text || '').split('\n').map((l) => `<w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr>${l ? `<w:r>${rpr}<w:t xml:space="preserve">${esc(l)}</w:t></w:r>` : ''}</w:p>`).join('');
+    const txbx = a.text || isTB || isWA ? `<wps:txbx><w:txbxContent>${paras}</w:txbxContent></wps:txbx>` : '';
+    const body = `<wps:bodyPr rot="0" vert="horz" wrap="${isWA ? 'none' : 'square'}" lIns="91440" tIns="45720" rIns="91440" bIns="45720" anchor="ctr" anchorCtr="0">${isWA ? '<a:prstTxWarp prst="textPlain"><a:avLst/></a:prstTxWarp>' : ''}<a:noAutofit/></wps:bodyPr>`;
+    const graphic = `<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:wsp><wps:cNvSpPr${isTB ? ' txBox="1"' : ''}/><wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>${isLine ? '<a:custGeom><a:avLst/><a:gdLst/><a:ahLst/><a:cxnLst/><a:rect l="0" t="0" r="r" b="b"/><a:pathLst><a:path w="100" h="100" fill="none"><a:moveTo><a:pt x="0" y="50"/></a:moveTo><a:lnTo><a:pt x="100" y="50"/></a:lnTo></a:path></a:pathLst></a:custGeom>' : `<a:prstGeom prst="${SHAPE_PRST[a.kind] || 'rect'}"><a:avLst/></a:prstGeom>`}${fill}${line}</wps:spPr>${txbx}${body}</wps:wsp></a:graphicData></a:graphic>`;
+    const name = isWA ? 'WordArt' : isTB ? 'Zone de texte' : 'Forme';
+    const main = `<w:drawing>${this.drawingFrame('inline', cx, cy, `<wp:docPr id="${id}" name="${name} ${id}"${a.text ? ` descr="${esc(String(a.text).replace(/\n/g, ' '))}"` : ''}/>`, graphic, id, false)}</w:drawing>`;
+    let fallback = '';
+    const png = await rasterizeShape(a).catch(() => null);
+    if (png) {
+      const file = `image${this.media.length + 1}.png`;
+      this.media.push({ name: file, data: png });
+      const rId = this.addRel('http://schemas.openxmlformats.org/officeDocument/2006/relationships/image', 'media/' + file);
+      fallback = `<mc:Fallback><w:drawing>${this.drawingXml(rId, a.width, a.height, { alt: a.text })}</w:drawing></mc:Fallback>`;
     }
-    const png = await rasterizeShape(a);
-    if (!png) return '';
-    const name = `image${this.media.length + 1}.png`;
-    this.media.push({ name, data: png });
-    const rId = this.addRel('http://schemas.openxmlformats.org/officeDocument/2006/relationships/image', 'media/' + name);
-    return `<w:p><w:pPr><w:jc w:val="${a.align === 'left' ? 'left' : a.align === 'right' ? 'right' : 'center'}"/></w:pPr><w:r><w:drawing>${this.drawingXml(rId, a.width, a.height, { alt: a.text })}</w:drawing></w:r></w:p>`;
+    const jc = a.align === 'left' ? 'left' : a.align === 'right' ? 'right' : 'center';
+    return `<w:p><w:pPr><w:jc w:val="${jc}"/></w:pPr><w:r><mc:AlternateContent><mc:Choice Requires="wps">${main}</mc:Choice>${fallback}</mc:AlternateContent></w:r></w:p>`;
+  }
+
+  // Filigrane image : image estompée, centrée derrière le texte de chaque page
+  async imageWatermark(src) {
+    const m = await this.mediaFor(src);
+    if (!m) return '';
+    const rId = this.addRel('http://schemas.openxmlformats.org/officeDocument/2006/relationships/image', 'media/' + m.name);
+    const w = 415, hgt = Math.round((415 * (m.h || 1)) / (m.w || 1));
+    return `<w:p><w:pPr><w:pStyle w:val="EnTete"/></w:pPr><w:r><w:pict><v:shapetype id="_x0000_t75" coordsize="21600,21600" o:spt="75" o:preferrelative="t" path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f"><v:stroke joinstyle="miter"/><v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect"/><o:lock v:ext="edit" aspectratio="t"/></v:shapetype><v:shape id="WordPictureWatermark1" o:spid="_x0000_s1026" type="#_x0000_t75" style="position:absolute;margin-left:0;margin-top:0;width:${w}pt;height:${hgt}pt;z-index:-251656192;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin" o:allowincell="f"><v:imagedata r:id="${rId}" o:title="Filigrane" gain="19661f" blacklevel="22938f"/></v:shape></w:pict></w:r></w:p>`;
   }
 
   // ── Listes ──
-  abstractFor(type, kind) {
-    const key = type + ':' + kind;
-    if (!this.abstracts.has(key)) this.abstracts.set(key, { id: this.abstracts.size, type, kind });
+  abstractFor(type, kind, depth = 0) {
+    const key = type + ':' + kind + ':' + depth;
+    if (!this.abstracts.has(key)) this.abstracts.set(key, { id: this.abstracts.size, type, kind, depth });
     return this.abstracts.get(key).id;
   }
 
-  async list(node, depth = 0) {
+  async list(node, depth = 0, parentDefault = true) {
     const ordered = node.type.name === 'ordered_list';
+    const isDefault = node.attrs.kind === (ordered ? 'decimal' : 'disc') && !node.attrs.char && node.attrs.prefix == null && node.attrs.suffix == null;
+    const cycle = isDefault && parentDefault; // suit le cycle des niveaux de la liste parente
     let out = '';
     const items = [];
     node.forEach((li) => items.push(li));
     // une instance de numérotation par liste (redémarre à 1 ou à « order »)
     const makeNum = (kind) => {
-      const abs = this.abstractFor(ordered ? 'ol' : 'ul', kind);
+      const abs = this.abstractFor(ordered ? 'ol' : 'ul', kind, cycle || ['checked', 'unchecked', 'legal'].includes(kind) ? 0 : depth);
       this.nums.push({ abs, start: ordered ? node.attrs.order : null, ilvl: depth });
       return this.nums.length;
     };
@@ -616,7 +718,7 @@ class ExportContext {
           out += await this.paragraph(c, first ? { numId: liNum, ilvl: depth } : { listIndent: 36 * (depth + 1) });
           first = false;
         } else if (c.type.name === 'bullet_list' || c.type.name === 'ordered_list') {
-          out += await this.list(c, depth + 1);
+          out += await this.list(c, depth + 1, cycle);
         } else out += await this.block(c);
       }
     }
@@ -629,6 +731,7 @@ class ExportContext {
     const ordFmt = {
       decimal: ['decimal', '%1.'], 'decimal-paren': ['decimal', '%1)'], 'lower-alpha': ['lowerLetter', '%1)'], 'upper-alpha': ['upperLetter', '%1.'],
       'lower-roman': ['lowerRoman', '%1.'], 'upper-roman': ['upperRoman', '%1.'], legal: ['decimal', '%1.'], 'decimal-zero': ['decimalZero', '%1.'],
+
     };
     const ordCycle = ['decimal', 'lower-alpha', 'lower-roman'];
     let x = '';
@@ -637,12 +740,13 @@ class ExportContext {
       for (let l = 0; l < 9; l++) {
         const left = 720 + 360 * l;
         if (a.type === 'ul') {
-          const k = l === 0 || ['checked', 'unchecked'].includes(a.kind) ? a.kind : levelCycle[l % 3];
+          const k = l === a.depth || ['checked', 'unchecked'].includes(a.kind) ? a.kind : levelCycle[l % 3];
           const [ch, font] = a.kind.startsWith('char:') ? [a.kind.slice(5), 'Segoe UI Symbol'] : bulletChars[k] || bulletChars.disc;
           x += `<w:lvl w:ilvl="${l}"><w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="${esc(ch)}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${left}" w:hanging="360"/></w:pPr><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}" w:hint="default"/></w:rPr></w:lvl>`;
         } else {
-          const k = l === 0 ? a.kind : a.kind === 'legal' ? 'legal' : ordCycle[l % 3];
+          const k = l === a.depth ? a.kind : a.kind === 'legal' ? 'legal' : ordCycle[l % 3];
           let [fmt, text] = ordFmt[k] || ordFmt.decimal;
+          if (l !== a.depth && a.kind !== 'legal') text = '%1.'; // niveaux du cycle : 1. / a. / i.
           if (a.kind.startsWith('custom:')) { const [ck, pre, suf] = a.kind.slice(7).split('\u0001'); fmt = (ordFmt[ck] || ordFmt.decimal)[0]; text = esc(pre) + '%1' + esc(suf); }
           const lvlText = a.kind === 'legal' ? Array.from({ length: l + 1 }, (_, i) => `%${i + 1}`).join('.') + '.' : text.replace('%1', `%${l + 1}`);
           x += `<w:lvl w:ilvl="${l}"><w:start w:val="1"/><w:numFmt w:val="${fmt}"/><w:lvlText w:val="${lvlText}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${left}" w:hanging="360"/></w:pPr></w:lvl>`;
@@ -661,7 +765,8 @@ class ExportContext {
   async table(node) {
     const a = node.attrs;
     const map = TableMap.get(node);
-    const st = TABLE_STYLES[a.style] || TABLE_STYLES.Grille;
+    const sid = TABLE_STYLES[a.style] ? a.style : 'Grille';
+    this.tableStyles.add(sid);
     const c = this.color;
     const contentW = this.data.page.width - this.data.page.margins.left - this.data.page.margins.right;
     // largeurs de colonnes
@@ -673,27 +778,20 @@ class ExportContext {
         for (let k = 0; k < cell.attrs.colspan; k++) { if (cw && cw[k]) colW[col] = cw[k] * 0.75; col++; }
       });
     })();
+    const fixed = colW.some(Boolean); // au moins une largeur choisie : disposition fixe, sinon ajustement automatique
     const known = colW.filter(Boolean).reduce((s, v) => s + v, 0);
     const unknownN = colW.filter((v) => !v).length;
     const rest = Math.max(30 * unknownN, contentW - known);
+    const auto = colW.map((v) => !v);
     for (let k = 0; k < colW.length; k++) if (!colW[k]) colW[k] = rest / unknownN;
-    const bd = (v) => (v ? `<w:top ${v}/><w:left ${v}/><w:bottom ${v}/><w:right ${v}/><w:insideH ${v}/><w:insideV ${v}/>` : '');
-    const borderAttr = (spec) => spec ? `w:val="${spec.val || 'single'}" w:sz="${spec.sz || 4}" w:space="0" w:color="${c(spec.color) || 'auto'}"` : null;
-    let tblBorders = '';
-    if (st.borders === 'all') tblBorders = bd(borderAttr({ color: st.borderColor || '#000000' }));
-    else if (st.borders === 'horizontal') {
-      const b = borderAttr({ color: st.borderColor || '#000000' });
-      tblBorders = `<w:top ${b}/><w:bottom ${b}/><w:insideH ${b}/>`;
-    } else if (st.borders === 'outer') { const b = borderAttr({ color: st.borderColor || '#000000' }); tblBorders = `<w:top ${b}/><w:left ${b}/><w:bottom ${b}/><w:right ${b}/>`; }
-    const tblW = a.width && a.width.endsWith('%') ? `<w:tblW w:w="${Math.round(parseFloat(a.width) * 50)}" w:type="pct"/>` : `<w:tblW w:w="${tw(colW.reduce((s, v) => s + v, 0))}" w:type="dxa"/>`;
-    let x = `<w:tbl><w:tblPr>${tblW}${a.align ? `<w:jc w:val="${a.align}"/>` : ''}<w:tblBorders>${tblBorders}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="108" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar><w:tblLook w:val="04A0" w:firstRow="${a.headerRow ? 1 : 0}" w:lastRow="${a.lastRow ? 1 : 0}" w:firstColumn="${a.firstCol ? 1 : 0}" w:lastColumn="0" w:noHBand="${a.bandedRows ? 0 : 1}" w:noVBand="1"/>${a.caption ? `<w:tblCaption w:val="${esc(a.caption)}"/>` : ''}</w:tblPr>`;
+    const pct = typeof a.width === 'string' && a.width.endsWith('%');
+    const tblW = pct ? `<w:tblW w:w="${Math.round(parseFloat(a.width) * 50)}" w:type="pct"/>` : fixed ? `<w:tblW w:w="${tw(colW.reduce((s, v) => s + v, 0))}" w:type="dxa"/>` : '<w:tblW w:w="0" w:type="auto"/>';
+    const look = 0x20 * !!a.headerRow + 0x40 * !!a.lastRow + 0x80 * !!a.firstCol + 0x200 * !a.bandedRows + 0x400;
+    let x = `<w:tbl><w:tblPr><w:tblStyle w:val="Plume${sid}"/>${tblW}${a.align ? `<w:jc w:val="${a.align}"/>` : ''}<w:tblLayout w:type="${fixed ? 'fixed' : 'autofit'}"/><w:tblLook w:val="${look.toString(16).toUpperCase().padStart(4, '0')}" w:firstRow="${a.headerRow ? 1 : 0}" w:lastRow="${a.lastRow ? 1 : 0}" w:firstColumn="${a.firstCol ? 1 : 0}" w:lastColumn="0" w:noHBand="${a.bandedRows ? 0 : 1}" w:noVBand="1"/>${a.caption ? `<w:tblCaption w:val="${esc(a.caption)}"/>` : ''}</w:tblPr>`;
     x += `<w:tblGrid>${colW.map((w) => `<w:gridCol w:w="${tw(w)}"/>`).join('')}</w:tblGrid>`;
-    const rows = [];
-    node.forEach((r) => rows.push(r));
     for (let r = 0; r < map.height; r++) {
       const isHeader = a.headerRow && r === 0;
-      const isLast = a.lastRow && r === map.height - 1;
-      x += `<w:tr><w:trPr>${isHeader && a.repeatHeader ? '<w:tblHeader/>' : ''}</w:trPr>`;
+      x += `<w:tr>${isHeader && a.repeatHeader ? '<w:trPr><w:tblHeader/></w:trPr>' : ''}`;
       let col = 0;
       while (col < map.width) {
         const cellOffset = map.map[r * map.width + col];
@@ -701,34 +799,21 @@ class ExportContext {
         const rect = map.findCell(cellOffset);
         const span = rect.right - rect.left;
         const cw = colW.slice(rect.left, rect.right).reduce((s, v) => s + v, 0);
-        let fill = cell.attrs.background ? c(cell.attrs.background) : null;
-        let textColor = null, bold = isHeader && cell.type.name === 'table_header';
-        if (!fill) {
-          if (isHeader && st.header) { fill = st.header.fill ? c(st.header.fill) : null; textColor = st.header.color; bold = st.header.bold; }
-          else if (isLast && st.header) { bold = true; }
-          else if (a.firstCol && rect.left === 0 && st.firstCol) { fill = c(st.firstCol.fill) || null; bold = true; }
-          else if (a.bandedRows && st.band && r % 2 === 1) fill = c(st.band);
-          else if (st.body) fill = c(st.body);
-        }
-        let tcBorders = '';
-        if (cell.attrs.borders) tcBorders = `<w:tcBorders>${['top', 'left', 'bottom', 'right'].map((s) => borderXml(s, cell.attrs.borders[s], c)).join('')}</w:tcBorders>`;
-        if (isHeader && st.headerBottom) tcBorders = `<w:tcBorders><w:bottom w:val="single" w:sz="12" w:space="0" w:color="${c(st.headerBottom)}"/></w:tcBorders>`;
+        const isAuto = auto.slice(rect.left, rect.right).every(Boolean) && !fixed;
+        const fill = cell.attrs.background ? c(cell.attrs.background) : null;
+        const tcBorders = cell.attrs.borders ? `<w:tcBorders>${['top', 'left', 'bottom', 'right'].map((s) => borderXml(s, cell.attrs.borders[s], c, 0)).join('')}</w:tcBorders>` : '';
         const vm = rect.top < r ? '<w:vMerge/>' : rect.bottom - rect.top > 1 ? '<w:vMerge w:val="restart"/>' : '';
-        const tcPr = `<w:tcPr><w:tcW w:w="${tw(cw)}" w:type="dxa"/>${span > 1 ? `<w:gridSpan w:val="${span}"/>` : ''}${vm}${tcBorders}${fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${fill}"/>` : ''}${cell.attrs.valign ? `<w:vAlign w:val="${{ top: 'top', middle: 'center', bottom: 'bottom' }[cell.attrs.valign] || 'top'}"/>` : ''}${cell.attrs.textDir ? `<w:textDirection w:val="${cell.attrs.textDir === 'up' ? 'btLr' : 'tbRl'}"/>` : ''}</w:tcPr>`;
+        const tcPr = `<w:tcPr><w:tcW w:w="${isAuto ? 0 : tw(cw)}" w:type="${isAuto ? 'auto' : 'dxa'}"/>${span > 1 ? `<w:gridSpan w:val="${span}"/>` : ''}${vm}${tcBorders}${fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${fill}"/>` : ''}${cell.attrs.textDir ? `<w:textDirection w:val="${cell.attrs.textDir === 'up' ? 'btLr' : 'tbRl'}"/>` : ''}${cell.attrs.valign ? `<w:vAlign w:val="${{ top: 'top', middle: 'center', bottom: 'bottom' }[cell.attrs.valign] || 'top'}"/>` : ''}</w:tcPr>`;
         let inner;
         if (rect.top < r) inner = '<w:p/>';
-        else {
-          inner = await this.blocks(cell.content, this.part);
-          if (textColor || bold) inner = inner.replace(/<w:r>(<w:rPr>)?/g, (m0, hasPr) => `<w:r><w:rPr>${bold ? '<w:b/>' : ''}${textColor ? `<w:color w:val="${c(textColor)}"/>` : ''}${hasPr ? '' : '</w:rPr>'}`);
-          if (!inner) inner = '<w:p/>';
-        }
+        else inner = (await this.blocks(cell.content, this.part)) || '<w:p/>';
         x += `<w:tc>${tcPr}${inner}</w:tc>`;
         col = rect.right;
       }
       x += '</w:tr>';
     }
     x += '</w:tbl>';
-    // Word exige un paragraphe entre deux tableaux / en fin de cellule
+    // la légende visible est un paragraphe « Légende » ; w:tblCaption en est le texte de remplacement
     return x + (a.caption ? `<w:p><w:pPr><w:pStyle w:val="Legende"/></w:pPr><w:r><w:t xml:space="preserve">${esc(a.caption)}</w:t></w:r></w:p>` : '');
   }
 
@@ -764,7 +849,7 @@ class ExportContext {
     x += `<w:pgMar w:top="${tw(m.top)}" w:right="${tw(m.right)}" w:bottom="${tw(m.bottom)}" w:left="${tw(m.left)}" w:header="${tw(m.header ?? 35.4)}" w:footer="${tw(m.footer ?? 35.4)}" w:gutter="${tw(m.gutter || 0)}"/>`;
     const pb = d.settings.pageBorder;
     if (pb && pb.style && pb.style !== 'none') {
-      const v = `w:val="${pb.style === 'double' ? 'double' : pb.style === 'dashed' ? 'dashed' : pb.style === 'dotted' ? 'dotted' : 'single'}" w:sz="${Math.round((pb.width || 1) * 6)}" w:space="24" w:color="${c(pb.color) || 'auto'}"`;
+      const v = `w:val="${pb.style === 'double' ? 'double' : pb.style === 'dashed' ? 'dashed' : pb.style === 'dotted' ? 'dotted' : 'single'}" w:sz="${Math.round((pb.width || 1) * 6)}" w:space="${Math.max(0, Math.min(31, Math.round(pb.offset ?? 24)))}" w:color="${c(pb.color) || 'auto'}"${pb.shadow ? ' w:shadow="1"' : ''}`;
       x += `<w:pgBorders w:offsetFrom="page"><w:top ${v}/><w:left ${v}/><w:bottom ${v}/><w:right ${v}/></w:pgBorders>`;
     }
     if (d.settings.lineNumbers) x += '<w:lnNumType w:countBy="1" w:restart="newPage"/>';
@@ -789,7 +874,25 @@ function watermarkXml(wm, color) {
   return `<w:p><w:pPr><w:pStyle w:val="EnTete"/></w:pPr><w:r><w:pict><v:shapetype id="_x0000_t136" coordsize="21600,21600" o:spt="136" adj="10800" path="m@7,l@8,m@5,21600l@6,21600e"><v:path textpathok="t" o:connecttype="custom"/><v:textpath on="t" fitshape="t"/><o:lock v:ext="edit" text="t" shapetype="t"/></v:shapetype><v:shape id="PowerPlusWaterMarkObject" o:spid="_x0000_s1025" type="#_x0000_t136" style="position:absolute;margin-left:0;margin-top:0;width:468pt;height:117pt;rotation:${rot};z-index:-251657216;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin" o:allowincell="f" fillcolor="${fill}" stroked="f"><v:fill opacity="${wm.semi === false ? 1 : 0.5}"/><v:textpath style="font-family:&quot;${esc(wm.font || 'Calibri')}&quot;;font-size:1pt" string="${esc(wm.text)}"/><w10:wrap anchorx="margin" anchory="margin"/></v:shape></w:pict></w:r></w:p>`;
 }
 
-function stylesXml(data, color) {
+// Style de tableau Word équivalent à un style de la galerie Plume (bordures, en-tête, bandes…)
+function tableStyleXml(id, st, color) {
+  const bc = color(st.borderColor || '#000000') || '000000';
+  const b = (side, sz = 4, col = bc) => `<w:${side} w:val="single" w:sz="${sz}" w:space="0" w:color="${col}"/>`;
+  const sides = { all: ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'], horizontal: ['top', 'bottom', 'insideH'], outer: ['top', 'left', 'bottom', 'right'] }[st.borders] || [];
+  const shd = (v) => (v && color(v) ? `<w:shd w:val="clear" w:color="auto" w:fill="${color(v)}"/>` : '');
+  const cond = (type, rpr, tcpr) => (rpr || tcpr ? `<w:tblStylePr w:type="${type}">${rpr ? `<w:rPr>${rpr}</w:rPr>` : ''}${tcpr ? `<w:tcPr>${tcpr}</w:tcPr>` : ''}</w:tblStylePr>` : '');
+  let x = `<w:style w:type="table" w:customStyle="1" w:styleId="Plume${id}"><w:name w:val="Plume ${esc(st.label || id)}"/><w:basedOn w:val="TableNormal"/><w:uiPriority w:val="59"/><w:tblPr><w:tblStyleRowBandSize w:val="1"/><w:tblStyleColBandSize w:val="1"/>${sides.length ? `<w:tblBorders>${sides.map((sd) => b(sd)).join('')}</w:tblBorders>` : ''}</w:tblPr>${st.body ? `<w:tcPr>${shd(st.body)}</w:tcPr>` : ''}`;
+  if (st.band) x += cond('band1Horz', '', shd(st.band));
+  if (st.header) {
+    const h = st.header;
+    x += cond('firstCol', '<w:b/><w:bCs/>', st.firstCol && st.firstCol.fill ? shd(st.firstCol.fill) : '');
+    x += cond('lastRow', '<w:b/><w:bCs/>', `<w:tcBorders>${b('top', 12)}</w:tcBorders>`);
+    x += cond('firstRow', `${h.bold ? '<w:b/><w:bCs/>' : ''}${h.color && color(h.color) ? `<w:color w:val="${color(h.color)}"/>` : ''}`, `${st.headerBottom ? `<w:tcBorders>${b('bottom', 12, color(st.headerBottom) || bc)}</w:tcBorders>` : ''}${shd(h.fill)}`);
+  }
+  return x + '</w:style>';
+}
+
+function stylesXml(data, color, tableStyles = new Set()) {
   const theme = data.theme;
   const fontName = (f) => (f === '+major' ? theme.major : f === '+minor' ? theme.minor : f);
   const normal = resolveStyle(data.styles, 'Normal');
@@ -843,6 +946,7 @@ function stylesXml(data, color) {
   x += `<w:style w:type="paragraph" w:styleId="CommentText"><w:name w:val="annotation text"/><w:basedOn w:val="Normal"/><w:rPr><w:sz w:val="20"/></w:rPr></w:style>`;
   x += `<w:style w:type="paragraph" w:styleId="TOCHeading"><w:name w:val="TOC Heading"/><w:basedOn w:val="Titre1"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:outlineLvl w:val="9"/></w:pPr></w:style>`;
   x += `<w:style w:type="table" w:default="1" w:styleId="TableNormal"><w:name w:val="Normal Table"/><w:tblPr><w:tblInd w:w="0" w:type="dxa"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style>`;
+  for (const id of tableStyles) if (TABLE_STYLES[id]) x += tableStyleXml(id, TABLE_STYLES[id], color);
   return `${XML_HEAD}<w:styles ${NS}>${x}</w:styles>`;
 }
 
