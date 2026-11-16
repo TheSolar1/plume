@@ -8,6 +8,7 @@ import { textSchema, themeColor, placeholderPrompt, mix } from './model.js';
 import { texToMathML } from '../word/math.js';
 import { chartSvg, smartArtSvg, parseTable } from '../common/charts.js';
 import { formatDate } from '../word/fields.js';
+import { icon, iconSvgString } from '../common/ui.js';
 
 const ser = DOMSerializer.fromSchema(textSchema);
 
@@ -141,7 +142,7 @@ export function renderElement(el, pres, opts = {}) {
     const yt = /(?:youtu\.be\/|v=|embed\/)([\w-]{11})/.exec(el.url || '');
     if (opts.mode === 'show' && yt) d.innerHTML = `<iframe src="https://www.youtube.com/embed/${yt[1]}" style="width:100%;height:100%;border:0" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`;
     else if (opts.mode === 'show' && el.url && /\.(mp4|webm|ogg)$/i.test(el.url)) d.innerHTML = `<video src="${el.url}" controls style="width:100%;height:100%"></video>`;
-    else d.innerHTML = `<div class="pp-video-poster" style="${yt ? `background-image:url(https://img.youtube.com/vi/${yt[1]}/hqdefault.jpg)` : ''}"><span>▶</span></div>`;
+    else d.innerHTML = `<div class="pp-video-poster" style="${yt ? `background-image:url(https://img.youtube.com/vi/${yt[1]}/hqdefault.jpg)` : ''}"><span>${iconSvgString('Play', '#222', 32)}</span></div>`;
   } else if (el.type === 'equation') {
     d.classList.add('pp-eq');
     d.style.fontSize = (el.defaults?.size || 28) + 'pt';
@@ -189,7 +190,7 @@ function renderText(el, pres, opts) {
     p.textContent = placeholderPrompt(el.ph);
     if (el.ph === 'body' && (el.text?.content?.[0]?.attrs?.bullet)) p.classList.add('b-disc');
     tx.appendChild(p);
-    if (el.ph === 'pic') { const ic = document.createElement('div'); ic.className = 'pp-ph-pic'; ic.innerHTML = '🖼'; tx.appendChild(ic); }
+    if (el.ph === 'pic') { const ic = document.createElement('div'); ic.className = 'pp-ph-pic'; ic.appendChild(icon('ImagePlus', 56)); tx.appendChild(ic); }
   }
   box.appendChild(tx);
   return box;

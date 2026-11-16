@@ -171,7 +171,7 @@ export function buildRibbon(app) {
     id: 'animations', label: 'Animations', groups: () => [
       { label: 'Aperçu', items: [big('Aperçu', 'Eye', () => PD.previewAnimations(app))] },
       { label: 'Animation', items: [
-        { type: 'gallery', width: 470, items: () => [...ANIMATIONS.entrance.map((a) => [...a, 'entrance']), ...ANIMATIONS.emphasis.map((a) => [...a, 'emphasis']), ...ANIMATIONS.exit.map((a) => [...a, 'exit'])].map(([k, l, kind]) => ({ label: l, key: k, title: l + ' (' + { entrance: 'ouverture', emphasis: 'accentuation', exit: 'fermeture' }[kind] + ')', preview: () => h('span', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '10.5px', color: { entrance: '#107c10', emphasis: '#c19c00', exit: '#c00000' }[kind] } }, '★', l), run: () => PD.setAnimation(app, k, true) })), current: () => { const e = sel()[0]; return e && e.anim && e.anim[0] ? e.anim[0].effect : null; } },
+        { type: 'gallery', width: 470, items: () => [...ANIMATIONS.entrance.map((a) => [...a, 'entrance']), ...ANIMATIONS.emphasis.map((a) => [...a, 'emphasis']), ...ANIMATIONS.exit.map((a) => [...a, 'exit'])].map(([k, l, kind]) => ({ label: l, key: k, title: l + ' (' + { entrance: 'ouverture', emphasis: 'accentuation', exit: 'fermeture' }[kind] + ')', preview: () => h('span', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '10.5px', color: { entrance: '#107c10', emphasis: '#c19c00', exit: '#c00000' }[kind] } }, icon('Star', 13), l), run: () => PD.setAnimation(app, k, true) })), current: () => { const e = sel()[0]; return e && e.anim && e.anim[0] ? e.anim[0].effect : null; } },
         { type: 'menu', big: true, label: 'Options d’effet', icon: 'SlidersHorizontal', enabled: hasSel, menu: () => [['left', 'À partir de la gauche'], ['right', 'À partir de la droite'], ['top', 'À partir du haut'], ['bottom', 'À partir du bas']].map(([k, l]) => ({ label: l, action: () => app.updateSelected((e) => (e.anim || []).forEach((a) => (a.dir = k)), 'Animation') })).concat(['-', { label: 'Par paragraphe', action: () => app.updateSelected((e) => (e.anim || []).forEach((a) => (a.byParagraph = true)), 'Animation') }, { label: 'Comme un seul objet', action: () => app.updateSelected((e) => (e.anim || []).forEach((a) => (a.byParagraph = false)), 'Animation') }]) },
       ] },
       { label: 'Animation avancée', items: [
@@ -242,6 +242,7 @@ export function buildRibbon(app) {
   return [home, insert, draw, design, transitions, animations, show, review, viewTab, help];
 }
 
+const SHAPE_ICONS = { rect: 'Square', roundRect: 'SquareRoundCorner', ellipse: 'Circle', triangle: 'Triangle', rtTriangle: 'TriangleRight', diamond: 'Diamond', parallelogram: 'RectangleHorizontal', trapezoid: 'RectangleHorizontal', pentagon: 'Pentagon', hexagon: 'Hexagon', octagon: 'Octagon', star5: 'Star', star8: 'Sparkle', heart: 'Heart', plus: 'Plus', donut: 'CircleDot', arrowRight: 'ArrowRight', arrowLeft: 'ArrowLeft', arrowUp: 'ArrowUp', arrowDown: 'ArrowDown', leftRight: 'MoveHorizontal', chevron: 'ChevronRight', homePlate: 'Tag', callout: 'MessageSquare', cloud: 'Cloud', lightning: 'Zap', moon: 'Moon', sun: 'Sun', cube: 'Box', can: 'Cylinder', frame: 'Frame', line: 'Minus', arrowLine: 'MoveRight' };
 const TRANS_ICONS = { none: 'Ban', fade: 'Blend', push: 'ArrowLeftToLine', wipe: 'MoveRight', split: 'Columns2', reveal: 'PanelLeftOpen', cover: 'PanelRightClose', zoom: 'ZoomIn', shape: 'Circle', flip: 'FlipHorizontal', cube: 'Box', morph: 'Shapes', curtains: 'Theater', blinds: 'Rows4' };
 
 // ── Onglets contextuels ──
@@ -346,7 +347,7 @@ function shapesPicker(app) {
   const grid = h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(8, 34px)', gap: '4px', padding: '6px' } });
   for (const [k, l] of SHAPES) {
     const b = h('button.pl-swatch', { type: 'button', title: l, style: { width: '34px', height: '30px', background: '#fff' }, on: { click: () => { closeMenus(); app.insertShape(k); } } });
-    b.innerHTML = `<svg width="26" height="22" viewBox="-2 -2 34 28" fill="none" stroke="#c43e1c" stroke-width="1.6">${shapeGeometry(k, 30, 24).replace('class="arrowhead"', 'fill="#c43e1c"')}</svg>`;
+    b.appendChild(icon(SHAPE_ICONS[k] || 'Shapes', 22));
     grid.appendChild(b);
   }
   return h('div', h('div.pl-colors-title', 'Formes'), grid, h('div.pl-menu-sep'), h('button.pl-menu-item', { type: 'button', on: { click: () => { closeMenus(); app.insertTextBox(); } } }, icon('TextCursorInput', 16), 'Zone de texte'));
