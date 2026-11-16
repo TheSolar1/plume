@@ -26,6 +26,7 @@ import { findPlugin, findKey } from './find.js';
 import { makeNodeViews } from './nodeviews.js';
 import { autoformatRules } from './autoformat.js';
 import * as C from './commands.js';
+import { collabPlugins, renderPresence, collabDialog, joinCollab } from './collab.js';
 import { decryptNative, exportOdt, exportEpub, saveVersion, maybeAutoVersion } from './niche.js';
 import { exportDocx } from './docx-export.js';
 import { importDocx } from './docx-import.js';
@@ -84,6 +85,7 @@ export class WordApp {
     this.applyZoom();
     this.updateUI();
     this.autosave = debounce(() => this.saveLocal(), 2500);
+    renderPresence(this);
     window.addEventListener('beforeunload', (e) => { if (this.dirty) { this.saveLocal(); e.preventDefault(); e.returnValue = ''; } });
     document.addEventListener('keydown', (e) => this.globalKeys(e));
   }
@@ -119,11 +121,13 @@ export class WordApp {
     this.cmdSearch = h('input', { placeholder: 'Rechercher (Alt+Q)', 'aria-label': 'Rechercher une commande', on: { keydown: (e) => this.commandSearchKey(e), input: () => this.commandSearch() } });
     const userBadge = h('div.pl-user', { title: this.user.name, on: { click: () => D.optionsDialog(this, 'general') } }, this.user.initials || 'U');
     this.userBadge = userBadge;
+    this.collabBox = h('div.pl-collab');
     const titlebar = h('div.pl-titlebar',
       h('div.pl-logo', icon('FileText', 18), h('span', 'Plume Texte')),
       h('div.pl-qat', saveBtn, undoBtn, redoBtn),
       h('div.pl-doc-title', this.titleInput, ' ', this.saveState),
       h('div.pl-search-box', icon('Search', 15), this.cmdSearch),
+      this.collabBox,
       userBadge,
     );
     this.undoBtn = undoBtn; this.redoBtn = redoBtn;
@@ -248,6 +252,7 @@ export class WordApp {
       this.commentPlugin(),
       this.marksPlugin(),
       this.endnotesPlugin(),
+      ...(this.collabInit ? collabPlugins(this.collabInit) : []),
     ];
   }
 
@@ -276,7 +281,7 @@ export class WordApp {
   }
 
   dispatch(tr) {
-    if (this.data.settings.trackChanges && tr.docChanged) tr = trackTransaction(this.view.state, tr, this.user.name);
+    if (this.data.settings.trackChanges && tr.docChanged && !tr.getMeta('plumeRemote')) tr = trackTransaction(this.view.state, tr, this.user.name);
     const prev = this.view.state;
     const state = prev.apply(tr);
     this.view.updateState(state);
@@ -1325,6 +1330,8 @@ export class WordApp {
 
   loadData(data, title) {
     if (this.hfEditing) this.closeHF(true);
+    // ouvrir un autre document met fin à la session de collaboration en cours
+    if (!this.collabLoading) { if (this.collab) this.collab.stop('Vous avez quitté la session de collaboration.'); this.collabInit = null; }
     const d = this.blankData();
     this.data = {
       ...d, ...data,
@@ -1390,6 +1397,9 @@ export class WordApp {
     if (name.endsWith('.rtf')) return { doc: textToDoc(rtfToText(text)) };
     return { doc: textToDoc(text) };
   }
+
+  share() { collabDialog(this); }
+  joinShared(id) { return joinCollab(this, id); }
 
   fileBase() { return (this.titleInput.value || 'Document').replace(/[\\/:*?"<>|]+/g, '_'); }
 

@@ -326,3 +326,13 @@ del.pl-del { text-decoration: line-through; color: var(--rev-color, #c00000); }
   .pl-print-root.print-markup del.pl-del { display: inline; }
   .pl-print-root.print-markup .pl-comment { background: #fff1b8; }
 }
+
+/* ── Collaboration en temps réel ── */
+.pl-collab { display: flex; align-items: center; gap: 4px; margin-right: 8px; flex: none; }
+.pl-peer { width: 24px; height: 24px; border-radius: 50%; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; flex: none; border: 2px solid rgba(255,255,255,.75); }
+.pl-share-btn { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,.55); background: rgba(255,255,255,.12); color: inherit; cursor: pointer; font-size: 12px; white-space: nowrap; }
+.pl-share-btn:hover { background: rgba(255,255,255,.28); }
+.pl-share-btn.on { background: #fff; color: #185abd; border-color: #fff; font-weight: 600; }
+.pl-peer-caret { position: relative; border-left: 2px solid; margin-left: -1px; pointer-events: none; }
+.pl-peer-name { position: absolute; left: -2px; bottom: 100%; color: #fff; font: 600 10px/1.4 system-ui, sans-serif; padding: 0 4px; border-radius: 3px 3px 3px 0; white-space: nowrap; letter-spacing: 0; text-transform: none; font-style: normal; text-decoration: none; opacity: .92; }
+@media print { .pl-peer-caret { display: none; } }
