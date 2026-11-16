@@ -48,8 +48,8 @@ export function smartArtSvg(kind, items, pal) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="${n * 60}">${items.map((it, i) => `<rect x="0" y="${i * 60 + 4}" width="16" height="52" fill="${pal[i % 6]}"/><rect x="20" y="${i * 60 + 4}" width="400" height="52" fill="${pal[i % 6]}" opacity=".25"/><text x="34" y="${i * 60 + 31}" dominant-baseline="middle" font-family="Calibri, Arial" font-size="16" fill="#222">${esc(it)}</text>`).join('')}</svg>`;
 }
 
-export function chartSvg(kind, { series, cats, values }, { title, legend, labels, pal }) {
-  const W = 560, H = 340, padL = 48, padB = 50, padT = title ? 44 : 16, padR = legend ? 120 : 16;
+export function chartSvg(kind, { series, cats, values }, { title, legend, labels, pal, w, h }) {
+  const W = Math.max(200, w || 560), H = Math.max(140, h || 340), padL = 48, padB = 50, padT = title ? 44 : 16, padR = legend ? 120 : 16;
   const pw = W - padL - padR, ph = H - padT - padB;
   let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" font-family="Calibri, Arial" font-size="12"><rect width="${W}" height="${H}" fill="#fff"/>`;
   if (title) s += `<text x="${W / 2}" y="26" text-anchor="middle" font-size="18" fill="#404040">${esc(title)}</text>`;
@@ -70,6 +70,26 @@ export function chartSvg(kind, { series, cats, values }, { title, legend, labels
     if (legend) cats.forEach((c, i) => { s += `<rect x="${W - padR + 14}" y="${padT + i * 20}" width="12" height="12" fill="${pal[i % 6]}"/><text x="${W - padR + 32}" y="${padT + i * 20 + 10}" fill="#404040">${esc(c)}</text>`; });
     return s + '</svg>';
   }
+  if (kind === 'hbar') {
+    // barres horizontales
+    const maxH = Math.max(1, ...all), minH = Math.min(0, ...all);
+    const niceH = (x) => { const p = Math.pow(10, Math.floor(Math.log10(x || 1))); return Math.ceil(x / p) * p; };
+    const topH = niceH(maxH), botH = minH < 0 ? -niceH(-minH) : 0;
+    const lblW = 90, x0 = padL + lblW - 40, wH = W - padR - x0 - 10;
+    const X = (v) => x0 + ((v - botH) / (topH - botH)) * wH;
+    for (let k = 0; k <= 5; k++) { const v = botH + ((topH - botH) * k) / 5; s += `<line x1="${X(v)}" x2="${X(v)}" y1="${padT}" y2="${padT + ph}" stroke="#e5e5e5"/><text x="${X(v)}" y="${padT + ph + 16}" text-anchor="middle" fill="#595959">${String(Math.round(v * 100) / 100).replace('.', ',')}</text>`; }
+    const nH = cats.length, snH = series.length, bandH = ph / Math.max(1, nH), bh = (bandH * 0.7) / Math.max(1, snH);
+    values.forEach((vals, si) => vals.forEach((v, ci) => {
+      const y = padT + ci * bandH + bandH * 0.15 + si * bh;
+      s += `<rect x="${Math.min(X(v), X(0))}" y="${y}" width="${Math.abs(X(v) - X(0))}" height="${Math.max(1, bh - 2)}" fill="${pal[si % 6]}"/>`;
+      if (labels) s += `<text x="${X(v) + 4}" y="${y + bh / 2 + 3}" fill="#404040" font-size="10">${String(v).replace('.', ',')}</text>`;
+    }));
+    cats.forEach((c, ci) => { s += `<text x="${x0 - 6}" y="${padT + ci * bandH + bandH / 2 + 4}" text-anchor="end" fill="#595959">${esc(String(c).slice(0, 16))}</text>`; });
+    s += `<line x1="${X(0)}" x2="${X(0)}" y1="${padT}" y2="${padT + ph}" stroke="#bfbfbf"/>`;
+    if (legend) series.forEach((name, i) => { s += `<rect x="${W - padR + 14}" y="${padT + i * 20}" width="12" height="12" fill="${pal[i % 6]}"/><text x="${W - padR + 32}" y="${padT + i * 20 + 10}" fill="#404040">${esc(name)}</text>`; });
+    return s + '</svg>';
+  }
+  if (kind === 'stacked') { const n0 = cats.length; for (let ci = 0; ci < n0; ci++) all.push(values.reduce((a, v) => a + Math.max(0, v[ci] || 0), 0)); }
   const max = Math.max(1, ...all), min = Math.min(0, ...all);
   const nice = (x) => { const p = Math.pow(10, Math.floor(Math.log10(x || 1))); return Math.ceil(x / p) * p; };
   const top = nice(max), bot = min < 0 ? -nice(-min) : 0;
@@ -87,6 +107,9 @@ export function chartSvg(kind, { series, cats, values }, { title, legend, labels
       s += `<rect x="${x}" y="${Math.min(Y(v), Y(0))}" width="${bw - 2}" height="${Math.abs(Y(v) - Y(0))}" fill="${pal[si % 6]}"/>`;
       if (labels) s += `<text x="${x + bw / 2}" y="${Y(v) - 4}" text-anchor="middle" fill="#404040" font-size="10">${String(v).replace('.', ',')}</text>`;
     }));
+  } else if (kind === 'stacked') {
+    const bw = band * 0.6;
+    for (let ci = 0; ci < n; ci++) { let acc = 0; values.forEach((vals, si) => { const v = Math.max(0, vals[ci] || 0); const x = padL + ci * band + band * 0.2; s += `<rect x="${x}" y="${Y(acc + v)}" width="${bw}" height="${Math.abs(Y(acc) - Y(acc + v))}" fill="${pal[si % 6]}"/>`; if (labels && v) s += `<text x="${x + bw / 2}" y="${(Y(acc) + Y(acc + v)) / 2 + 4}" text-anchor="middle" fill="#fff" font-size="10">${String(v).replace('.', ',')}</text>`; acc += v; }); }
   } else if (kind === 'line' || kind === 'area' || kind === 'scatter') {
     values.forEach((vals, si) => {
       const pts = vals.map((v, ci) => `${padL + ci * band + band / 2},${Y(v)}`);
