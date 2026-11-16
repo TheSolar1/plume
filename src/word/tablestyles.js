@@ -33,7 +33,7 @@ export function tableStylesCss(scope = '.pl-doc') {
     else if (s.borders === 'outer') out.push(`${sel}{border:1px solid ${bc}}`);
     else out.push(`${sel} td, ${sel} th{border:1px dashed var(--pl-gridline, transparent)}`);
     if (s.body) out.push(`${sel} td{background:${s.body}}`);
-    if (s.band) out.push(`${sel}[data-banded="1"] tr:nth-child(${'even'}) > td{background:${s.band}}`);
+    if (s.band) out.push(`${sel}[data-banded="1"][data-header="1"] tr:nth-child(even) > td{background:${s.band}} ${sel}[data-banded="1"][data-header="0"] tr:nth-child(odd) > td{background:${s.band}}`);
     if (s.header) {
       const hs = `${sel}[data-header="1"] tr:first-child > *`;
       const css = [];

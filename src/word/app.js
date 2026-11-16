@@ -27,7 +27,7 @@ import { makeNodeViews } from './nodeviews.js';
 import { autoformatRules } from './autoformat.js';
 import * as C from './commands.js';
 import { collabPlugins, renderPresence, collabDialog, joinCollab } from './collab.js';
-import { decryptNative, exportOdt, exportEpub, saveVersion, maybeAutoVersion } from './niche.js';
+import { decryptNative, exportOdt, exportEpub, saveVersion, maybeAutoVersion, docxRoundTrip } from './niche.js';
 import { exportDocx } from './docx-export.js';
 import { importDocx } from './docx-import.js';
 import { htmlToDoc, textToDoc, markdownToDoc, docToHtml, docToText, docToMarkdown, docToRtf } from './formats.js';
@@ -1398,6 +1398,7 @@ export class WordApp {
     return { doc: textToDoc(text) };
   }
 
+  roundTripDocx() { return docxRoundTrip(this); }
   share() { collabDialog(this); }
   joinShared(id) { return joinCollab(this, id); }
 
