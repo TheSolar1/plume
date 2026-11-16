@@ -1000,8 +1000,13 @@ export class CalcApp {
       if (s.hidden) return;
       const b = h('button.pc-tab' + (i === this.wb.active ? '.active' : ''), { draggable: 'true', title: s.name }, s.protected ? icon('Lock', 11) : null, h('span', s.name));
       if (s.tabColor) b.style.setProperty('--tabc', s.tabColor), b.classList.add('colored');
-      b.addEventListener('click', () => this.activateSheet(i));
-      b.addEventListener('dblclick', () => this.renameSheetInline(i, b));
+      // double-clic détecté à la main : le premier clic reconstruit les onglets
+      b.addEventListener('click', () => {
+        const now = Date.now();
+        if (this.lastTabClick && this.lastTabClick.i === i && now - this.lastTabClick.t < 450) { this.lastTabClick = null; const tab = this.tabList.querySelector('.active'); if (tab && !tab.querySelector('input')) this.renameSheetInline(i, tab); return; }
+        this.lastTabClick = { i, t: now };
+        if (i !== this.wb.active) this.activateSheet(i);
+      });
       b.addEventListener('contextmenu', (e) => { e.preventDefault(); this.activateSheet(i); this.sheetMenu(e, i); });
       b.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', String(i)); this.dragTab = i; });
       b.addEventListener('dragover', (e) => { e.preventDefault(); b.classList.add('drop'); });

@@ -182,7 +182,8 @@ function formatPattern(pat, x) {
   const intPat = ip.replace(/,/g, '');
   const decPat = dp.replace(/,/g, '');
   const decs = decPat.length;
-  let s = x.toFixed(Math.min(20, decs));
+  // arrondi « comme Excel » : sur 15 chiffres significatifs, pour que 970,825 donne 970,83
+  let s = roundHalfUp(x, Math.min(20, decs));
   let [is, ds = ''] = s.split('.');
   // décimales facultatives (#) : supprimer les zéros de fin
   if (decs) {
@@ -258,4 +259,11 @@ export function inferFormat(text) {
   if (/^-?\d+[,.]\d+[eE][+-]?\d+$/.test(t)) return '0.00E+00';
   if (/^-?\d{1,3}( \d{3})+([,.]\d+)?$/.test(t)) return /[,.]\d/.test(t) ? '#,##0.00' : '#,##0';
   return null;
+}
+
+function roundHalfUp(x, d) {
+  if (!isFinite(x) || Math.abs(x) >= 1e15 || d > 14) return x.toFixed(d);
+  const y = parseFloat(x.toPrecision(15));
+  const r = Number(Math.round(Math.abs(y) + 'e' + d) + 'e-' + d);
+  return (isFinite(r) ? (y < 0 ? -r : r) : y).toFixed(d);
 }
