@@ -329,11 +329,16 @@ function listInfo(ctx, numId, ilvl) {
   if (lvl.fmt === 'bullet') {
     const ch = lvl.text;
     const kind = /[☐☒]/.test(ch) ? 'check' : ch === 'o' ? 'circle' : /[▪§■]/.test(ch) ? 'square' : /[➢Ø>]/.test(ch) ? 'arrow' : /[–-]/.test(ch) ? 'dash' : /[★]/.test(ch) ? 'star' : 'disc';
-    return { type: 'bullet_list', kind, checked: ch === '☒' };
+    // puce inconnue des jeux prédéfinis : conservée comme puce personnalisée (hors polices de symboles privées)
+    const custom = kind === 'disc' && ch && ch.length <= 3 && !/[•·\uF000-\uF8FF]/.test(ch) && /[^\x00-\x7f]/.test(ch) ? ch : null;
+    return { type: 'bullet_list', kind, char: custom, checked: ch === '☒' };
   }
   const kind = { decimal: /\)$/.test(lvl.text) ? 'decimal-paren' : 'decimal', lowerLetter: 'lower-alpha', upperLetter: 'upper-alpha', lowerRoman: 'lower-roman', upperRoman: 'upper-roman', decimalZero: 'decimal' }[lvl.fmt] || 'decimal';
   const legal = /%1\.%2/.test(lvl.text);
-  return { type: 'ordered_list', kind: legal ? 'legal' : kind, start: num.overrides[ilvl] ?? lvl.start, key: numId + ':' + ilvl };
+  // format personnalisé : du texte autour d'un seul numéro (« Article %1 : », « (%1) », « %1 – »…)
+  const cm = legal ? null : /^([^%]*)%\d([^%]*)$/.exec(lvl.text || '');
+  const isCustom = cm && (cm[1] !== '' || !['.', ')', ''].includes(cm[2]));
+  return { type: 'ordered_list', kind: legal ? 'legal' : isCustom && kind === 'decimal-paren' ? 'decimal' : kind, prefix: isCustom ? cm[1] : null, suffix: isCustom ? cm[2] : null, start: num.overrides[ilvl] ?? lvl.start, key: numId + ':' + ilvl };
 }
 
 // ── Sections ──
@@ -470,7 +475,7 @@ function tocEntryFromPara(para, ctx) {
 
 function addToList(stack, info, ilvl, para, out) {
   void out;
-  const newList = () => ({ type: info.type, attrs: info.type === 'ordered_list' ? { kind: info.kind, order: info.start || 1 } : { kind: info.kind }, items: [] });
+  const newList = () => ({ type: info.type, attrs: info.type === 'ordered_list' ? { kind: info.kind, order: info.start || 1, prefix: info.prefix ?? null, suffix: info.suffix ?? null } : { kind: info.kind, char: info.char || null }, items: [] });
   if (!stack.length) {
     stack.push({ list: newList(), ilvl: 0, info });
   }

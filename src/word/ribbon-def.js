@@ -15,6 +15,7 @@ import { schema } from './schema.js';
 import * as C from './commands.js';
 import * as D from './dialogs.js';
 import * as T from './tools.js';
+import * as NI from './niche.js';
 import { FONTS, FONT_SIZES, THEMES, STYLE_SETS, PARA_SPACING, stylePreviewCss, resolveStyle } from './styles.js';
 import { TABLE_STYLES } from './tablestyles.js';
 import { MARGIN_PRESETS, PAGE_SIZES } from './app.js';
@@ -135,6 +136,9 @@ export function buildRibbon(app) {
             { label: 'Créer un style', icon: 'Plus', action: () => D.styleDialog(app, null) },
             { label: 'Effacer la mise en forme', icon: 'RemoveFormatting', action: cmd(C.clearFormatting(true)) },
             { label: 'Appliquer les styles…', icon: 'Brush', action: () => D.applyStylesDialog(app) },
+            { label: 'Inspecteur de style…', icon: 'ScanSearch', action: () => NI.styleInspector(app) },
+            { label: 'Importer des styles (fichier .docx, .plume ou .json)…', icon: 'FileInput', action: () => NI.importStyles(app) },
+            { label: 'Exporter les styles…', icon: 'FileOutput', action: () => NI.exportStyles(app) },
           ] },
         ],
       },
@@ -194,6 +198,7 @@ export function buildRibbon(app) {
           ]),
           { type: 'menu', big: true, label: 'Formes', icon: 'Shapes', popup: () => shapesPicker(app) },
           big('Icônes', 'Smile', () => D.iconsDialog(app)),
+          big('Modèles 3D', 'Box', () => NI.insert3DModel(app)),
           big('SmartArt', 'Workflow', () => D.smartArtDialog(app)),
           big('Graphique', 'ChartColumn', () => D.chartDialog(app)),
           menuBig('Capture', 'Camera', [{ label: 'Capture d’écran (fenêtre ou écran)…', icon: 'Monitor', action: () => T.screenshot(app) }, { label: 'Photo avec la caméra…', icon: 'Camera', action: () => T.cameraPhoto(app) }]),
@@ -480,10 +485,11 @@ export function buildRibbon(app) {
       { label: 'Vérification', items: [
         big('Éditeur', 'SpellCheck2', () => app.panes.show('editor')),
         col(btn('Dictionnaire des synonymes', 'BookA', () => D.thesaurusDialog(app), { showLabel: true, shortcut: 'Maj+F7' }), btn('Statistiques', 'Calculator', () => D.wordCountDialog(app), { showLabel: true })),
+        col(btn('Lisibilité', 'Gauge', () => NI.readabilityDialog(app), { showLabel: true }), btn('Recherche intelligente', 'Lightbulb', () => NI.smartLookup(app), { showLabel: true })),
       ] },
       { label: 'Voix', items: [big('Lecture à voix haute', 'Volume2', () => T.readAloud(app), { active: () => T.isReading() })] },
       { label: 'Accessibilité', items: [big('Vérifier l’accessibilité', 'PersonStanding', () => app.panes.show('accessibility'))] },
-      { label: 'Langue', items: [menuBig('Langue', 'Languages', [{ label: 'Définir la langue de vérification…', action: () => D.languageDialog(app) }, { label: 'Ne pas vérifier l’orthographe de la sélection', action: () => app.cmd(C.setMark('lang', { lang: app.data.settings.lang || 'fr-FR', noProof: true })) }, { label: 'Préférences linguistiques…', action: () => D.optionsDialog(app, 'language') }])] },
+      { label: 'Langue', items: [menuBig('Traduire', 'ArrowRightLeft', [{ label: 'Traduire la sélection…', action: () => NI.translateDialog(app, false) }, { label: 'Traduire le document…', action: () => NI.translateDialog(app, true) }]), menuBig('Langue', 'Languages', [{ label: 'Définir la langue de vérification…', action: () => D.languageDialog(app) }, { label: 'Ne pas vérifier l’orthographe de la sélection', action: () => app.cmd(C.setMark('lang', { lang: app.data.settings.lang || 'fr-FR', noProof: true })) }, { label: 'Préférences linguistiques…', action: () => D.optionsDialog(app, 'language') }])] },
       { label: 'Commentaires', items: [
         big('Nouveau commentaire', 'MessageSquarePlus', () => app.addComment()),
         col(
@@ -757,6 +763,7 @@ function imageTab(app) {
   return {
     id: 'picture', label: 'Format de l’image', context: 'Outils Image', groups: () => [
       { label: 'Ajuster', items: [
+        big('Supprimer l’arrière-plan', 'Eraser', () => NI.removeImageBackground(app)),
         { type: 'menu', big: true, label: 'Corrections', icon: 'SunMedium', menu: () => [['Normal', null], ['Luminosité +20 %', 'brightness(1.2)'], ['Luminosité −20 %', 'brightness(.8)'], ['Contraste +40 %', 'contrast(1.4)'], ['Contraste −40 %', 'contrast(.6)'], ['Netteté (douce)', 'contrast(1.1) saturate(1.1)']].map(([l, f]) => ({ label: l, action: set({ filter: f }) })) },
         { type: 'menu', big: true, label: 'Couleur', icon: 'Palette', menu: () => [['Couleur d’origine', null], ['Nuances de gris', 'grayscale(1)'], ['Sépia', 'sepia(1)'], ['Saturation 200 %', 'saturate(2)'], ['Saturation 0 %', 'saturate(0)'], ['Inverser', 'invert(1)'], ['Teinte froide', 'hue-rotate(180deg)'], ['Délavé', 'opacity(.6) contrast(.8)']].map(([l, f]) => ({ label: l, action: set({ filter: f }) })) },
         { type: 'menu', big: true, label: 'Effets artistiques', icon: 'Wand', menu: () => [['Aucun', null], ['Flou', 'blur(2px)'], ['Crayon', 'grayscale(1) contrast(2) brightness(1.2)'], ['Pastel', 'saturate(.6) brightness(1.15)'], ['Néon', 'saturate(3) contrast(1.4)'], ['Photocopie', 'grayscale(1) contrast(3)']].map(([l, f]) => ({ label: l, action: set({ filter: f }) })) },
@@ -977,6 +984,7 @@ function bulletMenu(app) {
     { label: 'Liste de contrôle (cases à cocher)', icon: 'ListChecks', action: () => app.cmd(C.toggleChecklist) },
     { label: 'Aucune', action: () => { if (isList(app, 'bullet_list')) app.cmd(C.toggleList('bullet_list')); } },
     { label: 'Définir une puce…', action: () => D.symbolDialog(app, (ch) => { const map = { '•': 'disc', '○': 'circle', '■': 'square', '➢': 'arrow', '✓': 'check', '–': 'dash', '★': 'star', '❖': 'diamond' }; app.cmd(C.toggleList('bullet_list', map[ch] || 'disc')); }) },
+    { label: 'Définir une nouvelle puce (caractère libre)…', action: () => { if (!isList(app, 'bullet_list')) app.cmd(C.toggleList('bullet_list', 'disc')); NI.customListDialog(app); } },
   ];
 }
 function numberingMenu(app) {
@@ -989,6 +997,7 @@ function numberingMenu(app) {
     { label: 'Recommencer à 1', action: () => app.cmd(C.setListStart(1)) },
     { label: 'Continuer la numérotation', action: () => T.continueNumbering(app) },
     { label: 'Définir la valeur de numérotation…', action: () => D.numberValueDialog(app) },
+    { label: 'Définir un nouveau format de numérotation…', action: () => { if (!isList(app, 'ordered_list')) app.cmd(C.toggleList('ordered_list', 'decimal')); NI.customListDialog(app); } },
   ];
 }
 function multilevelMenu(app) {

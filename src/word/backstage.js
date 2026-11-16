@@ -10,6 +10,7 @@ import * as D from './dialogs.js';
 import { listChanges } from './track.js';
 import { formatDate } from './fields.js';
 import { exportDocx } from './docx-export.js';
+import * as NI from './niche.js';
 
 const N = schema.nodes, M = schema.marks;
 const P = (style, text, attrs = {}) => N.paragraph.create({ style, ...attrs }, text ? (Array.isArray(text) ? text : schema.text(text)) : null);
@@ -179,12 +180,18 @@ export class Backstage {
       h('div.pl-bs-actions',
         h('button.pl-bs-tile', { type: 'button', on: { click: () => { this.close(); D.protectDialog(app); } } }, icon('Lock', 28), 'Restreindre la modification'),
         h('button.pl-bs-tile', { type: 'button', on: { click: () => { app.setSettings({ final: !app.data.settings.final }); toast(app.data.settings.final ? 'Document marqué comme final (lecture seule)' : 'Document modifiable'); this.go('info'); } } }, icon('BadgeCheck', 28), app.data.settings.final ? 'Annuler « final »' : 'Marquer comme final'),
+        h('button.pl-bs-tile', { type: 'button', on: { click: () => { this.close(); NI.encryptDialog(app); } } }, icon('KeyRound', 28), 'Chiffrer avec un mot de passe'),
+        h('button.pl-bs-tile', { type: 'button', on: { click: () => { this.close(); NI.signatureDialog(app); } } }, icon('Signature', 28), app.data.settings.signature ? 'Signature numérique (signé)' : 'Ajouter une signature numérique'),
       ),
+      h('h2', 'Historique des versions'),
+      h('p.pl-hint', 'Revenez à un état antérieur du document : une copie est conservée à chaque enregistrement.'),
+      h('div.pl-bs-actions', h('button.pl-bs-tile', { type: 'button', on: { click: () => { this.close(); NI.versionsDialog(app); } } }, icon('History', 28), 'Historique des versions')),
       h('h2', 'Inspecter le document'),
       h('p.pl-hint', `Ce document contient ${changes} révision(s), ${ncom} commentaire(s)${app.data.watermark ? ', un filigrane' : ''}.`),
       h('div.pl-bs-actions',
         h('button.pl-bs-tile', { type: 'button', on: { click: () => this.inspect() } }, icon('ScanSearch', 28), 'Inspecter et nettoyer'),
         h('button.pl-bs-tile', { type: 'button', on: { click: () => { this.close(); app.panes.show('accessibility'); } } }, icon('PersonStanding', 28), 'Vérifier l’accessibilité'),
+        h('button.pl-bs-tile', { type: 'button', on: { click: () => { this.close(); NI.compatDialog(app); } } }, icon('FileCheck2', 28), 'Vérifier la compatibilité'),
       ),
       h('h2', 'Propriétés'),
       h('div.pl-props', ...field('title', 'Titre'), ...field('subject', 'Objet'), ...field('author', 'Auteur'), ...field('keywords', 'Mots clés'), ...field('category', 'Catégorie'), ...field('company', 'Société'), ...field('description', 'Commentaires'),
@@ -216,6 +223,8 @@ export class Backstage {
       ['docx', 'Document Word (.docx)', 'FileText', 'Compatible Word, LibreOffice, Google Docs'],
       ['pdf', 'PDF (.pdf)', 'FileType2', 'Mise en page figée — via la boîte d’impression « Enregistrer en PDF »'],
       ['dotx', 'Modèle Word (.dotx)', 'LayoutTemplate', 'Réutiliser comme modèle'],
+      ['odt', 'Texte OpenDocument (.odt)', 'FileType', 'LibreOffice, OpenOffice, Google Docs'],
+      ['epub', 'Livre numérique (.epub)', 'BookOpen', 'Liseuses et applications de lecture'],
       ['plume', 'Document Plume (.plume)', 'Feather', 'Format natif, fidélité totale'],
       ['html', 'Page web (.html)', 'Globe', 'Publication sur le Web'],
       ['rtf', 'Texte mis en forme (.rtf)', 'FileCode', 'Format universel'],

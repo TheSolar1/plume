@@ -69,6 +69,7 @@
 @counter-style pl-paren { system: extends decimal; suffix: ") "; }
 @counter-style pl-alpha-paren { system: extends lower-alpha; suffix: ") "; }
 .pl-doc .ProseMirror ol.ol-decimal-paren { list-style-type: pl-paren; }
+.pl-doc .ProseMirror ol.ol-custom > li::marker { content: var(--pl-pre, "") counter(list-item, var(--pl-fmt, decimal)) var(--pl-suf, ". "); }
 .pl-doc .ProseMirror ol.ol-legal { list-style: none; counter-reset: legal; }
 .pl-doc .ProseMirror ol.ol-legal > li { counter-increment: legal; }
 .pl-doc .ProseMirror ol.ol-legal > li::before { content: counters(legal, ".") ". "; position: absolute; left: -36pt; width: 34pt; text-align: left; }

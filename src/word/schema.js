@@ -192,9 +192,9 @@ export const nodes = {
   bullet_list: {
     content: 'list_item+',
     group: 'block',
-    attrs: { kind: { default: 'disc' } },  // disc | circle | square | check | arrow | dash | star
-    parseDOM: [{ tag: 'ul', getAttrs: (d) => ({ kind: d.getAttribute('data-kind') || 'disc' }) }],
-    toDOM: (n) => ['ul', { 'data-kind': n.attrs.kind, class: 'bl-' + n.attrs.kind }, 0],
+    attrs: { kind: { default: 'disc' }, char: { default: null } },  // disc | circle | square | check | arrow | dash | star ; char = puce personnalisée
+    parseDOM: [{ tag: 'ul', getAttrs: (d) => ({ kind: d.getAttribute('data-kind') || 'disc', char: d.getAttribute('data-char') || null }) }],
+    toDOM: (n) => ['ul', { 'data-kind': n.attrs.kind, class: 'bl-' + n.attrs.kind, ...(n.attrs.char && n.attrs.kind !== 'check' ? { 'data-char': n.attrs.char, style: `list-style-type: ${JSON.stringify(n.attrs.char + '  ')}` } : {}) }, 0],
   },
 
   ordered_list: {
@@ -203,15 +203,22 @@ export const nodes = {
     attrs: {
       order: { default: 1 },
       kind: { default: 'decimal' }, // decimal | lower-alpha | upper-alpha | lower-roman | upper-roman | decimal-paren | legal
+      prefix: { default: null }, // format de numérotation personnalisé : texte avant le numéro…
+      suffix: { default: null }, // … et après (null = format par défaut du type)
     },
     parseDOM: [{
       tag: 'ol',
       getAttrs: (d) => ({
         order: d.hasAttribute('start') ? +d.getAttribute('start') : 1,
         kind: d.getAttribute('data-kind') || ({ a: 'lower-alpha', A: 'upper-alpha', i: 'lower-roman', I: 'upper-roman' }[d.getAttribute('type')] || 'decimal'),
+        prefix: d.getAttribute('data-prefix'), suffix: d.getAttribute('data-suffix'),
       }),
     }],
-    toDOM: (n) => ['ol', { start: n.attrs.order === 1 ? null : n.attrs.order, 'data-kind': n.attrs.kind, class: 'ol-' + n.attrs.kind }, 0],
+    toDOM: (n) => {
+      const custom = n.attrs.prefix != null || n.attrs.suffix != null;
+      const fmt = { 'decimal-paren': 'decimal', legal: 'decimal' }[n.attrs.kind] || n.attrs.kind;
+      return ['ol', { start: n.attrs.order === 1 ? null : n.attrs.order, 'data-kind': n.attrs.kind, class: 'ol-' + n.attrs.kind + (custom ? ' ol-custom' : ''), ...(custom ? { 'data-prefix': n.attrs.prefix ?? '', 'data-suffix': n.attrs.suffix ?? '.', style: `--pl-pre: ${JSON.stringify(n.attrs.prefix ?? '')}; --pl-suf: ${JSON.stringify((n.attrs.suffix ?? '.') + ' ')}; --pl-fmt: ${fmt}` } : {}) }, 0];
+    },
   },
 
   list_item: {

@@ -596,7 +596,10 @@ class ExportContext {
       this.nums.push({ abs, start: ordered ? node.attrs.order : null, ilvl: depth });
       return this.nums.length;
     };
-    const kind = node.attrs.kind;
+    let kind = node.attrs.kind;
+    // puce ou format de numérotation personnalisés : une définition abstraite par variante
+    if (!ordered && node.attrs.char && kind !== 'check') kind = 'char:' + node.attrs.char;
+    if (ordered && (node.attrs.prefix != null || node.attrs.suffix != null)) kind = `custom:${{ 'decimal-paren': 'decimal', legal: 'decimal' }[kind] || kind}\u0001${node.attrs.prefix ?? ''}\u0001${node.attrs.suffix ?? '.'}`;
     let numId = kind === 'check' ? null : makeNum(kind);
     let numChecked = null, numUnchecked = null;
     for (const li of items) {
@@ -635,11 +638,12 @@ class ExportContext {
         const left = 720 + 360 * l;
         if (a.type === 'ul') {
           const k = l === 0 || ['checked', 'unchecked'].includes(a.kind) ? a.kind : levelCycle[l % 3];
-          const [ch, font] = bulletChars[k] || bulletChars.disc;
+          const [ch, font] = a.kind.startsWith('char:') ? [a.kind.slice(5), 'Segoe UI Symbol'] : bulletChars[k] || bulletChars.disc;
           x += `<w:lvl w:ilvl="${l}"><w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="${esc(ch)}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${left}" w:hanging="360"/></w:pPr><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}" w:hint="default"/></w:rPr></w:lvl>`;
         } else {
           const k = l === 0 ? a.kind : a.kind === 'legal' ? 'legal' : ordCycle[l % 3];
-          const [fmt, text] = ordFmt[k] || ordFmt.decimal;
+          let [fmt, text] = ordFmt[k] || ordFmt.decimal;
+          if (a.kind.startsWith('custom:')) { const [ck, pre, suf] = a.kind.slice(7).split('\u0001'); fmt = (ordFmt[ck] || ordFmt.decimal)[0]; text = esc(pre) + '%1' + esc(suf); }
           const lvlText = a.kind === 'legal' ? Array.from({ length: l + 1 }, (_, i) => `%${i + 1}`).join('.') + '.' : text.replace('%1', `%${l + 1}`);
           x += `<w:lvl w:ilvl="${l}"><w:start w:val="1"/><w:numFmt w:val="${fmt}"/><w:lvlText w:val="${lvlText}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${left}" w:hanging="360"/></w:pPr></w:lvl>`;
         }
