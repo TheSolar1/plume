@@ -26,6 +26,7 @@ import { findPlugin, findKey } from './find.js';
 import { makeNodeViews } from './nodeviews.js';
 import { autoformatRules } from './autoformat.js';
 import * as C from './commands.js';
+import { decryptNative, exportOdt, exportEpub, saveVersion, maybeAutoVersion } from './niche.js';
 import { exportDocx } from './docx-export.js';
 import { importDocx } from './docx-import.js';
 import { htmlToDoc, textToDoc, markdownToDoc, docToHtml, docToText, docToMarkdown, docToRtf } from './formats.js';
@@ -1379,7 +1380,11 @@ export class WordApp {
     if (/\.(docx|docm|dotx|dotm)$/.test(name)) return importDocx(await readAsArrayBuffer(file));
     if (name.endsWith('.doc')) { toast('Le format .doc (Word 97-2003) n’est pas pris en charge : enregistrez-le en .docx.', 'error', 6000); return null; }
     const text = await readAsText(file);
-    if (name.endsWith('.plume') || name.endsWith('.json')) return { native: JSON.parse(text) };
+    if (name.endsWith('.plume') || name.endsWith('.json')) {
+      const j = JSON.parse(text);
+      if (j && j.plumeEncrypted) { const native = await decryptNative(j); return native ? { native } : null; }
+      return { native: j };
+    }
     if (/\.(html?|xhtml)$/.test(name)) return { doc: htmlToDoc(text) };
     if (/\.(md|markdown)$/.test(name)) return { doc: markdownToDoc(text) };
     if (name.endsWith('.rtf')) return { doc: textToDoc(rtfToText(text)) };
@@ -1409,10 +1414,13 @@ export class WordApp {
       else if (format === 'txt') download(new Blob([docToText(this.view.state.doc)], { type: 'text/plain;charset=utf-8' }), base + '.txt');
       else if (format === 'md') download(new Blob([docToMarkdown(this.view.state.doc)], { type: 'text/markdown;charset=utf-8' }), base + '.md');
       else if (format === 'rtf') download(new Blob([docToRtf(this.view.state.doc)], { type: 'application/rtf' }), base + '.rtf');
+      else if (format === 'odt') download(await exportOdt(this), base + '.odt');
+      else if (format === 'epub') download(await exportEpub(this), base + '.epub');
       else if (format === 'plume') download(new Blob([JSON.stringify(this.toNative())], { type: 'application/json' }), base + '.plume');
       this.dirty = false;
       this.saveState.textContent = 'Enregistré';
-      this.saveLocal();
+      await this.saveLocal();
+      saveVersion(this, 'Enregistrement (' + format + ')');
       toast('Document enregistré', 'success');
     } catch (e) {
       console.error(e);
@@ -1425,6 +1433,7 @@ export class WordApp {
     const native = this.toNative();
     native.props.modified = new Date().toISOString();
     await store.put({ id: this.docId, app: 'word', title: this.titleInput.value || 'Document', modified: Date.now(), data: native, preview: this.view.state.doc.textContent.slice(0, 200) });
+    maybeAutoVersion(this);
     if (this.dirty) this.saveState.textContent = 'Enregistré automatiquement';
   }
 
