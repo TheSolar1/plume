@@ -7,8 +7,8 @@ navigateur + fichiers téléchargés).
 | Appli | État | Formats |
 | --- | --- | --- |
 | **Plume Texte** (`texte.html`) | disponible | ouvre `.docx .dotx .docm .plume .html .md .txt .rtf` — enregistre `.docx .dotx .pdf .plume .html .md .txt .rtf` |
-| Plume Présentation | à venir | `.pptx` |
-| Plume Tableur | à venir | `.xlsx` |
+| **Plume Présentation** (`presentation.html`) | disponible | ouvre `.pptx .ppsx .potx .plume .md .txt` — enregistre `.pptx .ppsx .potx .pdf .plume .png .jpg .html` |
+| **Plume Tableur** (`tableur.html`) | disponible | ouvre `.xlsx .xlsm .xltx .csv .tsv .txt .plume` — enregistre `.xlsx .xltx .csv .tsv .pdf .plume .html .json .md` |
 
 ## Utiliser
 
@@ -116,3 +116,78 @@ recherche de commandes (Alt+Q), plus de 60 raccourcis clavier façon Word
   section).
 - L'orthographe mot à mot utilise le correcteur du navigateur.
 - Les anciens fichiers `.doc` (Word 97-2003) ne sont pas pris en charge.
+
+## Plume Présentation — fonctionnalités
+
+- **Diapositives** : dispositions, thèmes et variantes, taille 16:9 / 4:3,
+  sections, masquage, duplication, trieuse, mode Plan, pages de notes.
+- **Contenu** : zones de texte riches, formes, images, tableaux, graphiques,
+  SmartArt, WordArt, équations, icônes, vidéo / audio, liens, en-têtes et
+  pieds de page, numéros de diapositive.
+- **Mise en forme** : remplissage, contour, effets, alignement et répartition,
+  repères d'alignement magnétiques, rotation, ordre, groupes, volet Sélection.
+- **Transitions et animations** : entrées, emphases, sorties, volet
+  Animations, minutage, déclenchement au clic ou automatique.
+- **Diaporama** : plein écran, mode Présentateur (notes, minuteur, diapositive
+  suivante), pointeur laser, stylet, écran noir / blanc, diaporama personnalisé.
+- **Révision** : commentaires, vérificateur d'accessibilité.
+- **Fichiers** : `.pptx` relu par PowerPoint, Keynote, LibreOffice et Google
+  Slides ; export PDF, images et page web autonome.
+
+## Plume Tableur — fonctionnalités
+
+- **Grille** : 1 048 576 lignes × 16 384 colonnes, plusieurs feuilles
+  (renommer, déplacer, copier, masquer, couleur d'onglet), volets figés,
+  zoom, fusion de cellules, lignes et colonnes masquées, ajustement
+  automatique, poignée de recopie avec séries (nombres, dates, jours, mois,
+  « Produit 1, Produit 2… »).
+- **Formules** : environ 300 fonctions saisies en français avec le
+  point-virgule (`=SOMME.SI.ENS(…)`, `=RECHERCHEX(…)`, `=SI.CONDITIONS(…)`,
+  `=FILTRE(…)`, `=UNIQUE(…)`…), tableaux dynamiques avec propagation,
+  références entre feuilles, noms définis, saisie semi-automatique, info-bulle
+  des arguments, pointage des cellules à la souris ou au clavier, F4 pour
+  les références absolues, détection des références circulaires, calcul
+  automatique ou manuel.
+- **Mise en forme** : polices, couleurs, bordures, alignement, renvoi à la
+  ligne, rotation, formats de nombres (monétaire, comptabilité, dates,
+  heures, pourcentages, fractions, scientifique, personnalisés), styles de
+  cellules, reproduction de la mise en forme, thèmes.
+- **Mise en forme conditionnelle** : règles de surbrillance, premiers /
+  derniers, moyenne, doublons, formules, barres de données, nuances de
+  couleurs, jeux d'icônes, gestionnaire de règles.
+- **Données** : tri multi-niveaux, filtres automatiques (valeurs, conditions,
+  10 premiers), filtre avancé, tableaux mis en forme avec ligne Total,
+  validation des données (listes déroulantes, bornes, formule), suppression
+  des doublons, conversion du texte en colonnes, remplissage instantané,
+  sous-totaux, plan (grouper / dissocier), consolidation, import CSV / web.
+- **Analyse** : tableaux croisés dynamiques (lignes, colonnes, valeurs,
+  filtre, actualisation), valeur cible, gestionnaire de scénarios, table de
+  données, feuille de prévision, analyse rapide.
+- **Insertion** : graphiques (histogrammes groupés ou empilés, barres,
+  courbes, aires, secteurs, anneau, nuage de points), sparklines, images,
+  formes, zones de texte, icônes, liens hypertexte, commentaires avec
+  réponses, symboles.
+- **Audit** : antécédents / dépendants, affichage des formules, vérification
+  des erreurs, évaluation de formule, fenêtre Espion.
+- **Mise en page et impression** : orientation, format, marges, échelle,
+  zone d'impression, sauts de page, lignes de titre répétées, en-tête et pied
+  de page, quadrillage et en-têtes, aperçu avant impression, PDF.
+- **Protection** : feuille (cellules verrouillées, mot de passe), structure
+  du classeur.
+- **Fichiers** : `.xlsx` relu par Excel, LibreOffice, Google Sheets et
+  Numbers (styles, formules, graphiques, tableaux, mises en forme
+  conditionnelles, validations, commentaires, mise en page) ; CSV ; modèles
+  (budget, facture, planning, carnet de notes).
+
+### Limites connues du Tableur
+
+- Les macros VBA ne sont pas exécutées (les `.xlsm` s'ouvrent sans macros).
+- Les tableaux croisés dynamiques sont créés et actualisés dans Plume ; dans
+  le fichier `.xlsx` ils sont enregistrés sous forme de valeurs.
+- Les graphiques sont limités aux types listés ci-dessus (pas de 3D, radar,
+  boursier, cartes) ; les références structurées (`Tableau1[Colonne]`) et le
+  modèle de données (Power Query / Power Pivot) ne sont pas pris en charge.
+- Pas de travail simultané à plusieurs sur le même classeur, pas de mode
+  « groupe de travail » sur plusieurs feuilles, pas de fractionnement de la
+  fenêtre.
+- L'orthographe utilise le correcteur du navigateur.

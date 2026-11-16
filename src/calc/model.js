@@ -214,7 +214,8 @@ export class Workbook {
     this.tx = { label, depth: 1, cells: new Map(), snaps: new Map(), meta: null };
   }
   record(sheet, k) {
-    if (!this.tx) return;
+    // après un instantané de la feuille (ou du classeur), celui-ci suffit à tout restaurer
+    if (!this.tx || this.tx.book || this.tx.snaps.has(sheet)) return;
     let m = this.tx.cells.get(sheet);
     if (!m) { m = new Map(); this.tx.cells.set(sheet, m); }
     if (!m.has(k)) { const c = sheet.cells.get(k); m.set(k, c ? { ...c } : null); }
