@@ -125,7 +125,7 @@ export class PresApp {
     this.pres.slides.forEach((s, i) => {
       if (s.section && s.section !== section) { section = s.section; t.appendChild(h('div.pp-section', { on: { contextmenu: (e) => { e.preventDefault(); PD.sectionMenu(this, s.section, e); } } }, '▾ ' + s.section)); }
       const holder = h('div.pp-thumb' + (i === this.cur ? '.active' : '') + (s.hidden ? '.hidden' : ''), { draggable: 'true', 'data-i': i });
-      const num = h('div.pp-thumb-num', String(i + 1), s.transition && s.transition.type !== 'none' ? h('span', { title: 'Transition' }, '★') : null);
+      const num = h('div.pp-thumb-num', String(i + 1), s.transition && s.transition.type !== 'none' ? h('span', { title: 'Transition' }, icon('Star', 10)) : null);
       const frame = h('div.pp-thumb-frame', { style: { width: tw + 'px', height: H * scale + 'px' } });
       const sl = renderSlide(this.pres, s, { mode: 'thumb', index: i });
       sl.style.transform = `scale(${scale})`;
@@ -204,7 +204,7 @@ export class PresApp {
       const box = h('div.pp-selbox' + (this.editing && this.editing.id === el.id ? '.editing' : ''), { style: { left: el.x * sc + 'px', top: el.y * sc + 'px', width: el.w * sc + 'px', height: el.h * sc + 'px', transform: el.rot ? `rotate(${el.rot}deg)` : '' }, 'data-id': el.id });
       if (!el.locked) {
         for (const c of ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']) box.appendChild(h('span.pp-hdl.h-' + c, { 'data-h': c }));
-        if (this.sel.size === 1) box.appendChild(h('span.pp-rot', { 'data-h': 'rot', title: 'Rotation (Maj = par pas de 15°)' }));
+        if (this.sel.size === 1) { const rot = h('span.pp-rot', { 'data-h': 'rot', title: 'Rotation (Maj = par pas de 15°)' }, icon('RotateCw', 10)); box.appendChild(rot); }
       }
       ov.appendChild(box);
     }

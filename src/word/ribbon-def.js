@@ -1031,15 +1031,12 @@ function shapesPicker(app) {
   const grid = h('div.pl-colors', { style: { gridTemplateColumns: 'repeat(7, 34px)', gap: '4px' } });
   for (const [k, l] of SHAPES) {
     const b = h('button.pl-swatch', { type: 'button', title: l, style: { width: '34px', height: '30px', background: '#fff' }, on: { click: () => { closeMenus(); T.insertShape(app, k); } } });
-    b.innerHTML = shapeIcon(k);
+    b.appendChild(icon(SHAPE_ICONS[k] || 'Shapes', 22));
     grid.appendChild(b);
   }
   return h('div', h('div.pl-colors-title', 'Formes'), grid);
 }
-function shapeIcon(k) {
-  const p = { rect: '<rect x="4" y="6" width="22" height="16"/>', rounded: '<rect x="4" y="6" width="22" height="16" rx="4"/>', ellipse: '<ellipse cx="15" cy="14" rx="11" ry="8"/>', triangle: '<polygon points="15,4 26,24 4,24"/>', diamond: '<polygon points="15,3 27,14 15,25 3,14"/>', hexagon: '<polygon points="9,4 21,4 27,14 21,24 9,24 3,14"/>', star: '<polygon points="15,3 18,11 27,11 20,16 23,25 15,20 7,25 10,16 3,11 12,11"/>', heart: '<path d="M15,25 C3,16 6,5 15,10 C24,5 27,16 15,25Z"/>', arrow: '<polygon points="3,10 18,10 18,5 27,14 18,23 18,18 3,18"/>', larrow: '<polygon points="27,10 12,10 12,5 3,14 12,23 12,18 27,18"/>', callout: '<path d="M4,4 H26 V19 H13 L8,25 L9,19 H4Z"/>', cloud: '<path d="M9,22 a5,5 0 0,1 0,-10 a7,7 0 0,1 12,-2 a5,5 0 0,1 1,12Z"/>', line: '<line x1="4" y1="14" x2="26" y2="14"/>', textbox: '<rect x="4" y="6" width="22" height="16"/><text x="9" y="18" font-size="10" fill="#2b579a" stroke="none">A</text>' }[k];
-  return `<svg width="30" height="28" viewBox="0 0 30 28" fill="none" stroke="#2b579a" stroke-width="1.6">${p}</svg>`;
-}
+const SHAPE_ICONS = { rect: 'Square', rounded: 'SquareRoundCorner', ellipse: 'Circle', triangle: 'Triangle', diamond: 'Diamond', hexagon: 'Hexagon', star: 'Star', heart: 'Heart', arrow: 'ArrowRight', larrow: 'ArrowLeft', callout: 'MessageSquare', cloud: 'Cloud', line: 'Minus', textbox: 'TextCursorInput' };
 function wordArtPicker(app) {
   const grid = h('div.pl-gallery-grid', { style: { gridTemplateColumns: 'repeat(4, 64px)' } });
   for (const [k, css] of Object.entries(WORDART_STYLES)) {

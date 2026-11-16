@@ -52,7 +52,7 @@ export class PresBackstage {
       requestAnimationFrame(() => { const w = fr.clientWidth || 180; sl.style.transform = `scale(${w / p.size.w})`; fitTexts(fr); });
       void t;
     }
-    const sample = h('button.pl-template', { type: 'button', on: { click: () => { this.close(); this.app.loadNative(samplePresentation(), 'Présentation de démonstration'); } } }, h('div.thumb', { style: { aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' } }, '🎬'), h('div.cap', 'Visite guidée (exemple)'));
+    const sample = h('button.pl-template', { type: 'button', on: { click: () => { this.close(); this.app.loadNative(samplePresentation(), 'Présentation de démonstration'); } } }, h('div.thumb', { style: { aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center' } }, icon('Clapperboard', 40)), h('div.cap', 'Visite guidée (exemple)'));
     grid.appendChild(sample);
     return grid;
   }
