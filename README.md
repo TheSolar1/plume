@@ -108,8 +108,57 @@ marges, taquets de tabulation), mini barre d'outils, menu contextuel,
 recherche de commandes (Alt+Q), plus de 60 raccourcis clavier façon Word
 (F1 pour la liste), correction automatique typographique française.
 
+### Collaboration en temps réel (Texte)
+
+Bouton **Partager** dans la barre de titre (ou Fichier › Partager) :
+« Démarrer une session » donne un lien ; toute personne qui l'ouvre écrit
+dans le même document, en même temps. On voit le curseur et la sélection
+des autres, la liste des participants, et les modifications arrivent en
+moins d'une seconde. Le texte, les styles, la mise en page, les en-têtes
+et les commentaires sont partagés ; chacun garde une copie dans son
+navigateur.
+
+La collaboration a besoin d'un serveur qui relaie les modifications :
+
+- `node serve.mjs` le fait tout seul (aucune installation) ;
+- dans VEX, la route `/api/plume/collab` (fichier `src/plume/collab.rs`)
+  joue le même rôle et exige d'être connecté à VEX.
+
+Le serveur ne garde les documents qu'en mémoire, le temps de la session
+(24 h sans activité au plus) ; s'il redémarre, les participants recréent
+la session à partir de leur copie. Ouvert comme simple fichier ou sur un
+hébergement statique (GitHub Pages), le bouton explique qu'il faut un
+serveur.
+
+### Fonctions rares
+
+- **Historique des versions** (Fichier › Informations) : une copie à chaque
+  enregistrement et toutes les 10 minutes, restauration ou ouverture en copie.
+- **Chiffrer avec un mot de passe** : fichier `.plume` chiffré (AES-256-GCM,
+  clé dérivée par PBKDF2) ; **signature numérique** Plume (ECDSA P-256) qui
+  signale toute modification du texte après signature.
+- **Vérificateur de compatibilité** : convertit réellement le document en
+  `.docx`, le relit et signale ce qui serait perdu.
+- **Enregistrer en `.odt`** (LibreOffice) et en **EPUB** (liseuses).
+- **Recherche intelligente** (résumé Wikipédia, définition, Web),
+  **Traduire** la sélection ou le document (traducteur intégré du navigateur
+  quand il existe, sinon ouverture d'un service en ligne), **Lisibilité**
+  (indice de Flesch adapté au français, longueur des phrases).
+- **Modèles 3D** `.obj` / `.stl` : visionneuse à faire pivoter, la vue
+  choisie est insérée comme image.
+- **Supprimer l'arrière-plan** d'une image (fond uni).
+- **Puce personnalisée** (n'importe quel caractère) et **format de
+  numérotation personnalisé** (« Article 1 : », « (a) »…), conservés en `.docx`.
+- **Inspecteur de style**, import des styles d'un autre document, export.
+
 ### Limites connues
 
+- La collaboration existe dans Texte seulement (pas encore dans Présentation
+  ni Tableur) ; les en-têtes / pieds de page et les styles suivent la règle
+  « le dernier qui modifie gagne ».
+- Pas d'ouverture des fichiers PDF ni `.odt` (export seulement), pas de zones
+  de texte liées, pas de transcription audio, pas de dictionnaire personnel.
+- La signature numérique est propre à Plume : Word ne la reconnaît pas.
 - Les colonnes s'affichent dans les modes Web et Brouillon ; en mode Page
   elles sont conservées dans le fichier mais affichées sur une seule colonne.
 - Une seule mise en page par document (pas d'orientation différente par

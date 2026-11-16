@@ -241,6 +241,7 @@ export class Backstage {
     const app = this.app;
     m.append(h('h1', 'Partager'),
       h('div.pl-bs-actions',
+        h('button.pl-bs-tile', { type: 'button', on: { click: () => { this.close(); app.share(); } } }, icon('Users', 30), app.collab ? 'Collaboration en cours' : 'Collaborer en temps réel', h('span.pl-hint', 'Écrire à plusieurs en même temps')),
         h('button.pl-bs-tile', { type: 'button', on: { click: async () => { const blob = await exportDocx(app.exportData()); const file = new File([blob], app.fileBase() + '.docx', { type: blob.type }); if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: app.titleInput.value }); } catch {} } else { download(blob, file.name); toast('Fichier téléchargé : joignez-le à votre message'); } } } }, icon('Share2', 30), 'Partager le fichier .docx'),
         h('button.pl-bs-tile', { type: 'button', on: { click: async () => { const blob = await exportDocx(app.exportData()); download(blob, app.fileBase() + '.docx'); location.href = `mailto:?subject=${encodeURIComponent(app.titleInput.value)}&body=${encodeURIComponent('Vous trouverez le document en pièce jointe.')}`; } } }, icon('Mail', 30), 'Envoyer par e-mail'),
         h('button.pl-bs-tile', { type: 'button', on: { click: () => { this.close(); app.print(); } } }, icon('FileType2', 30), 'Envoyer en PDF'),
