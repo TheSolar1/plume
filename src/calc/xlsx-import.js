@@ -299,11 +299,12 @@ function safeLocal(f) { try { return toLocal(f); } catch { return f; } }
 function readChart(doc, sheetName) {
   const plot = one(doc, 'plotArea'); if (!plot) return null;
   const el = [...plot.children].find((c) => /Chart$/.test(c.localName)); if (!el) return null;
-  let type = { barChart: 'column', bar3DChart: 'column', lineChart: 'line', line3DChart: 'line', pieChart: 'pie', pie3DChart: 'pie', doughnutChart: 'doughnut', areaChart: 'area', area3DChart: 'area', scatterChart: 'scatter', radarChart: 'line', bubbleChart: 'scatter' }[el.localName];
+  let type = { barChart: 'column', bar3DChart: 'column', lineChart: 'line', line3DChart: 'line', pieChart: 'pie', pie3DChart: 'pie', doughnutChart: 'doughnut', areaChart: 'area', area3DChart: 'area', scatterChart: 'scatter', radarChart: 'radar', bubbleChart: 'scatter' }[el.localName];
   if (!type) return null;
-  if (type === 'column') { if (at(kid(el, 'barDir'), 'val') === 'bar') type = 'hbar'; else if (/stacked/i.test(at(kid(el, 'grouping'), 'val', ''))) type = 'stacked'; }
+  if (type === 'column' && [...plot.children].some((c) => c.localName === 'lineChart')) type = 'combo';
+  else if (type === 'column') { if (at(kid(el, 'barDir'), 'val') === 'bar') type = 'hbar'; else if (/stacked/i.test(at(kid(el, 'grouping'), 'val', ''))) type = 'stacked'; }
   let rg = null, sheet = sheetName, byRow = false;
-  const sers = kids(el, 'ser');
+  const sers = [...plot.children].filter((c) => /Chart$/.test(c.localName)).flatMap((c) => kids(c, 'ser'));
   for (const ser of sers) for (const f of all(ser, 'f')) { const m = /^(?:'((?:[^']|'')+)'|([^!]+))!(.+)$/.exec(f.textContent); const p = parseRange((m ? m[3] : f.textContent).replace(/\$/g, '')); if (!p) continue; if (m) sheet = (m[1] || m[2]).replace(/''/g, "'"); rg = rg ? { r1: Math.min(rg.r1, p.r1), c1: Math.min(rg.c1, p.c1), r2: Math.max(rg.r2, p.r2), c2: Math.max(rg.c2, p.c2) } : p; if ((f.parentElement.parentElement.localName === 'val' || f.parentElement.parentElement.localName === 'yVal') && p.r1 === p.r2 && p.c2 > p.c1) byRow = true; }
   if (!rg) return null;
   const tEl = kid(one(doc, 'chart'), 'title');

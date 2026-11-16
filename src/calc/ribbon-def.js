@@ -113,11 +113,12 @@ export function buildRibbon(app) {
   const insert = {
     id: 'insert', label: 'Insertion', groups: () => [
       { label: 'Tableaux', items: [
-        big('Tableau croisé dynamique', 'TableProperties', () => D.pivotDialog(app)),
+        { type: 'split', big: true, label: 'Tableau croisé dynamique', icon: 'TableProperties', run: () => D.pivotDialog(app), menu: [{ label: 'Tableau croisé dynamique…', icon: 'TableProperties', action: () => D.pivotDialog(app) }, { label: 'Tableaux croisés dynamiques recommandés…', icon: 'Sparkles', action: () => D.recommendedPivotsDialog(app) }, { label: 'Graphique croisé dynamique', icon: 'ChartColumn', action: () => F.pivotChart(app) }] },
         big('Tableau', 'Table', () => D.tableDialog(app), { shortcut: 'Ctrl+T' }),
       ] },
       { label: 'Illustrations', items: [
         big('Images', 'Image', () => F.insertImage(app)),
+        big('Capture d’écran', 'MonitorDown', () => F.screenshot(app)),
         { type: 'menu', big: true, label: 'Formes', icon: 'Shapes', popup: () => shapePicker(app) },
         { type: 'menu', big: true, label: 'Icônes', icon: 'Smile', popup: () => D.iconPicker(app) },
       ] },
@@ -125,11 +126,12 @@ export function buildRibbon(app) {
         big('Graphiques recommandés', 'ChartNoAxesCombined', () => F.addChart(app, F.recommendChart(app))),
         col(
           row(...F.CHART_TYPES.slice(0, 4).map(([k, l, ic]) => btn(l, ic, () => F.addChart(app, k)))),
-          row(...F.CHART_TYPES.slice(4).map(([k, l, ic]) => btn(l, ic, () => F.addChart(app, k)))),
+          row(...F.CHART_TYPES.slice(4, 8).map(([k, l, ic]) => btn(l, ic, () => F.addChart(app, k)))),
+          row(...F.CHART_TYPES.slice(8).map(([k, l, ic]) => btn(l, ic, () => F.addChart(app, k)))),
         ),
       ] },
       { label: 'Graphiques sparkline', items: [big('Courbe', 'Activity', () => D.sparklineDialog(app, 'line')), big('Histogramme', 'ChartNoAxesColumn', () => D.sparklineDialog(app, 'column')), big('Positif/Négatif', 'ChartNoAxesColumnIncreasing', () => D.sparklineDialog(app, 'winloss'))] },
-      { label: 'Filtres', items: [big('Filtre', 'Filter', () => F.toggleFilter(app), { active: () => !!app.sheet.filter })] },
+      { label: 'Filtres', items: [big('Segment', 'ListFilter', () => D.slicerDialog(app)), big('Filtre', 'Filter', () => F.toggleFilter(app), { active: () => !!app.sheet.filter })] },
       { label: 'Liens', items: [big('Lien', 'Link', () => D.linkDialog(app), { shortcut: 'Ctrl+K' })] },
       { label: 'Commentaires', items: [big('Commentaire', 'MessageSquarePlus', () => F.editComment(app), { shortcut: 'Maj+F2' })] },
       { label: 'Texte', items: [
@@ -260,6 +262,7 @@ export function buildRibbon(app) {
         big('Aperçu des sauts de page', 'Rows3', () => app.setView('pagebreak'), { active: () => app.viewMode === 'pagebreak' }),
         big('Mise en page', 'FileText', () => app.setView('layout'), { active: () => app.viewMode === 'layout' }),
         big('Aperçu avant impression', 'Printer', () => D.printDialog(app), { shortcut: 'Ctrl+P' }),
+        big('Affichages personnalisés', 'Eye', () => D.customViewsDialog(app)),
       ] },
       { label: 'Afficher', items: [col(
         { type: 'check', label: 'Barre de formule', active: () => app.fxBar.style.display !== 'none', run: () => app.toggle('fxbar') },

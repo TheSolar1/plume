@@ -172,6 +172,7 @@ export const TRANSITIONS = [
 export const ANIMATIONS = {
   entrance: [['appear', 'Apparaître'], ['fade', 'Fondu'], ['flyIn', 'Entrée brusque'], ['floatIn', 'Flottant entrant'], ['wipe', 'Balayer'], ['split', 'Fractionner'], ['zoom', 'Zoom'], ['grow', 'Agrandir et tourner'], ['bounce', 'Rebondir'], ['wheel', 'Roue'], ['swivel', 'Pivoter']],
   emphasis: [['pulse', 'Impulsion'], ['spin', 'Rotation'], ['growShrink', 'Agrandir/Rétrécir'], ['teeter', 'Bascule'], ['colorPulse', 'Impulsion de couleur'], ['transparency', 'Transparence'], ['boldFlash', 'Clignotement']],
+  path: [['pathRight', 'Ligne vers la droite'], ['pathLeft', 'Ligne vers la gauche'], ['pathUp', 'Ligne vers le haut'], ['pathDown', 'Ligne vers le bas'], ['pathDiag', 'Diagonale'], ['pathArc', 'Arc'], ['pathCircle', 'Cercle'], ['pathZigzag', 'Zigzag'], ['pathLoop', 'Boucle']],
   exit: [['disappear', 'Disparaître'], ['fadeOut', 'Fondu sortant'], ['flyOut', 'Sortie brusque'], ['zoomOut', 'Zoom sortant'], ['shrink', 'Rétrécir et tourner'], ['wipeOut', 'Balayer (sortie)']],
 };
 export function animLabel(effect) {

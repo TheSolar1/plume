@@ -253,11 +253,12 @@ async function parseSlide(ctx, path) {
       if (!el) continue;
       const preset = +ctn.getAttribute('presetID');
       const effect = cls === 'entr' ? ({ 1: 'appear', 2: 'flyIn', 10: 'fade', 16: 'split', 21: 'wheel', 22: 'wipe', 26: 'bounce', 31: 'grow', 42: 'floatIn', 45: 'swivel', 53: 'zoom' }[preset] || 'fade') : cls === 'exit' ? ({ 1: 'disappear', 2: 'flyOut', 10: 'fadeOut', 22: 'wipeOut', 31: 'shrink', 53: 'zoomOut' }[preset] || 'fadeOut') : ({ 8: 'spin', 6: 'growShrink', 9: 'transparency', 26: 'pulse', 27: 'colorPulse', 32: 'teeter' }[preset] || 'pulse');
+      const motionEl = cls === 'path' ? ctn.getElementsByTagNameNS(P, 'animMotion')[0] : null;
       const nodeType = ctn.getAttribute('nodeType');
       const firstDur = [...ctn.getElementsByTagNameNS(P, 'cTn')].map((c) => +c.getAttribute('dur')).find((d) => d > 1);
       const delayCond = ctn.getElementsByTagNameNS(P, 'cond')[0];
       el.anim = el.anim || [];
-      el.anim.push({ id: uid('a'), effect, kind: cls === 'entr' ? 'entrance' : cls === 'exit' ? 'exit' : 'emphasis', trigger: nodeType === 'withEffect' ? 'with' : nodeType === 'afterEffect' ? 'after' : 'click', duration: (firstDur || 500) / 1000, delay: delayCond && +delayCond.getAttribute('delay') > 0 && nodeType !== 'afterEffect' ? +delayCond.getAttribute('delay') / 1000 : 0, dir: 'bottom', order: ++order });
+      el.anim.push({ id: uid('a'), effect: motionEl ? motionEffect(motionEl.getAttribute('path') || '') : effect, kind: motionEl ? 'path' : cls === 'entr' ? 'entrance' : cls === 'exit' ? 'exit' : 'emphasis', trigger: nodeType === 'withEffect' ? 'with' : nodeType === 'afterEffect' ? 'after' : 'click', duration: (firstDur || 500) / 1000, delay: delayCond && +delayCond.getAttribute('delay') > 0 && nodeType !== 'afterEffect' ? +delayCond.getAttribute('delay') / 1000 : 0, dir: 'bottom', order: ++order });
       anims.push(el);
     }
   }
@@ -491,4 +492,17 @@ async function parseFrame(ctx, gf, rels) {
   // SmartArt et autres : on garde un cadre avec le texte s'il y en a
   ctx.warnings.add('Les SmartArt et objets incorporés sont importés de façon simplifiée.');
   return makeElement('text', { ...box, text: textDoc(''), style: { fill: null, stroke: '#bfbfbf', strokeWidth: 1, anchor: 'middle', inset: 8, autofit: 'shrink', wrap: true, columns: 1, rotateText: 0 } });
+}
+
+// Trajectoire PowerPoint → effet Plume le plus proche (d'après la forme du chemin)
+function motionEffect(path) {
+  const nums = (path.match(/-?\d*\.?\d+(?:e-?\d+)?/gi) || []).map(Number);
+  const curved = /[cC]/.test(path), closed = /[zZ]\s*$/.test(path.trim());
+  if (curved && closed) return (path.match(/[cC]/g) || []).length > 2 ? 'pathLoop' : 'pathCircle';
+  if (curved) return 'pathArc';
+  if ((path.match(/[lL]/g) || []).length > 1) return 'pathZigzag';
+  const dx = nums[nums.length - 2] || 0, dy = nums[nums.length - 1] || 0;
+  if (Math.abs(dx) > 0.02 && Math.abs(dy) > 0.02) return 'pathDiag';
+  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? 'pathRight' : 'pathLeft';
+  return dy < 0 ? 'pathUp' : 'pathDown';
 }

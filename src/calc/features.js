@@ -15,7 +15,7 @@ import { shapeGeometry } from '../pres/render.js';
 import * as D from './dialogs.js';
 
 export const shift = shiftFormula;
-export function fmtNum(x, fmt) { return formatValue(parseFloat(x.toPrecision(12)), fmt || 'General').text; }
+export function fmtNum(x, fmt) { return formatValue(parseFloat(x.toPrecision(10)), fmt || 'General').text; }
 export function editTextOf(v) { if (v == null) return ''; if (isErr(v)) return v.err; if (typeof v === 'boolean') return v ? 'VRAI' : 'FAUX'; if (typeof v === 'number') return String(parseFloat(v.toPrecision(15))).replace('.', ','); return String(v); }
 const inRg = (rg, r, c) => r >= rg.r1 && r <= rg.r2 && c >= rg.c1 && c <= rg.c2;
 
@@ -443,12 +443,12 @@ export function chartData(app, o) {
   const hasHead = rows.length > 1 && cols.some((c) => typeof val(rows[0], c) === 'string');
   const hasLab = cols.length > 1 && rows.slice(hasHead ? 1 : 0).some((r) => typeof val(r, cols[0]) !== 'number');
   const dr = rows.slice(hasHead ? 1 : 0), dc = cols.slice(hasLab ? 1 : 0);
-  const num = (r, c) => { const v = val(r, c); return typeof v === 'number' ? v : 0; };
+  const num = (r, c) => { const v = val(r, c); return typeof v === 'number' ? parseFloat(v.toPrecision(12)) : 0; };
   const meta = rows.length === rg.r2 - rg.r1 + 1 && cols.length === rg.c2 - rg.c1 + 1 ? { rg, hasHead, hasLab, byRow: !!ch.byRow } : null;
   if (ch.byRow) return { meta, series: dr.map((r, i) => (hasLab ? txt(r, cols[0]) : 'Série ' + (i + 1))), cats: dc.map((c, i) => (hasHead ? txt(rows[0], c) : String(i + 1))), values: dr.map((r) => dc.map((c) => num(r, c))) };
   return { meta, series: dc.map((c, i) => (hasHead ? txt(rows[0], c) : 'Série ' + (i + 1))), cats: dr.map((r, i) => (hasLab ? txt(r, cols[0]) : String(i + 1))), values: dc.map((c) => dr.map((r) => num(r, c))) };
 }
-export const CHART_TYPES = [['column', 'Histogramme groupé', 'ChartColumn'], ['stacked', 'Histogramme empilé', 'ChartColumnStacked'], ['hbar', 'Barres', 'ChartBar'], ['line', 'Courbes', 'ChartLine'], ['area', 'Aires', 'ChartArea'], ['pie', 'Secteurs', 'ChartPie'], ['doughnut', 'Anneau', 'CircleDashed'], ['scatter', 'Nuage de points', 'ChartScatter']];
+export const CHART_TYPES = [['column', 'Histogramme groupé', 'ChartColumn'], ['stacked', 'Histogramme empilé', 'ChartColumnStacked'], ['hbar', 'Barres', 'ChartBar'], ['line', 'Courbes', 'ChartLine'], ['area', 'Aires', 'ChartArea'], ['pie', 'Secteurs', 'ChartPie'], ['doughnut', 'Anneau', 'CircleDashed'], ['scatter', 'Nuage de points', 'ChartScatter'], ['combo', 'Graphique combiné (colonnes + courbe)', 'ChartNoAxesCombined'], ['radar', 'Radar', 'Radar'], ['waterfall', 'Cascade', 'ChartColumnDecreasing'], ['funnel', 'Entonnoir', 'ChartBarDecreasing']];
 export const CHART_PALETTES = { Office: null, Bleu: ['#1f4e79', '#2e75b6', '#5b9bd5', '#9dc3e6', '#bdd7ee', '#deebf7'], Vert: ['#375623', '#548235', '#70ad47', '#a9d18e', '#c5e0b4', '#e2f0d9'], Chaud: ['#c00000', '#ed7d31', '#ffc000', '#f4b183', '#ffd966', '#843c0c'], Gris: ['#262626', '#595959', '#7f7f7f', '#a6a6a6', '#bfbfbf', '#d9d9d9'] };
 function fillObject(app, o, body) {
   body.innerHTML = '';
@@ -456,9 +456,10 @@ function fillObject(app, o, body) {
     const data = chartData(app, o);
     const pal = CHART_PALETTES[o.chart.palette] || app.wb.theme.colors.slice(4, 10);
     if (!data.values.length || !data.values[0].length) { body.appendChild(h('div.pc-obj-empty', icon('ChartColumn', 28), 'Sélectionnez des données pour ce graphique')); return; }
-    const svg = chartSvg(o.chart.type || 'column', data, { title: o.chart.title, legend: o.chart.legend !== false && (data.series.length > 1 || /pie|doughnut/.test(o.chart.type)), labels: !!o.chart.labels, pal, w: Math.round(o.w), h: Math.round(o.h) });
+    const svg = chartSvg(o.chart.type || 'column', data, { title: o.chart.title, legend: o.chart.legend !== false && !/waterfall|funnel/.test(o.chart.type) && (data.series.length > 1 || /pie|doughnut/.test(o.chart.type)), labels: !!o.chart.labels, pal, w: Math.round(o.w), h: Math.round(o.h) });
     body.innerHTML = svg.replace('<svg ', `<svg viewBox="0 0 ${Math.max(200, Math.round(o.w))} ${Math.max(140, Math.round(o.h))}" preserveAspectRatio="none" style="width:100%;height:100%;display:block" `);
-  } else if (o.kind === 'image') body.appendChild(h('img', { src: o.src, draggable: 'false', style: { width: '100%', height: '100%', display: 'block', objectFit: 'fill' } }));
+  } else if (o.kind === 'slicer') fillSlicer(app, o, body);
+  else if (o.kind === 'image') body.appendChild(h('img', { src: o.src, draggable: 'false', style: { width: '100%', height: '100%', display: 'block', objectFit: 'fill' } }));
   else if (o.kind === 'shape') {
     const sw = o.strokeW ?? 1.5;
     const geo = o.shape === 'rect' ? `<rect x="0" y="0" width="${o.w}" height="${o.h}"/>` : shapeGeometry(o.shape, o.w, o.h);
@@ -474,7 +475,7 @@ export function renderObject(app, o) {
   fillObject(app, o, body);
   const s = app.sheet;
   el.addEventListener('mousedown', (e) => {
-    if (e.button !== 0 || (e.target.isContentEditable)) return;
+    if (e.button !== 0 || (e.target.isContentEditable) || e.target.closest('[data-nodrag]')) return;
     e.preventDefault(); e.stopPropagation();
     if (app.edit) app.commitEdit();
     app.selObject = o.id;
@@ -509,7 +510,7 @@ export function renderObject(app, o) {
   el.addEventListener('dblclick', (e) => {
     e.stopPropagation();
     if (o.kind === 'chart') return D.chartDialog(app, o);
-    if (o.kind === 'image') return D.objectDialog(app, o);
+    if (o.kind === 'image' || o.kind === 'slicer') return D.objectDialog(app, o);
     const t = el.querySelector('.pc-obj-text') || body.appendChild(h('div.pc-obj-text', { style: { color: o.color || '#fff' } }, ''));
     t.contentEditable = 'true'; t.focus();
     document.getSelection().selectAllChildren(t);
@@ -540,7 +541,7 @@ export function addObject(app, o) {
   const ox = app.grid.xOfCol(0), oy = app.grid.yOfRow(0), z = s.zoom;
   const base = rc ? { x: (rc.x - ox) / z + (o.kind === 'chart' ? rc.w / z + 20 : 0), y: (rc.y - oy) / z + (o.kind === 'chart' ? 0 : 0) } : { x: 80, y: 40 };
   const obj = { id: uid('o'), x: Math.max(0, base.x), y: Math.max(0, base.y), w: 300, h: 200, ...o };
-  let n = 1; const kindName = { chart: 'Graphique', image: 'Image', shape: 'Forme', text: 'ZoneTexte' }[obj.kind]; while (s.objects.some((x) => x.name === `${kindName} ${n}`)) n++;
+  let n = 1; const kindName = { chart: 'Graphique', image: 'Image', shape: 'Forme', text: 'ZoneTexte', slicer: 'Segment' }[obj.kind]; while (s.objects.some((x) => x.name === `${kindName} ${n}`)) n++;
   obj.name = `${kindName} ${n}`;
   app.tx('Insérer un objet', (wb) => { wb.snapshot(s); s.objects.push(obj); });
   app.selObject = obj.id;
@@ -1015,3 +1016,103 @@ export function contextMenu(app, e, hit) {
   ]);
 }
 void prefs; void MAX_ROWS;
+
+// ── Segments (filtres visuels sur une colonne du filtre ou du tableau) ──
+function fillSlicer(app, o, body) {
+  const s = app.sheet, f = s.filter, wb = app.wb;
+  const box = h('div.pc-slicer', { 'data-nodrag': '1' });
+  const head = h('div.pc-slicer-head', { title: 'Faites glisser pour déplacer' }, h('b', o.title || 'Segment'));
+  head.removeAttribute('data-nodrag');
+  const wrap = h('div', { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--ui-panel, #fff)', border: '1px solid #a6a6a6' } });
+  if (!f || o.col < f.c1 || o.col > f.c2) { wrap.append(head, h('div.pc-obj-empty', 'Le filtre associé n’existe plus.')); body.appendChild(wrap); return; }
+  const vals = new Map();
+  for (let r = f.r1 + 1; r <= f.r2; r++) { const d = wb.display(s, r, o.col); const t = d ? d.text : ''; if (!vals.has(t)) vals.set(t, wb.value(s, r, o.col)); }
+  const list = [...vals.keys()].sort((a, b) => a.localeCompare(b, 'fr', { numeric: true }));
+  const cur = f.cols && f.cols[o.col] && f.cols[o.col].values;
+  const apply = (set) => app.tx('Segment', (w) => { w.snapshot(s); f.cols = { ...(f.cols || {}) }; if (!set || set.size >= list.length) delete f.cols[o.col]; else f.cols[o.col] = { values: set }; w.applyFilter(s); });
+  const clear = h('button.pc-slicer-clear', { type: 'button', title: 'Effacer le filtre', disabled: !cur, on: { click: () => apply(null) } }, icon('FilterX', 14));
+  head.appendChild(clear);
+  for (const t of list) {
+    const on = !cur || cur.has(t);
+    box.appendChild(h('button.pc-slicer-btn' + (on ? '.on' : ''), { type: 'button', title: 'Clic : ce seul élément · Ctrl+clic : ajouter ou retirer', on: { click: (e) => { let set; if (e.ctrlKey || e.metaKey) { set = new Set(cur || list); if (set.has(t)) set.delete(t); else set.add(t); if (!set.size) set = null; } else set = cur && cur.size === 1 && cur.has(t) ? null : new Set([t]); apply(set); } } }, t === '' ? '(vides)' : t));
+  }
+  clear.setAttribute('data-nodrag', '1');
+  wrap.append(head, box);
+  body.appendChild(wrap);
+}
+export function addSlicer(app, col) {
+  const s = app.sheet;
+  if (!s.filter) toggleFilter(app);
+  const f = s.filter;
+  if (!f || col < f.c1 || col > f.c2) return toast('Placez-vous dans un tableau ou une liste filtrée.', 'error');
+  const d = app.wb.display(s, f.r1, col);
+  return addObject(app, { kind: 'slicer', col, title: d ? d.text : colName(col), w: 170, h: 220 });
+}
+
+// ── Capture d'écran insérée comme image ──
+export async function screenshot(app) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) return toast('La capture d’écran n’est pas disponible dans ce navigateur.', 'error');
+  let stream;
+  try { stream = await navigator.mediaDevices.getDisplayMedia({ video: true }); } catch { return toast('Capture annulée'); }
+  const video = document.createElement('video');
+  video.srcObject = stream; await video.play();
+  await new Promise((r) => setTimeout(r, 350));
+  const c = document.createElement('canvas'); c.width = video.videoWidth; c.height = video.videoHeight;
+  c.getContext('2d').drawImage(video, 0, 0);
+  stream.getTracks().forEach((t) => t.stop());
+  insertImage(app, c.toDataURL('image/png'));
+}
+
+// ── Affichages personnalisés ──
+export function saveView(app, name) {
+  const s = app.sheet, wb = app.wb;
+  const v = { name, sheet: s.name, zoom: s.zoom, freeze: { ...s.freeze }, scroll: { ...s.scroll }, showGrid: s.showGrid, showHeaders: s.showHeaders, hiddenRows: [...s.hiddenRows], hiddenCols: [...s.hiddenCols], sel: { ...s.sel }, formulas: !!app.showFormulas };
+  wb.props = { ...wb.props, views: [...(wb.props.views || []).filter((x) => x.name !== name), v] };
+  app.markDirty();
+}
+export function showView(app, v) {
+  const s = app.wb.sheetByName(v.sheet);
+  if (!s) return toast('La feuille de cet affichage n’existe plus.', 'error');
+  app.tx('Affichage personnalisé', (wb) => { wb.snapshot(s); s.hiddenRows = new Set(v.hiddenRows || []); s.hiddenCols = new Set(v.hiddenCols || []); });
+  Object.assign(s, { zoom: v.zoom || 1, freeze: { ...v.freeze }, scroll: { ...v.scroll }, showGrid: v.showGrid !== false, showHeaders: v.showHeaders !== false, sel: { ...v.sel } });
+  app.showFormulas = !!v.formulas;
+  app.activateSheet(app.wb.sheets.indexOf(s));
+}
+
+// ── Tableaux croisés recommandés ──
+export function recommendedPivots(app) {
+  const s = app.sheet, rg = dataRange(app), wb = app.wb;
+  if (rg.r2 - rg.r1 < 2 || rg.c2 <= rg.c1) return [];
+  const head = (c) => { const d = wb.display(s, rg.r1, c); return d ? d.text : colName(c); };
+  const cats = [], nums = [];
+  for (let c = rg.c1; c <= rg.c2; c++) {
+    let n = 0, t = 0; const distinct = new Set();
+    for (let r = rg.r1 + 1; r <= Math.min(rg.r2, rg.r1 + 500); r++) { const v = wb.value(s, r, c); if (typeof v === 'number') n++; else if (v != null && v !== '') { t++; distinct.add(String(v)); } }
+    if (n > t) nums.push(c); else if (t && distinct.size <= Math.max(2, Math.min(40, (rg.r2 - rg.r1) * 0.7))) cats.push({ c, k: distinct.size });
+  }
+  cats.sort((a, b) => a.k - b.k);
+  const out = [];
+  const base = { sheet: s.name, range: rg, cols: [], filter: null };
+  for (const cat of cats.slice(0, 3)) {
+    if (nums.length) out.push({ label: `Somme de ${head(nums[nums.length - 1])} par ${head(cat.c)}`, cfg: { ...base, rows: [cat.c], values: [{ col: nums[nums.length - 1], agg: 'sum' }] } });
+    out.push({ label: `Nombre de lignes par ${head(cat.c)}`, cfg: { ...base, rows: [cat.c], values: [{ col: cat.c, agg: 'count' }] } });
+  }
+  if (cats.length >= 2 && nums.length) out.unshift({ label: `Somme de ${head(nums[nums.length - 1])} par ${head(cats[1].c)} et ${head(cats[0].c)} (en colonnes)`, cfg: { ...base, rows: [cats[1].c], cols: [cats[0].c], values: [{ col: nums[nums.length - 1], agg: 'sum' }] } });
+  if (cats.length && nums.length > 1) out.push({ label: `Moyenne de ${head(nums[0])} par ${head(cats[0].c)}`, cfg: { ...base, rows: [cats[0].c], values: [{ col: nums[0], agg: 'avg' }] } });
+  return out;
+}
+export function createPivot(app, cfg) {
+  let n = 1; while (app.wb.sheetByName('TCD' + n)) n++;
+  const target = app.addSheet('TCD' + n);
+  writePivot(app, target, cfg);
+  app.refresh();
+  return target;
+}
+// Graphique croisé dynamique : graphique lié à la zone du tableau croisé de la feuille
+export function pivotChart(app) {
+  const s = app.sheet;
+  if (!s.pivot || !s.pivot.size) { toast('Créez d’abord un tableau croisé dynamique (ou placez-vous sur sa feuille).'); return D.recommendedPivotsDialog(app); }
+  const at = s.pivot.at || { r: 0, c: 0 }, sz = s.pivot.size;
+  const last = at.r + sz.rows - 1 - (s.pivot.rows.length ? 1 : 0), lastC = at.c + sz.cols - 1 - (s.pivot.cols.length ? s.pivot.values.length : 0);
+  return addObject(app, { kind: 'chart', w: 480, h: 290, chart: { type: 'column', range: rangeStr(at.r, at.c, Math.max(at.r + 1, last), Math.max(at.c + 1, lastC)), sheet: s.name, title: 'Graphique croisé dynamique', legend: true, labels: false } });
+}

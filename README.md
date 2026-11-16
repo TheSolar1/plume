@@ -126,13 +126,23 @@ recherche de commandes (Alt+Q), plus de 60 raccourcis clavier façon Word
   pieds de page, numéros de diapositive.
 - **Mise en forme** : remplissage, contour, effets, alignement et répartition,
   repères d'alignement magnétiques, rotation, ordre, groupes, volet Sélection.
-- **Transitions et animations** : entrées, emphases, sorties, volet
-  Animations, minutage, déclenchement au clic ou automatique.
+- **Transitions et animations** : entrées, accentuations, sorties,
+  trajectoires (lignes, arc, cercle, zigzag, boucle), volet Animations,
+  minutage, déclenchement au clic ou automatique.
+- **Autres outils** : remplacement des polices, dictée vocale, zoom de
+  résumé (vignettes cliquables), enregistrement de l'écran, nouvelle fenêtre.
 - **Diaporama** : plein écran, mode Présentateur (notes, minuteur, diapositive
   suivante), pointeur laser, stylet, écran noir / blanc, diaporama personnalisé.
 - **Révision** : commentaires, vérificateur d'accessibilité.
 - **Fichiers** : `.pptx` relu par PowerPoint, Keynote, LibreOffice et Google
   Slides ; export PDF, images et page web autonome.
+
+### Limites connues de la Présentation
+
+- Pas de masque des diapositives modifiable (les thèmes et dispositions sont
+  fournis), pas de modèles 3D, pas de son de transition, pas d'export vidéo.
+- Pas de macros, pas de traduction intégrée, pas de travail simultané à
+  plusieurs sur le même fichier.
 
 ## Plume Tableur — fonctionnalités
 
@@ -161,12 +171,13 @@ recherche de commandes (Alt+Q), plus de 60 raccourcis clavier façon Word
   des doublons, conversion du texte en colonnes, remplissage instantané,
   sous-totaux, plan (grouper / dissocier), consolidation, import CSV / web.
 - **Analyse** : tableaux croisés dynamiques (lignes, colonnes, valeurs,
-  filtre, actualisation), valeur cible, gestionnaire de scénarios, table de
+  filtre, actualisation, propositions automatiques, graphique croisé), valeur cible, gestionnaire de scénarios, table de
   données, feuille de prévision, analyse rapide.
 - **Insertion** : graphiques (histogrammes groupés ou empilés, barres,
-  courbes, aires, secteurs, anneau, nuage de points), sparklines, images,
-  formes, zones de texte, icônes, liens hypertexte, commentaires avec
-  réponses, symboles.
+  courbes, aires, secteurs, anneau, nuage de points, combiné, radar,
+  cascade, entonnoir), sparklines, segments de filtrage, images, capture
+  d'écran, formes, zones de texte, icônes, liens hypertexte, commentaires
+  avec réponses, symboles.
 - **Audit** : antécédents / dépendants, affichage des formules, vérification
   des erreurs, évaluation de formule, fenêtre Espion.
 - **Mise en page et impression** : orientation, format, marges, échelle,
@@ -184,10 +195,30 @@ recherche de commandes (Alt+Q), plus de 60 raccourcis clavier façon Word
 - Les macros VBA ne sont pas exécutées (les `.xlsm` s'ouvrent sans macros).
 - Les tableaux croisés dynamiques sont créés et actualisés dans Plume ; dans
   le fichier `.xlsx` ils sont enregistrés sous forme de valeurs.
-- Les graphiques sont limités aux types listés ci-dessus (pas de 3D, radar,
-  boursier, cartes) ; les références structurées (`Tableau1[Colonne]`) et le
+- Les graphiques sont limités aux types listés ci-dessus (pas de 3D,
+  boursier, surface, cartes, compartimentage) ; cascade et entonnoir sont
+  enregistrés dans le `.xlsx` sous forme d'histogramme ou de barres, et les
+  segments ne sont conservés que dans la copie Plume du fichier ; les références structurées (`Tableau1[Colonne]`) et le
   modèle de données (Power Query / Power Pivot) ne sont pas pris en charge.
 - Pas de travail simultané à plusieurs sur le même classeur, pas de mode
   « groupe de travail » sur plusieurs feuilles, pas de fractionnement de la
   fenêtre.
+- Pas de Solveur, de fonction LAMBDA, de Power Query ni de types de données
+  en ligne (actions, géographie) ; pas d'image d'arrière-plan de feuille.
 - L'orthographe utilise le correcteur du navigateur.
+
+## Compatibilité vérifiée
+
+- Les fichiers `.docx`, `.pptx` et `.xlsx` produits par Plume sont contrôlés
+  (structure du paquet, relations, types de contenu) et relus par
+  LibreOffice, python-docx, python-pptx et openpyxl.
+- Les fichiers créés par ces mêmes outils s'ouvrent dans Plume : titres,
+  mise en forme, listes, tableaux, images, en-têtes, formules, formats de
+  nombres, fusions, mises en forme conditionnelles, validations, graphiques,
+  commentaires, notes du présentateur.
+- Navigateur de test : Chromium (ordinateur, tablette et téléphone émulés).
+  Le code est compilé pour Chrome 100+, Firefox 100+ et Safari 15+, mais
+  Firefox et Safari n'ont pas été testés ; sur téléphone les applications
+  se chargent mais l'interface est pensée pour un écran d'ordinateur ou de
+  tablette.
+- Microsoft Office n'a pas pu être utilisé pour ces tests.

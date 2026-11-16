@@ -215,7 +215,8 @@ function parseStyles(ctx, x) {
       font: rpr ? rprToFont(ctx, rpr) : {}, para: ppr ? pprToPara(ctx, ppr) : {},
     };
     const numPr = ppr && kid(ppr, 'numPr');
-    if (numPr) ctx.styleNum[id] = { numId: attr(kid(numPr, 'numId'), 'val'), ilvl: +(attr(kid(numPr, 'ilvl'), 'val') || 0) };
+    // indexé par l'identifiant Word d'origine : « List Bullet » et « List Number » partagent le même style Plume
+    if (numPr) ctx.styleNum[wid] = { numId: attr(kid(numPr, 'numId'), 'val'), ilvl: +(attr(kid(numPr, 'ilvl'), 'val') || 0) };
     imported.push(def);
   }
   // Remplacer nos styles par ceux du fichier (même id), ajouter les autres
@@ -516,7 +517,7 @@ async function parseParagraph(ctx, p) {
     if (ps) {
       const mapped = ctx.styleMap[attr(ps, 'val')];
       attrs.style = mapped || (mapped === null ? 'Normal' : attr(ps, 'val'));
-      if (ctx.styleNum[attrs.style]) res.numPr = { ...ctx.styleNum[attrs.style] };
+      if (ctx.styleNum[attr(ps, 'val')]) res.numPr = { ...ctx.styleNum[attr(ps, 'val')] };
     }
     Object.assign(attrs, pprToPara(ctx, ppr));
     delete attrs.outlineLevel;

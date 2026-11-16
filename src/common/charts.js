@@ -89,6 +89,25 @@ export function chartSvg(kind, { series, cats, values }, { title, legend, labels
     if (legend) series.forEach((name, i) => { s += `<rect x="${W - padR + 14}" y="${padT + i * 20}" width="12" height="12" fill="${pal[i % 6]}"/><text x="${W - padR + 32}" y="${padT + i * 20 + 10}" fill="#404040">${esc(name)}</text>`; });
     return s + '</svg>';
   }
+  if (kind === 'radar') {
+    // toile d'araignée : un axe par catégorie
+    const n = Math.max(3, cats.length), cx = padL + pw / 2, cy = padT + ph / 2 + 6, R = Math.min(pw, ph) / 2 - 12;
+    const top = Math.max(1, ...all);
+    const pt = (i, v) => { const a = -Math.PI / 2 + (i / n) * Math.PI * 2; const r = (Math.max(0, v) / top) * R; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
+    for (let k = 1; k <= 4; k++) s += `<polygon points="${Array.from({ length: n }, (_, i) => pt(i, (top * k) / 4).map((x) => x.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="#e0e0e0"/>`;
+    for (let i = 0; i < n; i++) { const [x, y] = pt(i, top); const [lx, ly] = pt(i, top * 1.13); s += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="#e0e0e0"/><text x="${lx.toFixed(1)}" y="${(ly + 4).toFixed(1)}" text-anchor="middle" fill="#595959">${esc(String(cats[i] ?? '').slice(0, 14))}</text>`; }
+    values.forEach((vals, si) => { const pts = Array.from({ length: n }, (_, i) => pt(i, vals[i] || 0).map((x) => x.toFixed(1)).join(',')).join(' '); s += `<polygon points="${pts}" fill="${pal[si % 6]}" fill-opacity=".18" stroke="${pal[si % 6]}" stroke-width="2.2"/>`; if (labels) vals.forEach((v, i) => { const [x, y] = pt(i, v); s += `<text x="${x.toFixed(1)}" y="${(y - 5).toFixed(1)}" text-anchor="middle" font-size="10" fill="#404040">${String(v).replace('.', ',')}</text>`; }); });
+    if (legend) series.forEach((name, i) => { s += `<rect x="${W - padR + 14}" y="${padT + i * 20}" width="12" height="12" fill="${pal[i % 6]}"/><text x="${W - padR + 32}" y="${padT + i * 20 + 10}" fill="#404040">${esc(name)}</text>`; });
+    return s + '</svg>';
+  }
+  if (kind === 'funnel') {
+    // entonnoir : barres centrées, de la plus large à la plus étroite
+    const v = values[0] || [], top = Math.max(1, ...v.map((x) => Math.abs(x))), nF = Math.max(1, v.length), bh = (H - padT - 16) / nF;
+    const cx = (W - (legend ? 0 : 0)) / 2 + 30, maxW = W - 200;
+    v.forEach((x, i) => { const bw = (Math.abs(x) / top) * maxW, y = padT + i * bh; s += `<rect x="${cx - bw / 2}" y="${y + 2}" width="${bw}" height="${Math.max(2, bh - 5)}" fill="${pal[i % 6]}"/><text x="${cx - maxW / 2 - 8}" y="${y + bh / 2 + 4}" text-anchor="end" fill="#595959">${esc(String(cats[i] ?? '').slice(0, 16))}</text><text x="${cx}" y="${y + bh / 2 + 4}" text-anchor="middle" fill="#fff" font-weight="700">${String(x).replace('.', ',')}</text>`; });
+    return s + '</svg>';
+  }
+  if (kind === 'waterfall') { let acc = 0; for (const v of values[0] || []) { acc += v; all.push(acc); } }
   if (kind === 'stacked') { const n0 = cats.length; for (let ci = 0; ci < n0; ci++) all.push(values.reduce((a, v) => a + Math.max(0, v[ci] || 0), 0)); }
   const max = Math.max(1, ...all), min = Math.min(0, ...all);
   const nice = (x) => { const p = Math.pow(10, Math.floor(Math.log10(x || 1))); return Math.ceil(x / p) * p; };
@@ -107,6 +126,15 @@ export function chartSvg(kind, { series, cats, values }, { title, legend, labels
       s += `<rect x="${x}" y="${Math.min(Y(v), Y(0))}" width="${bw - 2}" height="${Math.abs(Y(v) - Y(0))}" fill="${pal[si % 6]}"/>`;
       if (labels) s += `<text x="${x + bw / 2}" y="${Y(v) - 4}" text-anchor="middle" fill="#404040" font-size="10">${String(v).replace('.', ',')}</text>`;
     }));
+  } else if (kind === 'combo') {
+    // colonnes pour toutes les séries sauf la dernière, tracée en courbe
+    const cols = values.length > 1 ? values.slice(0, -1) : values, bw = (band * 0.7) / cols.length;
+    cols.forEach((vals, si) => vals.forEach((v, ci) => { const x = padL + ci * band + band * 0.15 + si * bw; s += `<rect x="${x}" y="${Math.min(Y(v), Y(0))}" width="${bw - 2}" height="${Math.abs(Y(v) - Y(0))}" fill="${pal[si % 6]}"/>`; if (labels) s += `<text x="${x + bw / 2}" y="${Y(v) - 4}" text-anchor="middle" fill="#404040" font-size="10">${String(v).replace('.', ',')}</text>`; }));
+    if (values.length > 1) { const li = values.length - 1, vals = values[li]; s += `<polyline points="${vals.map((v, ci) => `${padL + ci * band + band / 2},${Y(v)}`).join(' ')}" fill="none" stroke="${pal[li % 6]}" stroke-width="2.8"/>`; vals.forEach((v, ci) => { s += `<circle cx="${padL + ci * band + band / 2}" cy="${Y(v)}" r="4" fill="${pal[li % 6]}"/>`; }); }
+  } else if (kind === 'waterfall') {
+    // cascade : chaque barre part du cumul précédent ; vert = hausse, rouge = baisse
+    let acc = 0; const bw = band * 0.6;
+    (values[0] || []).forEach((v, ci) => { const a0 = acc; acc += v; const x = padL + ci * band + band * 0.2; s += `<rect x="${x}" y="${Math.min(Y(a0), Y(acc))}" width="${bw}" height="${Math.max(1, Math.abs(Y(a0) - Y(acc)))}" fill="${v >= 0 ? '#70ad47' : '#c0504d'}"/>`; if (ci < n - 1) s += `<line x1="${x + bw}" x2="${x + band}" y1="${Y(acc)}" y2="${Y(acc)}" stroke="#a6a6a6" stroke-dasharray="3 2"/>`; if (labels) s += `<text x="${x + bw / 2}" y="${Math.min(Y(a0), Y(acc)) - 4}" text-anchor="middle" fill="#404040" font-size="10">${String(v).replace('.', ',')}</text>`; });
   } else if (kind === 'stacked') {
     const bw = band * 0.6;
     for (let ci = 0; ci < n; ci++) { let acc = 0; values.forEach((vals, si) => { const v = Math.max(0, vals[ci] || 0); const x = padL + ci * band + band * 0.2; s += `<rect x="${x}" y="${Y(acc + v)}" width="${bw}" height="${Math.abs(Y(acc) - Y(acc + v))}" fill="${pal[si % 6]}"/>`; if (labels && v) s += `<text x="${x + bw / 2}" y="${(Y(acc) + Y(acc + v)) / 2 + 4}" text-anchor="middle" fill="#fff" font-size="10">${String(v).replace('.', ',')}</text>`; acc += v; }); }
