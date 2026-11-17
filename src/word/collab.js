@@ -6,7 +6,7 @@
 // modifications des autres sont récupérées par interrogation régulière
 // et fusionnées sans conflit (prosemirror-collab). Le serveur ne fait
 // que conserver une copie du document et la suite des modifications :
-// il fonctionne avec VEX (src/plume/collab.rs) ou avec `node serve.mjs`.
+// il fonctionne avec VEX (src/plume/collab.rs) ou avec le serveur de Plume (serveur/, en Rust).
 // ══════════════════════════════════════════════════════════════════
 import { collab, sendableSteps, receiveTransaction, getVersion } from 'prosemirror-collab';
 import { Step } from 'prosemirror-transform';
@@ -28,7 +28,7 @@ async function call(body) {
   return r.json();
 }
 const MESSAGES = {
-  noserver: 'La collaboration a besoin d’un serveur : ouvrez Plume depuis VEX, ou lancez « node serve.mjs » sur votre machine.',
+  noserver: 'La collaboration a besoin d’un serveur : ouvrez Plume depuis VEX, ou lancez le serveur de Plume (dossier « serveur »).',
   network: 'Serveur injoignable : vérifiez votre connexion.',
   auth: 'Connectez-vous à VEX pour collaborer sur un document.',
   gone: 'Cette session de collaboration n’existe plus.',

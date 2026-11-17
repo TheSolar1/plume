@@ -1161,6 +1161,14 @@ export class CalcApp {
   }
 
   // ── Fichiers ──
+  // Convertit le classeur en .xlsx tel qu'Excel le lira (sans la copie Plume), puis le relit.
+  async roundTripXlsx() {
+    const [{ exportXlsx }, { importXlsx }, { default: JSZip }] = await Promise.all([import('./xlsx-export.js'), import('./xlsx-import.js'), import('jszip')]);
+    const blob = await exportXlsx(this.toNative(), this.wb, { title: this.titleInput.value, author: this.user.name });
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    zip.remove('plume/workbook.json');
+    return importXlsx(await zip.generateAsync({ type: 'arraybuffer' }));
+  }
   toNative() { const j = this.wb.toJSON(); j.props = { ...j.props, title: this.titleInput.value }; j.nameLabels = this.nameLabels; return j; }
   loadNative(j, title) {
     if (this.edit) this.cancelEdit();

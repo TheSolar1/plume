@@ -12,15 +12,18 @@ navigateur + fichiers téléchargés).
 
 ## Utiliser
 
-Aucune installation côté serveur : ce sont des fichiers statiques. Le dossier
-`dist/` contient la version compilée, il suffit de servir le dépôt :
+Le dossier `dist/` contient la version compilée : il suffit de servir le
+dépôt. Plume a son propre petit serveur, écrit en Rust (dossier `serveur/`),
+qui sert les pages et relaie la collaboration en temps réel :
 
 ```sh
-node serve.mjs 8080        # puis http://localhost:8080/
+cargo run --release --manifest-path serveur/Cargo.toml -- 8080   # puis http://localhost:8080/
 ```
 
-N'importe quel serveur de fichiers statiques convient (nginx, Caddy, le
-serveur de VEX…).
+Une fois compilé, le programme est `serveur/target/release/plume-serveur`
+(`plume-serveur [port] [dossier]`). N'importe quel autre serveur de fichiers
+statiques convient aussi pour les pages (nginx, Caddy, VEX…) ; la
+collaboration, elle, a besoin de `plume-serveur` ou de VEX.
 
 ## Développer
 
@@ -120,7 +123,7 @@ navigateur.
 
 La collaboration a besoin d'un serveur qui relaie les modifications :
 
-- `node serve.mjs` le fait tout seul (aucune installation) ;
+- `plume-serveur` (dossier `serveur/`, en Rust) le fait tout seul ;
 - dans VEX, la route `/api/plume/collab` (fichier `src/plume/collab.rs`)
   joue le même rôle et exige d'être connecté à VEX.
 

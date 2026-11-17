@@ -12,7 +12,7 @@ window.plume = app;
 const params = new URLSearchParams(location.search);
 (async () => {
   const shared = params.get('collab');
-  if (shared) { try { await app.joinShared(shared); } catch (e) { const { toast } = await import('../common/ui.js'); toast({ noserver: 'La collaboration a besoin d’un serveur (VEX ou « node serve.mjs »).', auth: 'Connectez-vous à VEX pour ouvrir ce document partagé.', gone: 'Cette session de collaboration n’existe plus.' }[e.message] || 'Impossible de rejoindre le document partagé.', 'error', 8000); } app.focus(); return; }
+  if (shared) { try { await app.joinShared(shared); } catch (e) { const { toast } = await import('../common/ui.js'); toast({ noserver: 'La collaboration a besoin d’un serveur (VEX ou le serveur de Plume).', auth: 'Connectez-vous à VEX pour ouvrir ce document partagé.', gone: 'Cette session de collaboration n’existe plus.' }[e.message] || 'Impossible de rejoindre le document partagé.', 'error', 8000); } app.focus(); return; }
   const id = params.get('doc');
   if (id) { await app.openLocal(id); return; }
   if (params.get('new') == null) {
