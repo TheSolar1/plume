@@ -12,6 +12,7 @@ import { Workbook, Sheet, MAX_COLS, MAX_ROWS, keyOf } from './model.js';
 import { parseRange, parse, shiftFormula, E, rangeStr, addr, toLocal } from './formula.js';
 import { BUILTIN } from './format.js';
 import { hashString } from './xlsx-export.js';
+import { CHART_PALETTES } from './features.js';
 
 const all = (n, local) => (n ? [...n.getElementsByTagNameNS('*', local)] : []);
 const one = (n, local) => (n ? n.getElementsByTagNameNS('*', local)[0] || null : null);
@@ -86,7 +87,7 @@ export async function importXlsx(buf) {
     if (at(x, 'quotePrefix') === '1') st.quote = true;
     return Object.keys(st).length ? st : null;
   });
-  const dxfs = kids(one(styleDoc, 'dxfs'), 'dxf').map((d) => { const o = {}; const f = fontOf(kid(d, 'font')); if (f.b) o.b = true; if (f.i) o.i = true; if (f.color) o.color = f.color; const p = one(kid(d, 'fill'), 'patternFill'); const c = p && (color(kid(p, 'bgColor')) || color(kid(p, 'fgColor'))); if (c) o.fill = c; return o; });
+  const dxfs = kids(one(styleDoc, 'dxfs'), 'dxf').map((d) => { const o = {}; const f = fontOf(kid(d, 'font')); if (f.b) o.b = true; if (f.i) o.i = true; if (f.u) o.u = true; if (f.strike) o.strike = true; if (f.color) o.color = f.color; const p = one(kid(d, 'fill'), 'patternFill'); const c = p && (color(kid(p, 'bgColor')) || color(kid(p, 'fgColor'))); if (c) o.fill = c; return o; });
 
   const wb = new Workbook();
   wb.sheets = [];
@@ -97,6 +98,10 @@ export async function importXlsx(buf) {
   const px = (s, c) => s.colWidth(c), py = (s, r) => s.rowHeight(r);
   const posOf = (s, el) => { if (!el) return { x: 0, y: 0 }; const c = +one(el, 'col').textContent, r = +one(el, 'row').textContent; let x = 0, y = 0; for (let i = 0; i < c; i++) x += px(s, i); for (let i = 0; i < r; i++) y += py(s, i); return { x: x + (+one(el, 'colOff').textContent || 0) / 9525, y: y + (+one(el, 'rowOff').textContent || 0) / 9525 }; };
 
+  // auteurs des fils de commentaires (Excel 365)
+  const personName = new Map();
+  const ps0 = await read('xl/persons/person.xml');
+  if (ps0) for (const pe of all(xml(ps0), 'person')) personName.set(at(pe, 'id'), at(pe, 'displayName'));
   for (let si = 0; si < sheetEls.length; si++) {
     const el = sheetEls[si], path = sheetPaths[si];
     const s = new Sheet(at(el, 'name') || 'Feuil' + (si + 1));
@@ -111,16 +116,19 @@ export async function importXlsx(buf) {
     const tc = one(kid(root, 'sheetPr'), 'tabColor'); if (tc) s.tabColor = color(tc);
     const sv = one(kid(root, 'sheetViews'), 'sheetView');
     if (sv) { if (at(sv, 'showGridLines') === '0') s.showGrid = false; if (at(sv, 'showRowColHeaders') === '0') s.showHeaders = false; if (at(sv, 'zoomScale')) s.zoom = Math.max(0.1, Math.min(4, +at(sv, 'zoomScale') / 100)); const pane = kid(sv, 'pane'); if (pane && /frozen/.test(at(pane, 'state', ''))) { s.freeze = { r: Math.round(+at(pane, 'ySplit', 0)), c: Math.round(+at(pane, 'xSplit', 0)) }; s.scroll = { ...s.freeze }; } if (at(sv, 'tabSelected') === '1') wb.active = si; }
+    const rowLvl = new Map(), colLvl = new Map();
     const sfp = kid(root, 'sheetFormatPr');
     const defW = sfp && at(sfp, 'defaultColWidth') ? Math.round(+at(sfp, 'defaultColWidth') * 7 + 5) : null;
-    for (const c of all(kid(root, 'cols'), 'col')) { const a = +at(c, 'min') - 1, b = Math.min(+at(c, 'max') - 1, a + 300), w = Math.round(+at(c, 'width', 9) * 7 + 5); const st = at(c, 'style') ? xfs[+at(c, 'style')] : null; for (let i = a; i <= b; i++) { if (at(c, 'customWidth') === '1' || at(c, 'width')) s.colW.set(i, w); if (at(c, 'hidden') === '1') s.hiddenCols.add(i); } void st; }
+    for (const c of all(kid(root, 'cols'), 'col')) { const a = +at(c, 'min') - 1, b = Math.min(+at(c, 'max') - 1, a + 300), w = Math.round(+at(c, 'width', 9) * 7 + 5); const st = at(c, 'style') ? xfs[+at(c, 'style')] : null; for (let i = a; i <= b; i++) { if (at(c, 'customWidth') === '1' || (at(c, 'width') && at(c, 'hidden') !== '1' && !at(c, 'outlineLevel'))) s.colW.set(i, w); if (at(c, 'hidden') === '1') s.hiddenCols.add(i); if (+at(c, 'outlineLevel', 0)) colLvl.set(i, +at(c, 'outlineLevel')); } void st; }
     void defW;
     // cellules
     const shared = new Map();
+    const spills = []; // zones de propagation des formules matricielles dynamiques
     for (const row of all(kid(root, 'sheetData'), 'row')) {
       const r = +at(row, 'r') - 1;
       if (at(row, 'ht') && (at(row, 'customHeight') === '1' || +at(row, 'ht') !== 15)) { s.rowH.set(r, Math.round(+at(row, 'ht') / 0.75)); if (at(row, 'customHeight') === '1') (s.manualH || (s.manualH = new Set())).add(r); }
       if (at(row, 'hidden') === '1') s.hiddenRows.add(r);
+      if (+at(row, 'outlineLevel', 0)) rowLvl.set(r, +at(row, 'outlineLevel'));
       let ci = 0;
       for (const c of row.children) {
         if (c.localName !== 'c') continue;
@@ -140,8 +148,11 @@ export async function importXlsx(buf) {
         else if (t === 'e') v = ERR[raw] || E.VALUE;
         else if (raw != null && raw !== '') { v = Number(raw); if (!isFinite(v)) v = raw; }
         const cell = {};
+        // valeur propagée par une formule matricielle voisine : recalculée par Plume, pas une saisie
+        if (!fEl && !st && spills.some((z) => r >= z.r1 && r <= z.r2 && col >= z.c1 && col <= z.c2 && !(r === z.r1 && col === z.c1))) continue;
         if (fEl) {
           let f = fEl.textContent;
+          if (at(fEl, 't') === 'array' && at(fEl, 'ref')) { const z = parseRange(at(fEl, 'ref')); if (z) spills.push(z); }
           if (at(fEl, 't') === 'shared') { const id = at(fEl, 'si'); if (f) shared.set(id, { f: unx(f), r, c: col }); else { const m = shared.get(id); if (m) { try { f = shiftFormula(m.f, r - m.r, col - m.c); } catch { f = ''; } } } }
           const cf = f ? clean(f) : null;
           if (cf != null) cell.f = cf; else { if (f) badFormulas++; if (v != null) cell.v = v; }
@@ -150,8 +161,11 @@ export async function importXlsx(buf) {
         if (cell.f != null || cell.v != null || cell.s) s.cells.set(keyOf(r, col), cell);
       }
     }
+    const runs = (lv) => { const out = [], maxL = Math.max(0, ...lv.values()); for (let L = 1; L <= maxL; L++) { const idx = [...lv.keys()].filter((i) => lv.get(i) >= L).sort((a, b) => a - b); let a0 = null, prev = null; for (const i of idx) { if (a0 == null) a0 = i; else if (i !== prev + 1) { out.push({ a: a0, b: prev }); a0 = i; } prev = i; } if (a0 != null) out.push({ a: a0, b: prev }); } return out; };
+    if (rowLvl.size || colLvl.size) s.groups = { rows: runs(rowLvl), cols: runs(colLvl) };
     for (const m of all(kid(root, 'mergeCells'), 'mergeCell')) { const rg = parseRange(at(m, 'ref')); if (rg && (rg.r1 !== rg.r2 || rg.c1 !== rg.c2)) s.merges.push(rg); }
-    if (kid(root, 'sheetProtection') && at(kid(root, 'sheetProtection'), 'sheet') === '1') s.protected = true;
+    const sp0 = kid(root, 'sheetProtection');
+    if (sp0 && at(sp0, 'sheet') === '1') { s.protected = true; if (at(sp0, 'password')) s.password = 'xlhash:' + at(sp0, 'password').toUpperCase(); }
     // filtre
     const readFilter = (af) => {
       const rg = parseRange(at(af, 'ref')); if (!rg) return null;
@@ -172,7 +186,7 @@ export async function importXlsx(buf) {
         const type = at(r, 'type'), fmt = at(r, 'dxfId') != null ? dxfs[+at(r, 'dxfId')] || {} : {};
         const fs = kids(r, 'formula').map((x) => x.textContent);
         const opd = (x) => (x == null ? '' : /^-?\d+(\.\d+)?$/.test(x) ? x.replace('.', ',') : /^".*"$/.test(x) ? x.slice(1, -1).replace(/""/g, '"') : '=' + safeLocal(unx(x)));
-        const rule = { id: 'cf' + s.cf.length + '_' + si, range: rg, fmt };
+        const rule = { id: 'cf' + s.cf.length + '_' + si, range: rg, fmt, __prio: +at(r, 'priority', 0) };
         if (type === 'cellIs') Object.assign(rule, { type: 'cell', op: { greaterThan: 'gt', lessThan: 'lt', greaterThanOrEqual: 'ge', lessThanOrEqual: 'le', equal: 'eq', notEqual: 'ne', between: 'between', notBetween: 'notBetween' }[at(r, 'operator')] || 'eq', v1: opd(fs[0]), v2: opd(fs[1]) });
         else if (/containsText|beginsWith|endsWith/i.test(type)) Object.assign(rule, { type: 'text', op: { containsText: 'contains', notContainsText: 'notContains', beginsWith: 'begins', endsWith: 'ends' }[type], text: at(r, 'text') || '' });
         else if (type === 'timePeriod') Object.assign(rule, { type: 'date', op: { today: 'today', yesterday: 'yesterday', tomorrow: 'tomorrow', last7Days: 'last7', thisMonth: 'thisMonth' }[at(r, 'timePeriod')] || 'today' });
@@ -188,18 +202,27 @@ export async function importXlsx(buf) {
         s.cf.push(rule);
       }
     }
+    // règles de l'extension Excel 2010 (3 étoiles…)
+    for (const xc of all(kid(root, 'extLst'), 'conditionalFormatting')) {
+      const sq = all(xc, 'sqref')[0]; const rg = sq && parseRange(sq.textContent.split(' ')[0]); if (!rg) continue;
+      for (const r of all(xc, 'cfRule')) { if (at(r, 'type') !== 'iconSet') continue; const is = all(r, 'iconSet')[0]; s.cf.push({ id: 'cf' + s.cf.length + '_' + si, range: rg, type: 'icons', icons: ICON_KEYS[at(is, 'iconSet', '3Stars')] || 'stars3', reverse: at(is, 'reverse') === '1', __prio: +at(r, 'priority', 0) }); }
+    }
+    s.cf.sort((a, b) => (a.__prio || 0) - (b.__prio || 0)).forEach((x) => { delete x.__prio; if (x.reverse === false) delete x.reverse; });
     // validations
     for (const d of all(kid(root, 'dataValidations'), 'dataValidation')) {
-      const type = at(d, 'type', 'any'); if (type === 'any') continue;
+      const type = at(d, 'type', 'any') === 'textLength' ? 'length' : at(d, 'type', 'any'); if (type === 'any') continue;
       const f1 = kid(d, 'formula1') ? kid(d, 'formula1').textContent : '', f2 = kid(d, 'formula2') ? kid(d, 'formula2').textContent : '';
-      const opd = (x) => (/^-?\d+(\.\d+)?$/.test(x) ? x.replace('.', ',') : /^".*"$/.test(x) ? x.slice(1, -1) : x ? '=' + safeLocal(unx(x)) : '');
-      for (const part of (at(d, 'sqref') || '').split(' ')) { const rg = parseRange(part); if (!rg) continue; s.dv.push({ range: rg, type, op: { between: 'between', notBetween: 'notBetween', equal: 'eq', notEqual: 'ne', greaterThan: 'gt', lessThan: 'lt', greaterThanOrEqual: 'ge', lessThanOrEqual: 'le' }[at(d, 'operator', 'between')], v1: type === 'custom' ? '=' + safeLocal(unx(f1)) : opd(f1), v2: opd(f2), list: type === 'list' ? (/^".*"$/.test(f1) ? f1.slice(1, -1).split(',').map((x) => x.trim()).join(';') : '=' + f1) : '', allowBlank: at(d, 'allowBlank') === '1', alert: { warning: 'warning', information: 'info' }[at(d, 'errorStyle')] || 'stop', errTitle: at(d, 'errorTitle') || '', errMsg: at(d, 'error') || '', inTitle: at(d, 'promptTitle') || '', inMsg: at(d, 'prompt') || '' }); }
+      const pad = (n) => String(n).padStart(2, '0');
+      const asDate = (n) => { const d = new Date(Math.round((n - 25569) * 864e5)); return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`; };
+      const asTime = (n) => { const m = Math.round((n % 1) * 1440); return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; };
+      const opd = (x) => (/^-?\d+(\.\d+)?$/.test(x) ? (type === 'date' ? asDate(+x) : type === 'time' ? asTime(+x) : x.replace('.', ',')) : /^".*"$/.test(x) ? x.slice(1, -1) : x ? '=' + safeLocal(unx(x)) : '');
+      for (const part of (at(d, 'sqref') || '').split(' ')) { const rg = parseRange(part); if (!rg) continue; s.dv.push({ range: rg, type, op: { between: 'between', notBetween: 'notBetween', equal: 'eq', notEqual: 'ne', greaterThan: 'gt', lessThan: 'lt', greaterThanOrEqual: 'ge', lessThanOrEqual: 'le' }[at(d, 'operator', 'between')], v1: type === 'custom' ? '=' + safeLocal(unx(f1)) : type === 'list' ? '' : opd(f1), v2: opd(f2), list: type === 'list' ? (/^".*"$/.test(f1) ? f1.slice(1, -1).split(',').map((x) => x.trim()).join(';') : '=' + f1) : '', allowBlank: at(d, 'allowBlank') === '1', alert: { warning: 'warning', information: 'info' }[at(d, 'errorStyle')] || 'stop', errTitle: at(d, 'errorTitle') || '', errMsg: at(d, 'error') || '', inTitle: at(d, 'promptTitle') || '', inMsg: at(d, 'prompt') || '' }); }
     }
     // liens
     for (const hl of all(kid(root, 'hyperlinks'), 'hyperlink')) { const rg = parseRange(at(hl, 'ref')); if (!rg) continue; const rel = sRels.get(ridOf(hl)); const link = rel ? rel.target : at(hl, 'location') ? '#' + at(hl, 'location') : null; if (!link) continue; const k = keyOf(rg.r1, rg.c1); const cell = s.cells.get(k) || {}; s.cells.set(k, { ...cell, s: { ...(cell.s || {}), link } }); }
     // mise en page
     const pm = kid(root, 'pageMargins'), pset = kid(root, 'pageSetup'), po = kid(root, 'printOptions'), hf = kid(root, 'headerFooter');
-    if (pm) { const mv = Math.round(+at(pm, 'top', 0.75) * 96), mh = Math.round(+at(pm, 'left', 0.7) * 96); s.pageSetup.margins = mv === 72 && mh === 67 ? 'normal' : [mv, mh]; }
+    if (pm) { const mv = Math.round(+at(pm, 'top', 0.75) * 96), mh = Math.round(+at(pm, 'left', 0.7) * 96); s.pageSetup.margins = mv === 72 && mh === 67 ? 'normal' : mv === 96 && mh === 96 ? 'wide' : mv === 48 && mh === 24 ? 'narrow' : [mv, mh]; }
     if (pset) { if (at(pset, 'orientation') === 'landscape') s.pageSetup.orientation = 'landscape'; s.pageSetup.size = { 9: 'A4', 8: 'A3', 11: 'A5', 1: 'Letter', 5: 'Legal' }[at(pset, 'paperSize', '9')] || 'A4'; if (at(pset, 'scale')) s.pageSetup.scale = +at(pset, 'scale'); if (at(pset, 'fitToHeight') === '0' || one(kid(root, 'sheetPr'), 'pageSetUpPr')) s.pageSetup.fitWidth = !!one(kid(root, 'sheetPr'), 'pageSetUpPr'); }
     if (po) { s.pageSetup.gridlines = at(po, 'gridLines') === '1'; s.pageSetup.headings = at(po, 'headings') === '1'; s.pageSetup.center = at(po, 'horizontalCentered') === '1'; }
     if (hf) { const cl = (t) => (t || '').replace(/&[LCR]/g, ' ').replace(/&"[^"]*"|&\d+/g, '').trim(); s.pageSetup.header = cl(kid(hf, 'oddHeader') && kid(hf, 'oddHeader').textContent); s.pageSetup.footer = cl(kid(hf, 'oddFooter') && kid(hf, 'oddFooter').textContent); }
@@ -215,10 +238,22 @@ export async function importXlsx(buf) {
     // lignes masquées par le filtre
     if (s.filter) { for (const r of [...s.hiddenRows]) if (r > s.filter.r1 && r <= s.filter.r2) { s.hiddenRows.delete(r); s.filterHidden.add(r); } }
     // commentaires
-    for (const rel of sRels.values()) if (rel.type === 'comments') {
+    const threaded = [...sRels.values()].find((r) => r.type === 'threadedComment');
+    const tcs = threaded && (await read(threaded.target));
+    if (tcs) {
+      const td = xml(tcs), byId = new Map();
+      for (const t of all(td, 'threadedComment')) {
+        const rg = parseRange(at(t, 'ref')); if (!rg) continue;
+        const item = { author: personName.get(at(t, 'personId')) || 'Auteur', text: (one(t, 'text') || {}).textContent || '', date: at(t, 'dT') ? Date.parse(at(t, 'dT') + (/Z|[+-]\d\d:?\d\d$/.test(at(t, 'dT')) ? '' : 'Z')) : undefined };
+        const parent = at(t, 'parentId') && byId.get(at(t, 'parentId'));
+        if (parent) (parent.replies || (parent.replies = [])).push(item);
+        else { byId.set(at(t, 'id'), item); s.comments.set(keyOf(rg.r1, rg.c1), item); }
+      }
+    }
+    for (const rel of sRels.values()) if (rel.type === 'comments' && !tcs) {
       const cs = await read(rel.target); if (!cs) continue;
       const cd = xml(cs); const authors = all(one(cd, 'authors'), 'author').map((a) => a.textContent);
-      for (const c of all(cd, 'comment')) { const rg = parseRange(at(c, 'ref')); if (!rg) continue; const author = authors[+at(c, 'authorId', 0)] || ''; let t = siText(kid(c, 'text')); if (author && t.startsWith(author)) t = t.slice(author.length).replace(/^\s*:\s*\n?/, ''); s.comments.set(keyOf(rg.r1, rg.c1), { author: author || 'Auteur', text: t.trim() }); }
+      for (const c of all(cd, 'comment')) { const rg = parseRange(at(c, 'ref')); if (!rg) continue; const author = authors[+at(c, 'authorId', 0)] || ''; let t = siText(kid(c, 'text')); let au = author; const hm = /^([^\n]{1,60}?)\s*:\s*\n/.exec(t); if (hm) { au = hm[1]; t = t.slice(hm[0].length); } const lines = t.split('\n'); const replies = []; while (lines.length > 1 && /^↳ /.test(lines[lines.length - 1])) { const m = /^↳ (.*?) : ([\s\S]*)$/.exec(lines.pop()); if (m) replies.unshift({ author: m[1], text: m[2] }); } const item = { author: au || 'Auteur', text: lines.join('\n').trim() }; if (replies.length) item.replies = replies; s.comments.set(keyOf(rg.r1, rg.c1), item); }
     }
     // dessins : graphiques, images, formes
     const dEl = kid(root, 'drawing');
@@ -254,8 +289,9 @@ export async function importXlsx(buf) {
           const rPr = one(kid(sp, 'txBody'), 'rPr');
           const isBox = at(one(sp, 'cNvSpPr'), 'txBox') === '1';
           const o = { ...base, kind: isBox ? 'text' : 'shape', shape: REV_PRST[at(geom, 'prst', 'rect')] || 'rect', fill: kid(spPr, 'noFill') ? 'none' : solid(spPr) || (isBox ? '#ffffff' : '#4472c4'), stroke: ln && kid(ln, 'noFill') ? 'none' : (ln && solid(ln)) || (isBox ? '#7f7f7f' : '#2f5597'), text: txt };
-          if (ln && at(ln, 'w')) o.strokeW = +at(ln, 'w') / 9525;
-          if (rPr) { if (at(rPr, 'sz')) o.size = +at(rPr, 'sz') / 75; const c = solid(rPr); if (c) o.color = c; }
+          if (ln && at(ln, 'w') && Math.abs(+at(ln, 'w') / 9525 - 1.5) > 0.01) o.strokeW = Math.round((+at(ln, 'w') / 9525) * 100) / 100;
+          if (rPr) { if (at(rPr, 'sz') && +at(rPr, 'sz') !== 1050) o.size = +at(rPr, 'sz') / 75; const c = solid(rPr); if (c) o.color = c; }
+          if (isBox) delete o.shape;
           s.objects.push(o);
         }
       }
@@ -278,7 +314,9 @@ export async function importXlsx(buf) {
   const calc = kid(wbDoc.documentElement, 'calcPr'); if (calc && at(calc, 'calcMode') === 'manual') wb.calcMode = 'manual';
   if (kid(wbDoc.documentElement, 'workbookProtection')) wb.props.locked = true;
   const core = await read('docProps/core.xml');
-  if (core) { const cd = xml(core); const t = one(cd, 'title'); if (t && t.textContent) wb.props.title = t.textContent; const cr = one(cd, 'creator'); if (cr) wb.props.author = cr.textContent; }
+  if (core) { const cd = xml(core); const t = one(cd, 'title'); if (t && t.textContent) wb.props.title = t.textContent; for (const [tag, k] of [['creator', 'author'], ['subject', 'subject'], ['keywords', 'keywords'], ['description', 'description'], ['category', 'category'], ['created', 'created']]) { const e = one(cd, tag); if (e && e.textContent) wb.props[k] = e.textContent; } }
+  const appx = await read('docProps/app.xml');
+  if (appx) { const co = one(xml(appx), 'Company'); if (co && co.textContent) wb.props.company = co.textContent; }
   if (badFormulas) warnings.push(`${badFormulas} formule(s) non prise(s) en charge ont été remplacée(s) par leur dernière valeur calculée.`);
   if (zip.file('xl/vbaProject.bin')) warnings.push('Ce classeur contient des macros : elles sont ignorées.');
   if (Object.keys(zip.files).some((p) => /^xl\/pivotTables\//.test(p))) warnings.push('Les tableaux croisés dynamiques sont importés sous forme de valeurs.');
@@ -309,6 +347,19 @@ function readChart(doc, sheetName) {
   if (!rg) return null;
   const tEl = kid(one(doc, 'chart'), 'title');
   const title = tEl ? all(tEl, 't').map((t) => t.textContent).join('') : '';
-  return { type, range: rangeStr(rg.r1, rg.c1, rg.r2, rg.c2), sheet, title, legend: !!one(doc, 'legend'), labels: all(el, 'showVal').some((x) => at(x, 'val') === '1') || all(el, 'showPercent').some((x) => at(x, 'val') === '1'), byRow };
+  const ext = all(doc, 'ext').map((e) => at(e, 'uri') || '').find((u) => /PLUM/.test(u));
+  if (ext) type = /A1}$/.test(ext) ? 'waterfall' : 'funnel';
+  const out = { type, range: rangeStr(rg.r1, rg.c1, rg.r2, rg.c2), sheet, title, legend: !!one(doc, 'legend'), labels: all(el, 'showVal').some((x) => at(x, 'val') === '1') || all(el, 'showPercent').some((x) => at(x, 'val') === '1'), byRow };
+  // titres d'axes
+  const axTitle = (ax) => { const t = ax && kid(ax, 'title'); return t ? all(t, 't').map((x) => x.textContent).join('') : ''; };
+  const axes = [...plot.children].filter((c) => /Ax$/.test(c.localName));
+  const xAx = axes.find((a) => ['b', 't'].includes(at(kid(a, 'axPos'), 'val'))) , yAx = axes.find((a) => ['l', 'r'].includes(at(kid(a, 'axPos'), 'val')));
+  const horiz = type === 'hbar' || type === 'funnel';
+  const xt = axTitle(horiz ? yAx : xAx), yt = axTitle(horiz ? xAx : yAx);
+  if (xt) out.xTitle = xt; if (yt) out.yTitle = yt;
+  // palette : couleurs des séries (ou des secteurs)
+  const cols = (type === 'pie' || type === 'doughnut' ? all(sers[0], 'dPt').map((d) => one(d, 'srgbClr')) : sers.map((sr) => one(kid(sr, 'spPr') || sr, 'srgbClr'))).filter(Boolean).map((c) => '#' + at(c, 'val').toLowerCase());
+  if (cols.length) { const pal = Object.entries(CHART_PALETTES).find(([, p]) => p && cols.every((c, i) => p[i % p.length].toLowerCase() === c)); if (pal) out.palette = pal[0]; }
+  return out;
 }
 void MAX_COLS; void MAX_ROWS; void addr;

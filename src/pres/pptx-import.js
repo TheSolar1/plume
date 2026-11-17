@@ -73,7 +73,7 @@ export async function importPptx(buf) {
   const showPr = pp && pp.getElementsByTagNameNS(P, 'showPr')[0];
   return {
     version: 1, size: { w: W, h: H, name: sizeName }, theme, slides: slides.length ? slides : [], footer: { slideNumber: false, date: false, text: '', ...(ctx.footer || {}) },
-    props: { title, created: new Date().toISOString() }, sections: [], warnings: [...warnings],
+    props: { title, created: core && core.getElementsByTagNameNS('http://purl.org/dc/terms/', 'created')[0] ? core.getElementsByTagNameNS('http://purl.org/dc/terms/', 'created')[0].textContent : new Date().toISOString() }, sections: [], warnings: [...warnings],
     showSetup: showPr ? { loop: showPr.getAttribute('loop') === '1', kiosk: !!kid(showPr, 'kiosk', P) } : undefined,
   };
 }
@@ -123,6 +123,17 @@ function colorOf(el, theme) {
     if (m.localName === 'tint') { r = 255 - (255 - r) * v; g = 255 - (255 - g) * v; b = 255 - (255 - b) * v; }
   }
   return '#' + [r, g, b].map((x) => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0')).join('');
+}
+// Comme colorOf, mais rend les couleurs du thème sous forme de jetons Plume (« text », « muted », « accent1 »…)
+function tokenOf(el, theme) {
+  const c = el && [...el.children].find((x) => /Clr$/.test(x.localName));
+  if (c && c.localName === 'schemeClr') {
+    const v = c.getAttribute('val'), mods = [...c.children].map((m) => m.localName + ':' + m.getAttribute('val')).join(',');
+    const dk1 = String(theme.colors[1]).toLowerCase();
+    if ((v === 'tx1' || v === 'dk1') && String(theme.text).toLowerCase() === dk1) { if (!mods) return 'text'; if (mods === 'lumMod:55000,lumOff:45000') return 'muted'; }
+    if (/^accent[1-6]$/.test(v) && !mods) return v;
+  }
+  return colorOf(el, theme);
 }
 function alphaOf(el) {
   const c = el && [...el.children].find((x) => /Clr$/.test(x.localName));
@@ -197,6 +208,7 @@ async function placeholderMap(ctx, path) {
     const b1 = desc(kid(ts, 'bodyStyle', P), 'defRPr', A); if (b1 && b1.getAttribute('sz')) out.sizes.body = +b1.getAttribute('sz') / 100;
   }
   out.bg = x.getElementsByTagNameNS(P, 'bg')[0] || null;
+  for (const cnv of x.getElementsByTagNameNS(P, 'cNvPr')) if (cnv.getAttribute('name') === 'Plume:accentBar') { const sp = cnv.parentNode.parentNode; const c = colorOf(sp.getElementsByTagNameNS(A, 'solidFill')[0], ctx.theme); if (c) ctx.theme.accentBar = c; }
   out.bgRels = await ctx.relsOf(path);
   return out;
 }
@@ -225,9 +237,12 @@ async function parseSlide(ctx, path) {
   const tree = kid(cSld, 'spTree', P);
   await walkTree(ctx, tree, rels, { layout, master }, elements, spIdMap, { ox: 0, oy: 0, sx: 1, sy: 1 });
   // arrière-plan
+  // l'arrière-plan du masque devient celui du thème ; une diapositive ne garde que le sien
+  if (master.bg && !ctx.masterBgDone) { ctx.masterBgDone = true; const mb = await bgOf(ctx, master.bg, master.bgRels); if (mb && mb.type !== 'image') ctx.theme.bg = mb; else if (mb) ctx.masterBg = mb; }
   let background = await bgOf(ctx, kid(cSld, 'bg', P), rels);
   if (!background && layout.bg) background = await bgOf(ctx, layout.bg, layout.bgRels);
-  if (!background && master.bg) background = await bgOf(ctx, master.bg, master.bgRels);
+  if (!background && ctx.masterBg) background = ctx.masterBg;
+  if (root.getAttribute('showMasterSp') === '0') background = { ...(background || ctx.theme.bg), hideGraphics: true };
   // transition
   const tr = [...root.children].find((c) => c.localName === 'transition') || (root.getElementsByTagNameNS(P, 'transition')[0]);
   const transition = { type: 'none', duration: 0.7, advanceAfter: null, advanceOnClick: true };
@@ -312,7 +327,7 @@ async function walkTree(ctx, tree, rels, phs, out, spIdMap, tf) {
         if (footKind === 'ftr' && txt) ctx.footer.text = txt;
         continue;
       }
-      if (cnv) { spIdMap.set(cnv.getAttribute('id'), el); if (cnv.getAttribute('descr')) el.alt = cnv.getAttribute('descr'); if (cnv.getAttribute('hidden') === '1') el.hidden = true; if (cnv.getAttribute('name')) el.name = cnv.getAttribute('name'); const hl = kid(cnv, 'hlinkClick', A); if (hl) { const rid = hl.getAttributeNS(RNS, 'id') || hl.getAttribute('r:id'); const act = hl.getAttribute('action') || ''; el.link = rid && rels[rid] ? rels[rid].target : /nextslide/.test(act) ? '#next' : /previousslide/.test(act) ? '#prev' : /firstslide/.test(act) ? '#first' : /lastslide/.test(act) ? '#last' : /endshow/.test(act) ? '#end' : null; } }
+      if (cnv) { spIdMap.set(cnv.getAttribute('id'), el); if (cnv.getAttribute('descr')) el.alt = cnv.getAttribute('descr'); if (cnv.getAttribute('hidden') === '1') el.hidden = true; if (cnv.getAttribute('name') && !/^(text|shape|image|chart|table|equation|ink|video|group) \d+$/.test(cnv.getAttribute('name'))) el.name = cnv.getAttribute('name'); const hl = kid(cnv, 'hlinkClick', A); if (hl) { const rid = hl.getAttributeNS(RNS, 'id') || hl.getAttribute('r:id'); const act = hl.getAttribute('action') || ''; el.link = rid && rels[rid] ? rels[rid].target : /nextslide/.test(act) ? '#next' : /previousslide/.test(act) ? '#prev' : /firstslide/.test(act) ? '#first' : /lastslide/.test(act) ? '#last' : /endshow/.test(act) ? '#end' : null; } }
       out.push(el);
     } catch (e) { console.warn('élément ignoré', e); ctx.warnings.add('Certains objets n’ont pas pu être lus.'); }
   }
@@ -357,15 +372,15 @@ async function parseSp(ctx, sp, rels, phs) {
   const anchor = bodyPr && bodyPr.getAttribute('anchor') ? { t: 'top', ctr: 'middle', b: 'bottom' }[bodyPr.getAttribute('anchor')] : inherited && inherited.anchor ? inherited.anchor : phType === 'ctrTitle' ? 'bottom' : phType === 'title' ? 'middle' : 'top';
   const isTitle = /title/i.test(phType || '');
   const defSize = inherited && inherited.size ? inherited.size : isTitle ? phs.master.sizes.title || (phType === 'ctrTitle' ? 54 : 40) : phType === 'subTitle' ? 24 : phType ? phs.master.sizes.body || 24 : 18;
-  const { doc, size: firstSize } = txBody ? parseTxBody(txBody, ctx, defSize) : { doc: textDoc(''), size: null };
+  const { doc, size: firstSize, lst = {} } = txBody ? parseTxBody(txBody, ctx, defSize) : { doc: textDoc(''), size: null };
   const isShape = (prst && prst !== 'rect') || (fill && (fill.fill || fill.gradient) && !phType) || (stroke && !phType);
   const st = { fill: fill ? fill.fill ?? null : null, gradient: fill && fill.gradient ? fill.gradient : null, opacity: fill && fill.opacity != null ? fill.opacity : 1, stroke, strokeWidth, dash, shadow, anchor, inset: bodyPr && bodyPr.getAttribute('lIns') ? px(bodyPr.getAttribute('lIns')) : 8, autofit: bodyPr && kid(bodyPr, 'normAutofit', A) ? 'shrink' : bodyPr && kid(bodyPr, 'spAutoFit', A) ? 'resize' : phType ? 'shrink' : 'none', wrap: !(bodyPr && bodyPr.getAttribute('wrap') === 'none'), columns: bodyPr && bodyPr.getAttribute('numCol') ? +bodyPr.getAttribute('numCol') : 1, rotateText: bodyPr && bodyPr.getAttribute('vert') === 'vert' ? 90 : bodyPr && bodyPr.getAttribute('vert') === 'vert270' ? 270 : 0 };
   // équations (a14:m)
   const om = sp.getElementsByTagNameNS(M, 'oMath')[0];
   if (om) return makeElement('equation', { ...box, tex: ommlToTex(om), defaults: { size: firstSize || 28 } });
   const ph2 = phType ? { ctrTitle: 'ctrTitle', title: 'title', subTitle: 'subTitle', body: 'body', obj: 'body', pic: 'pic' }[phType] : null;
-  const base = { ...box, text: doc, defaults: { size: defSize, font: isTitle ? '+major' : '+minor' } };
-  if (isShape) return makeElement('shape', { ...base, shape: prst === 'line' && lnEl && kid(lnEl, 'tailEnd', A) ? 'arrowLine' : REV_PRST[prst] || 'rect', style: { ...st, fill: st.fill, stroke: st.stroke, radius: 0 }, defaults: { ...base.defaults, color: hasColor(doc) ? null : null, align: 'center' } });
+  const base = { ...box, text: doc, defaults: { size: lst.size || defSize, font: lst.font || (isTitle ? '+major' : '+minor'), ...(lst.color ? { color: lst.color } : {}), ...(lst.bold ? { bold: true } : {}), ...(lst.italic ? { italic: true } : {}) } };
+  if (isShape) return makeElement('shape', { ...base, shape: prst === 'line' && lnEl && kid(lnEl, 'tailEnd', A) ? 'arrowLine' : REV_PRST[prst] || 'rect', style: { ...st, fill: st.fill, stroke: st.stroke, radius: 0 }, defaults: { ...base.defaults, color: lst.color && lst.color.toLowerCase() !== '#ffffff' ? lst.color : null, align: 'center' } });
   return makeElement('text', { ...base, ph: ph2 || undefined, phIdx: ph2 === 'body' && phIdx && phIdx !== '1' ? +phIdx : 0, style: { ...st, fill: st.fill, stroke: st.stroke } });
 }
 function hasColor(doc) { return JSON.stringify(doc).includes('"color"'); }
@@ -404,7 +419,7 @@ function parseTxBody(tx, ctx, defSize) {
         if (rPr.getAttribute('cap') === 'all') marks.push({ type: 'caps' });
         if (rPr.getAttribute('sz')) { const s = +rPr.getAttribute('sz') / 100; marks.push({ type: 'size', attrs: { size: s } }); if (firstSize == null) firstSize = s; }
         if (rPr.getAttribute('spc')) marks.push({ type: 'spacing', attrs: { value: +rPr.getAttribute('spc') / 100 } });
-        const c = colorOf(kid(rPr, 'solidFill', A), ctx.theme); if (c) marks.push({ type: 'color', attrs: { color: c } });
+        const c = tokenOf(kid(rPr, 'solidFill', A), ctx.theme); if (c) marks.push({ type: 'color', attrs: { color: c } });
         const hl = colorOf(kid(rPr, 'highlight', A), ctx.theme); if (hl) marks.push({ type: 'highlight', attrs: { color: hl } });
         const lat = kid(rPr, 'latin', A); if (lat && lat.getAttribute('typeface') && !lat.getAttribute('typeface').startsWith('+')) marks.push({ type: 'font', attrs: { family: lat.getAttribute('typeface') } });
         if (rPr.getElementsByTagNameNS(A, 'outerShdw')[0]) marks.push({ type: 'shadow' });
@@ -413,8 +428,16 @@ function parseTxBody(tx, ctx, defSize) {
     }
     return { type: 'paragraph', attrs, content };
   });
-  void defSize; void baseSize;
-  return { doc: { type: 'doc', content: paras.length ? paras : [{ type: 'paragraph', attrs: {}, content: [] }] }, size: firstSize };
+  void defSize;
+  const lst1 = {};
+  if (lvl1) {
+    if (baseSize) lst1.size = baseSize;
+    const col = tokenOf(kid(lvl1, 'solidFill', A), ctx.theme); if (col) lst1.color = col;
+    if (lvl1.getAttribute('b') === '1') lst1.bold = true;
+    if (lvl1.getAttribute('i') === '1') lst1.italic = true;
+    const lat = kid(lvl1, 'latin', A); if (lat && lat.getAttribute('typeface')) lst1.font = lat.getAttribute('typeface') === '+mj-lt' ? '+major' : lat.getAttribute('typeface') === '+mn-lt' ? '+minor' : lat.getAttribute('typeface');
+  }
+  return { doc: { type: 'doc', content: paras.length ? paras : [{ type: 'paragraph', attrs: {}, content: [] }] }, size: firstSize, lst: lst1 };
 }
 
 async function parsePic(ctx, pic, rels) {
@@ -483,10 +506,19 @@ async function parseFrame(ctx, gf, rels) {
       const cats = sers[0] ? pts(kid(sers[0], 'cat', C) || kid(sers[0], 'xVal', C)) : [];
       const names = sers.map((s, i) => (desc(kid(s, 'tx', C), 'v', C) || {}).textContent || 'Série ' + (i + 1));
       const vals = sers.map((s) => pts(kid(s, 'val', C) || kid(s, 'yVal', C)));
-      const data = [['Catégorie', ...names].join(';'), ...cats.map((c, i) => [c, ...vals.map((v) => (v[i] || '0').replace('.', ','))].join(';'))].join('\n');
+      // en-tête de la première colonne : cellule A1 du classeur intégré, s'il y en a un
+      let head = 'Catégorie';
+      try {
+        const crels = await ctx.relsOf(r.abs);
+        const pk = Object.values(crels).find((x) => x.type === 'package');
+        const f = pk && ctx.zip.file(pk.abs);
+        if (f) { const wz = await JSZip.loadAsync(await f.async('arraybuffer')); const sh = wz.file('xl/worksheets/sheet1.xml'); const sx = sh && ctx.parse(await sh.async('string')); const a1 = sx && [...sx.getElementsByTagName('c')].find((c) => c.getAttribute('r') === 'A1'); if (a1) { const t = [...a1.getElementsByTagName('t')].map((x) => x.textContent).join(''); if (t) head = t; else if (a1.getAttribute('t') === 's') { const ss = wz.file('xl/sharedStrings.xml'); const sd = ss && ctx.parse(await ss.async('string')); const si = sd && sd.getElementsByTagName('si')[+((a1.getElementsByTagName('v')[0] || {}).textContent || 0)]; if (si) head = [...si.getElementsByTagName('t')].map((x) => x.textContent).join('') || head; } } }
+      } catch { /* classeur intégré illisible : en-tête par défaut */ }
+      const labels = [...cx.getElementsByTagNameNS(C, 'dLbls')].some((dl) => ['showVal', 'showPercent'].some((k) => { const e2 = kid(dl, k, C); return e2 && e2.getAttribute('val') === '1'; }));
+      const data = [[head, ...names].join(';'), ...cats.map((c, i) => [c, ...vals.map((v) => (v[i] || '0').replace('.', ','))].join(';'))].join('\n');
       const titleEl = cx.getElementsByTagNameNS(C, 'title')[0];
       const title = titleEl ? [...titleEl.getElementsByTagNameNS(A, 't')].map((x) => x.textContent).join('') : '';
-      return makeElement('chart', { ...box, chart: { kind, data, title, legend: !!cx.getElementsByTagNameNS(C, 'legend')[0], labels: false } });
+      return makeElement('chart', { ...box, chart: { kind, data, title, legend: !!cx.getElementsByTagNameNS(C, 'legend')[0], labels } });
     }
   }
   // SmartArt et autres : on garde un cadre avec le texte s'il y en a

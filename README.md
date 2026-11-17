@@ -282,6 +282,25 @@ serveur.
 - Les fichiers `.docx`, `.pptx` et `.xlsx` produits par Plume sont contrôlés
   (structure du paquet, relations, types de contenu) et relus par
   LibreOffice, python-docx, python-pptx et openpyxl.
+- **Aller-retour strict** : chaque application enregistre un document qui
+  utilise toutes ses fonctions, retire la copie Plume jointe au fichier (pour
+  ne juger que ce que Word, Excel ou PowerPoint liraient), le rouvre et
+  compare tout, attribut par attribut :
+  - Texte (.docx) : 71 blocs (styles, listes de tous types, tableaux fusionnés
+    et imbriqués, images habillées et rognées, formes, WordArt, zones de texte,
+    équations, champs, contrôles de contenu, notes, sections, table des
+    matières, révisions, commentaires avec réponses, filigrane, bordures de
+    page…) : **0 différence** ;
+  - Tableur (.xlsx) : 4 feuilles (formats, bordures, 37 règles de mise en
+    forme conditionnelle, 8 validations, 12 graphiques, tableau filtré, plan,
+    sparklines, commentaires avec réponses, mise en page, protection…) : **0
+    différence**, sauf le mot de passe de feuille, enregistré comme Excel le
+    fait (empreinte) et toujours accepté par Plume ;
+  - Présentation (.pptx) : thème, dégradé de fond, barre d'accent, texte,
+    formes, graphiques (vrais graphiques PowerPoint avec leurs données),
+    animations, transitions : **0 différence** visible.
+  Les fichiers repassés par LibreOffice se rouvrent eux aussi dans Plume sans
+  perte notable.
 - Les fichiers créés par ces mêmes outils s'ouvrent dans Plume : titres,
   mise en forme, listes, tableaux, images, en-têtes, formules, formats de
   nombres, fusions, mises en forme conditionnelles, validations, graphiques,
@@ -292,3 +311,7 @@ serveur.
   se chargent mais l'interface est pensée pour un écran d'ordinateur ou de
   tablette.
 - Microsoft Office n'a pas pu être utilisé pour ces tests.
+- Limites de format connues : les graphiques en cascade et en entonnoir
+  s'affichent dans Excel comme histogramme et barres (ils restent cascade et
+  entonnoir dans Plume) ; les SmartArt sont enregistrés comme image dans
+  PowerPoint.

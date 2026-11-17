@@ -17,6 +17,16 @@ const NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 const RNS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/';
 const EMU = 9525;
+// Empreinte de mot de passe de protection d'Excel (algorithme historique, 16 bits)
+export function xlPasswordHash(pw) {
+  if (/^xlhash:/.test(pw)) return pw.slice(7);
+  let h = 0;
+  const chars = [...String(pw)].slice(0, 15).map((c) => c.charCodeAt(0) & 0x7fff);
+  for (let i = chars.length - 1; i >= 0; i--) { h = ((h >> 14) & 1) | ((h << 1) & 0x7fff); h ^= chars[i]; }
+  h = ((h >> 14) & 1) | ((h << 1) & 0x7fff);
+  h ^= chars.length; h ^= 0xce4b;
+  return h.toString(16).toUpperCase().padStart(4, '0');
+}
 export function hashString(s) { let h1 = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h1 ^= s.charCodeAt(i); h1 = Math.imul(h1, 16777619); } return (h1 >>> 0).toString(16) + ':' + s.length; }
 const argb = (c) => (c && /^#[0-9a-f]{6}$/i.test(c) ? 'FF' + c.slice(1).toUpperCase() : 'FF000000');
 const hex = (c) => (c && /^#[0-9a-f]{6}$/i.test(c) ? c.slice(1).toUpperCase() : '000000');
@@ -75,7 +85,7 @@ class Styles {
   }
   dxf(fmt) {
     const f = fmt || {};
-    const xml = `<dxf>${f.b || f.i || f.color ? `<font>${f.b ? '<b/>' : ''}${f.i ? '<i/>' : ''}${f.color ? `<color rgb="${argb(f.color)}"/>` : ''}</font>` : ''}${f.fill ? `<fill><patternFill><bgColor rgb="${argb(f.fill)}"/></patternFill></fill>` : ''}</dxf>`;
+    const xml = `<dxf>${f.b || f.i || f.u || f.strike || f.color ? `<font>${f.b ? '<b/>' : ''}${f.i ? '<i/>' : ''}${f.strike ? '<strike/>' : ''}${f.u ? '<u/>' : ''}${f.color ? `<color rgb="${argb(f.color)}"/>` : ''}</font>` : ''}${f.fill ? `<fill><patternFill><bgColor rgb="${argb(f.fill)}"/></patternFill></fill>` : ''}</dxf>`;
     this.dxfs.push(xml);
     return this.dxfs.length - 1;
   }
@@ -85,7 +95,7 @@ class Styles {
 }
 
 function cfFormula(v) { const t = String(v ?? ''); if (t[0] === '=') return esc(xlfn(toCanonical(t.slice(1)))); const n = parseNumberText(t); return n != null ? String(n) : esc('"' + t.replace(/"/g, '""') + '"'); }
-function cfXml(s, styles) {
+function cfXml(s, styles, x14 = []) {
   let out = '', prio = 1;
   for (const r of s.cf) {
     const ref = sqref(r.range), a1 = addr(r.range.r1, r.range.c1);
@@ -106,7 +116,11 @@ function cfXml(s, styles) {
       case 'formula': rule = `<cfRule type="expression" dxfId="${dx()}" priority="${prio++}"><formula>${esc(xlfn(toCanonical(String(r.formula || '').replace(/^=/, ''))))}</formula></cfRule>`; break;
       case 'bar': rule = `<cfRule type="dataBar" priority="${prio++}"><dataBar><cfvo type="min"/><cfvo type="max"/><color rgb="${argb(r.color || '#638ec6')}"/></dataBar></cfRule>`; break;
       case 'scale': { const cs = r.colors || ['#f8696b', '#ffeb84', '#63be7b']; rule = `<cfRule type="colorScale" priority="${prio++}"><colorScale><cfvo type="min"/>${cs.length > 2 ? '<cfvo type="percentile" val="50"/>' : ''}<cfvo type="max"/>${cs.map((c) => `<color rgb="${argb(c)}"/>`).join('')}</colorScale></cfRule>`; break; }
-      case 'icons': { const n = (ICON_SETS[r.icons] || ICON_SETS.arrows3).icons.length; rule = `<cfRule type="iconSet" priority="${prio++}"><iconSet iconSet="${ICON_NAMES[r.icons] || '3Arrows'}"${r.reverse ? ' reverse="1"' : ''}>${Array.from({ length: n }, (_, i) => `<cfvo type="percent" val="${Math.round((i * 100) / n)}"/>`).join('')}</iconSet></cfRule>`; break; }
+      case 'icons': {
+        const n = (ICON_SETS[r.icons] || ICON_SETS.arrows3).icons.length;
+        // les 3 étoiles n'existent qu'à partir d'Excel 2010 : règle écrite dans l'extension x14
+        if (r.icons === 'stars3') { x14.push(`<x14:conditionalFormatting xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main"><x14:cfRule type="iconSet" priority="${prio++}" id="{B1D2E3F4-0000-4000-8000-${String(x14.length).padStart(12, '0')}}"><x14:iconSet iconSet="3Stars"${r.reverse ? ' reverse="1"' : ''}>${[0, 33, 67].map((v) => `<x14:cfvo type="percent"><xm:f>${v}</xm:f></x14:cfvo>`).join('')}</x14:iconSet></x14:cfRule><xm:sqref>${ref}</xm:sqref></x14:conditionalFormatting>`); break; }
+        rule = `<cfRule type="iconSet" priority="${prio++}"><iconSet iconSet="${ICON_NAMES[r.icons] || '3Arrows'}"${r.reverse ? ' reverse="1"' : ''}>${Array.from({ length: n }, (_, i) => `<cfvo type="percent" val="${Math.round((i * 100) / n)}"/>`).join('')}</iconSet></cfRule>`; break; }
       default:
     }
     if (rule) out += `<conditionalFormatting sqref="${ref}">${rule}</conditionalFormatting>`;
@@ -122,7 +136,7 @@ function dvXml(s) {
     else if (d.type === 'custom') f1 = esc(xlfn(toCanonical(String(d.v1 || '').replace(/^=/, ''))));
     else { f1 = f(d.v1); if (/etween/.test(d.op || 'between')) f2 = f(d.v2); }
     const op = { between: 'between', notBetween: 'notBetween', eq: 'equal', ne: 'notEqual', gt: 'greaterThan', lt: 'lessThan', ge: 'greaterThanOrEqual', le: 'lessThanOrEqual' }[d.op || 'between'];
-    return `<dataValidation type="${d.type}"${d.type !== 'list' && d.type !== 'custom' ? ` operator="${op}"` : ''}${d.alert && d.alert !== 'stop' ? ` errorStyle="${d.alert === 'info' ? 'information' : 'warning'}"` : ''}${d.allowBlank !== false ? ' allowBlank="1"' : ''} showInputMessage="1" showErrorMessage="1"${d.errTitle ? ` errorTitle="${esc(d.errTitle)}"` : ''}${d.errMsg ? ` error="${esc(d.errMsg)}"` : ''}${d.inTitle ? ` promptTitle="${esc(d.inTitle)}"` : ''}${d.inMsg ? ` prompt="${esc(d.inMsg)}"` : ''} sqref="${sqref(d.range)}"><formula1>${f1}</formula1>${f2 ? `<formula2>${f2}</formula2>` : ''}</dataValidation>`;
+    return `<dataValidation type="${d.type === 'length' ? 'textLength' : d.type}"${d.type !== 'list' && d.type !== 'custom' ? ` operator="${op}"` : ''}${d.alert && d.alert !== 'stop' ? ` errorStyle="${d.alert === 'info' ? 'information' : 'warning'}"` : ''}${d.allowBlank !== false ? ' allowBlank="1"' : ''} showInputMessage="1" showErrorMessage="1"${d.errTitle ? ` errorTitle="${esc(d.errTitle)}"` : ''}${d.errMsg ? ` error="${esc(d.errMsg)}"` : ''}${d.inTitle ? ` promptTitle="${esc(d.inTitle)}"` : ''}${d.inMsg ? ` prompt="${esc(d.inMsg)}"` : ''} sqref="${sqref(d.range)}"><formula1>${f1}</formula1>${f2 ? `<formula2>${f2}</formula2>` : ''}</dataValidation>`;
   });
   return `<dataValidations count="${items.length}">${items.join('')}</dataValidations>`;
 }
@@ -153,7 +167,8 @@ function chartXml(o, d, pal, sheetName) {
   const numCache = (arr) => `<c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="${arr.length}"/>${arr.map((v, i) => `<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`).join('')}</c:numCache>`;
   const ref = (rg) => `${sn}!${absRange(rg)}`;
   const pie = t === 'pie' || t === 'doughnut';
-  const sers = d.series.slice(0, pie ? 1 : 255).map((name, i) => {
+  const scatter = t === 'scatter';
+  const sers = d.series.slice(0, 255).map((name, i) => {
     let nameRef = null, valRef = null, catRef = null;
     if (m) {
       const rg = m.rg, h0 = m.hasHead ? 1 : 0, l0 = m.hasLab ? 1 : 0;
@@ -165,6 +180,11 @@ function chartXml(o, d, pal, sheetName) {
     const dpts = pie ? d.cats.map((_, k) => `<c:dPt><c:idx val="${k}"/><c:bubble3D val="0"/><c:spPr><a:solidFill><a:srgbClr val="${hex(pal[k % pal.length])}"/></a:solidFill></c:spPr></c:dPt>`).join('') : '';
     const lbl = o.chart.labels ? `<c:dLbls><c:showLegendKey val="0"/><c:showVal val="${pie ? 0 : 1}"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="${pie ? 1 : 0}"/><c:showBubbleSize val="0"/></c:dLbls>` : '';
     const tx = nameRef ? `<c:tx><c:strRef><c:f>${esc(ref(nameRef))}</c:f>${strCache([name])}</c:strRef></c:tx>` : `<c:tx><c:v>${esc(name)}</c:v></c:tx>`;
+    if (scatter) {
+      const vals = d.values[i] || [];
+      const xs = catRef ? `<c:xVal><c:numRef><c:f>${esc(ref(catRef))}</c:f>${numCache(d.cats.map((v) => (isFinite(+v) ? +v : 0)))}</c:numRef></c:xVal>` : '';
+      return `<c:ser><c:idx val="${i}"/><c:order val="${i}"/>${tx}${sp}${lbl}${xs}<c:yVal><c:numRef><c:f>${esc(ref(valRef))}</c:f>${numCache(vals)}</c:numRef></c:yVal><c:smooth val="0"/></c:ser>`;
+    }
     const cat = catRef ? `<c:cat><c:strRef><c:f>${esc(ref(catRef))}</c:f>${strCache(d.cats)}</c:strRef></c:cat>` : `<c:cat><c:strLit><c:ptCount val="${d.cats.length}"/>${d.cats.map((v, k) => `<c:pt idx="${k}"><c:v>${esc(v)}</c:v></c:pt>`).join('')}</c:strLit></c:cat>`;
     const vals = d.values[i] || [];
     const val = valRef ? `<c:val><c:numRef><c:f>${esc(ref(valRef))}</c:f>${numCache(vals)}</c:numRef></c:val>` : `<c:val><c:numLit><c:formatCode>General</c:formatCode><c:ptCount val="${vals.length}"/>${vals.map((v, k) => `<c:pt idx="${k}"><c:v>${v}</c:v></c:pt>`).join('')}</c:numLit></c:val>`;
@@ -176,15 +196,21 @@ function chartXml(o, d, pal, sheetName) {
   let plot;
   if (t === 'pie') plot = `<c:pieChart><c:varyColors val="1"/>${sers}<c:firstSliceAng val="0"/></c:pieChart>`;
   else if (t === 'doughnut') plot = `<c:doughnutChart><c:varyColors val="1"/>${sers}<c:firstSliceAng val="0"/><c:holeSize val="50"/></c:doughnutChart>`;
-  else if (t === 'line' || t === 'scatter') plot = `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${sers}<c:marker val="1"/>${ax}</c:lineChart>`;
+  else if (scatter) plot = `<c:scatterChart><c:scatterStyle val="lineMarker"/><c:varyColors val="0"/>${sers}${ax}</c:scatterChart>`;
+  else if (t === 'line') plot = `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${sers}<c:marker val="1"/>${ax}</c:lineChart>`;
   else if (t === 'radar') plot = `<c:radarChart><c:radarStyle val="marker"/><c:varyColors val="0"/>${sers}${ax}</c:radarChart>`;
   else if (t === 'combo' && d.series.length > 1) { const parts = sers.split('</c:ser>').filter(Boolean).map((x) => x + '</c:ser>'); const lineSer = parts.pop().replace(/<c:spPr>.*?<\/c:spPr>/, `<c:spPr><a:ln w="28575" cap="rnd"><a:solidFill><a:srgbClr val="${hex(pal[(d.series.length - 1) % pal.length])}"/></a:solidFill><a:round/></a:ln></c:spPr><c:marker><c:symbol val="circle"/><c:size val="5"/></c:marker>`); plot = `<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>${parts.join('')}<c:gapWidth val="80"/>${ax}</c:barChart><c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${lineSer}<c:marker val="1"/>${ax}</c:lineChart>`; }
   else if (t === 'area') plot = `<c:areaChart><c:grouping val="standard"/><c:varyColors val="0"/>${sers}${ax}</c:areaChart>`;
   else plot = `<c:barChart><c:barDir val="${horiz ? 'bar' : 'col'}"/><c:grouping val="${t === 'stacked' ? 'stacked' : 'clustered'}"/><c:varyColors val="0"/>${sers}<c:gapWidth val="80"/>${t === 'stacked' ? '<c:overlap val="100"/>' : ''}${ax}</c:barChart>`;
-  const axes = pie ? '' : `<c:catAx><c:axId val="111111111"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${horiz ? 'l' : 'b'}"/><c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="222222222"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx><c:valAx><c:axId val="222222222"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${horiz ? 'b' : 'l'}"/><c:majorGridlines><c:spPr><a:ln w="9525"><a:solidFill><a:srgbClr val="D9D9D9"/></a:solidFill></a:ln></c:spPr></c:majorGridlines><c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="111111111"/><c:crosses val="autoZero"/><c:crossBetween val="${t === 'area' ? 'midCat' : 'between'}"/></c:valAx>`;
+  const axTitle = (txt) => (txt ? `<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1000" b="0"/></a:pPr><a:r><a:rPr lang="fr-FR" sz="1000" b="0"/><a:t>${esc(txt)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title>` : '');
+  const xT = axTitle(o.chart.xTitle), yT = axTitle(o.chart.yTitle);
+  const valAx = (id, cross, pos, title, grid) => `<c:valAx><c:axId val="${id}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${pos}"/>${grid ? '<c:majorGridlines><c:spPr><a:ln w="9525"><a:solidFill><a:srgbClr val="D9D9D9"/></a:solidFill></a:ln></c:spPr></c:majorGridlines>' : ''}${title}<c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="${cross}"/><c:crosses val="autoZero"/><c:crossBetween val="midCat"/></c:valAx>`;
+  const axes = pie ? '' : scatter ? valAx('111111111', '222222222', 'b', xT, false) + valAx('222222222', '111111111', 'l', yT, true) : `<c:catAx><c:axId val="111111111"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${horiz ? 'l' : 'b'}"/>${xT}<c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="222222222"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx><c:valAx><c:axId val="222222222"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${horiz ? 'b' : 'l'}"/><c:majorGridlines><c:spPr><a:ln w="9525"><a:solidFill><a:srgbClr val="D9D9D9"/></a:solidFill></a:ln></c:spPr></c:majorGridlines>${yT}<c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="111111111"/><c:crosses val="autoZero"/><c:crossBetween val="${t === 'area' ? 'midCat' : 'between'}"/></c:valAx>`;
   const title = o.chart.title ? `<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1400" b="0"/></a:pPr><a:r><a:rPr lang="fr-FR" sz="1400" b="0"/><a:t>${esc(o.chart.title)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/>` : '<c:autoTitleDeleted val="1"/>';
   const legend = o.chart.legend !== false && (d.series.length > 1 || pie) ? '<c:legend><c:legendPos val="r"/><c:overlay val="0"/></c:legend>' : '';
-  return `${XML}<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${RNS}"><c:roundedCorners val="0"/><c:chart>${title}<c:plotArea><c:layout/>${plot}${axes}</c:plotArea>${legend}<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart><c:spPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:ln w="9525"><a:solidFill><a:srgbClr val="D9D9D9"/></a:solidFill></a:ln></c:spPr></c:chartSpace>`;
+  // Excel n'a pas de cascade ni d'entonnoir dans ce format : le type est noté dans une extension (ignorée par Excel)
+  const extra = t === 'waterfall' || t === 'funnel' ? `<c:extLst><c:ext uri="{7E2C4D6A-PLUM-4E00-9C1E-${t === 'waterfall' ? '0000000000A1' : '0000000000A2'}}"/></c:extLst>` : '';
+  return `${XML}<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${RNS}"><c:roundedCorners val="0"/><c:chart>${title}<c:plotArea><c:layout/>${plot}${axes}</c:plotArea>${legend}<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart><c:spPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:ln w="9525"><a:solidFill><a:srgbClr val="D9D9D9"/></a:solidFill></a:ln></c:spPr>${extra}</c:chartSpace>`;
 }
 async function toPng(src) {
   // les images SVG (icônes) sont converties en PNG, seul format bitmap garanti dans Excel
@@ -206,7 +232,12 @@ export async function exportXlsx(native, wb, { title = '', author = '' } = {}) {
   const sst = [], sstMap = new Map();
   const str = (t) => { let i = sstMap.get(t); if (i == null) { i = sst.length; sst.push(t); sstMap.set(t, i); } return i; };
   const ct = [], wbRels = [], sheetsXml = [], defined = [];
-  let tableN = 0, drawingN = 0, chartN = 0, mediaN = 0, commentN = 0;
+  let tableN = 0, drawingN = 0, chartN = 0, mediaN = 0, commentN = 0, threadN = 0;
+  // auteurs des fils de commentaires (identifiants stables d'un enregistrement à l'autre)
+  const people = new Map();
+  const guid = (seed) => { let h = 0x811c9dc5, out = ''; for (let k = 0; k < 4; k++) { for (const ch of seed + '#' + k) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } out += h.toString(16).toUpperCase().padStart(8, '0'); } return `{${out.slice(0, 8)}-${out.slice(8, 12)}-4${out.slice(13, 16)}-8${out.slice(17, 20)}-${out.slice(20, 32)}}`; };
+  const person = (name) => { const n = name || 'Auteur'; if (!people.has(n)) people.set(n, guid('p-' + n)); return people.get(n); };
+  const isoNoMs = (d) => { const t = d ? new Date(d) : new Date(); return (isNaN(t) ? new Date() : t).toISOString().replace(/\.\d+Z$/, '').replace(/Z$/, ''); };
   const sheetXmls = [];
   const fakeApp = (s) => ({ wb, sheet: s });
 
@@ -218,12 +249,16 @@ export async function exportXlsx(native, wb, { title = '', author = '' } = {}) {
     const keys = [...new Set([...s.cells.keys(), ...s.spill.keys()])].sort((a, b) => a - b);
     const rowsMap = new Map();
     for (const k of keys) { const r = Math.floor(k / MAX_COLS); let a = rowsMap.get(r); if (!a) { a = []; rowsMap.set(r, a); } a.push(k); }
-    for (const r of [...s.rowH.keys(), ...s.hiddenRows, ...s.filterHidden]) if (!rowsMap.has(r)) rowsMap.set(r, []);
+    // plan (lignes et colonnes groupées) : niveau = nombre de groupes qui contiennent la ligne
+    const levels = (list) => { const m = new Map(); for (const g of list || []) for (let i = g.a; i <= g.b && i - g.a < 100000; i++) m.set(i, (m.get(i) || 0) + 1); return m; };
+    const rowLevel = levels(s.groups && s.groups.rows), colLevel = levels(s.groups && s.groups.cols);
+    for (const r of [...s.rowH.keys(), ...s.hiddenRows, ...s.filterHidden, ...rowLevel.keys()]) if (!rowsMap.has(r)) rowsMap.set(r, []);
     const links = [];
     let data = '';
     for (const r of [...rowsMap.keys()].sort((a, b) => a - b)) {
       const hgt = s.rowH.get(r), hidden = s.hiddenRows.has(r) || s.filterHidden.has(r);
-      let row = `<row r="${r + 1}"${hgt != null ? ` ht="${Math.round(hgt * 0.75 * 100) / 100}" customHeight="1"` : ''}${hidden ? ' hidden="1"' : ''}>`;
+      const lvl = rowLevel.get(r) || 0;
+      let row = `<row r="${r + 1}"${hgt != null ? ` ht="${Math.round(hgt * 0.75 * 100) / 100}"${s.manualH && s.manualH.has(r) ? ' customHeight="1"' : ''}` : ''}${hidden ? ' hidden="1"' : ''}${lvl ? ` outlineLevel="${Math.min(7, lvl)}"` : ''}>`;
       for (const k of rowsMap.get(r)) {
         const c = k % MAX_COLS, cell = s.cells.get(k), ref = colName(c) + (r + 1);
         const st = cell && cell.s;
@@ -243,8 +278,8 @@ export async function exportXlsx(native, wb, { title = '', author = '' } = {}) {
       data += row + '</row>';
     }
     // colonnes
-    const colIdx = [...new Set([...s.colW.keys(), ...s.hiddenCols])].sort((a, b) => a - b);
-    const cols = colIdx.map((c) => `<col min="${c + 1}" max="${c + 1}" width="${Math.round((Math.max(0, (s.colW.get(c) ?? 80) - 5) / 7) * 100) / 100}" customWidth="1"${s.hiddenCols.has(c) ? ' hidden="1"' : ''}/>`).join('');
+    const colIdx = [...new Set([...s.colW.keys(), ...s.hiddenCols, ...colLevel.keys()])].sort((a, b) => a - b);
+    const cols = colIdx.map((c) => `<col min="${c + 1}" max="${c + 1}" width="${Math.round((Math.max(0, (s.colW.get(c) ?? 80) - 5) / 7) * 100) / 100}"${s.colW.has(c) ? ' customWidth="1"' : ''}${s.hiddenCols.has(c) ? ' hidden="1"' : ''}${colLevel.get(c) ? ` outlineLevel="${Math.min(7, colLevel.get(c))}"` : ''}/>`).join('');
     const u = s.usedRange();
     const fr = s.freeze;
     const pane = fr.r || fr.c ? `<pane${fr.c ? ` xSplit="${fr.c}"` : ''}${fr.r ? ` ySplit="${fr.r}"` : ''} topLeftCell="${addr(fr.r, fr.c)}" activePane="${fr.r && fr.c ? 'bottomRight' : fr.r ? 'bottomLeft' : 'topRight'}" state="frozen"/>` : '';
@@ -306,10 +341,22 @@ export async function exportXlsx(native, wb, { title = '', author = '' } = {}) {
     // commentaires
     let legacy = '';
     if (s.comments.size) {
+      threadN++;
+      const list0 = [...s.comments].sort((a, b) => a[0] - b[0]);
+      let tx = '';
+      for (const [k, c] of list0) {
+        const ref = addr(Math.floor(k / MAX_COLS), k % MAX_COLS);
+        const pid = guid('c' + si + '-' + k);
+        tx += `<threadedComment ref="${ref}" dT="${isoNoMs(c.date)}" personId="${person(c.author)}" id="${pid}"><text>${esc(c.text)}</text></threadedComment>`;
+        (c.replies || []).forEach((rp, i) => { tx += `<threadedComment ref="${ref}" dT="${isoNoMs(rp.date)}" personId="${person(rp.author)}" id="${guid('r' + si + '-' + k + '-' + i)}" parentId="${pid}"><text>${esc(rp.text)}</text></threadedComment>`; });
+      }
+      file(`xl/threadedComments/threadedComment${threadN}.xml`, `${XML}<ThreadedComments xmlns="http://schemas.microsoft.com/office/spreadsheetml/2018/threadedcomments" xmlns:x="${NS}">${tx}</ThreadedComments>`);
+      ct.push(`<Override PartName="/xl/threadedComments/threadedComment${threadN}.xml" ContentType="application/vnd.ms-excel.threadedcomments+xml"/>`);
+      rid('http://schemas.microsoft.com/office/2017/10/relationships/threadedComment', `../threadedComments/threadedComment${threadN}.xml`);
       commentN++;
       const authors = [...new Set([...s.comments.values()].map((c) => c.author || 'Auteur'))];
       const list = [...s.comments].sort((a, b) => a[0] - b[0]);
-      file(`xl/comments${commentN}.xml`, `${XML}<comments xmlns="${NS}"><authors>${authors.map((a) => `<author>${esc(a)}</author>`).join('')}</authors><commentList>${list.map(([k, c]) => `<comment ref="${addr(Math.floor(k / MAX_COLS), k % MAX_COLS)}" authorId="${authors.indexOf(c.author || 'Auteur')}"><text><r><rPr><b/><sz val="9"/><rFont val="Tahoma"/></rPr><t xml:space="preserve">${esc(c.author || 'Auteur')} :\n</t></r><r><rPr><sz val="9"/><rFont val="Tahoma"/></rPr><t xml:space="preserve">${esc(c.text + (c.replies || []).map((x) => `\n${x.author} : ${x.text}`).join(''))}</t></r></text></comment>`).join('')}</commentList></comments>`);
+      file(`xl/comments${commentN}.xml`, `${XML}<comments xmlns="${NS}"><authors>${authors.map((a) => `<author>${esc(a)}</author>`).join('')}</authors><commentList>${list.map(([k, c]) => `<comment ref="${addr(Math.floor(k / MAX_COLS), k % MAX_COLS)}" authorId="${authors.indexOf(c.author || 'Auteur')}"><text><r><rPr><b/><sz val="9"/><rFont val="Tahoma"/></rPr><t xml:space="preserve">${esc(c.author || 'Auteur')} :\n</t></r><r><rPr><sz val="9"/><rFont val="Tahoma"/></rPr><t xml:space="preserve">${esc(c.text + (c.replies || []).map((x) => `\n↳ ${x.author} : ${x.text}`).join(''))}</t></r></text></comment>`).join('')}</commentList></comments>`);
       ct.push(`<Override PartName="/xl/comments${commentN}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml"/>`);
       rid(REL + 'comments', `../comments${commentN}.xml`);
       const shapes = list.map(([k], i) => { const r = Math.floor(k / MAX_COLS), c = k % MAX_COLS; return `<v:shape id="_x0000_s${1025 + i}" type="#_x0000_t202" style="position:absolute;margin-left:80pt;margin-top:5pt;width:120pt;height:60pt;z-index:${i + 1};visibility:hidden" fillcolor="#ffffe1" o:insetmode="auto"><v:fill color2="#ffffe1"/><v:shadow on="t" color="black" obscured="t"/><v:path o:connecttype="none"/><v:textbox style="mso-direction-alt:auto"><div style="text-align:left"/></v:textbox><x:ClientData ObjectType="Note"><x:MoveWithCells/><x:SizeWithCells/><x:Anchor>${c + 1}, 15, ${r}, 2, ${c + 3}, 15, ${r + 4}, 4</x:Anchor><x:AutoFill>False</x:AutoFill><x:Row>${r}</x:Row><x:Column>${c}</x:Column></x:ClientData></v:shape>`; }).join('');
@@ -325,20 +372,24 @@ export async function exportXlsx(native, wb, { title = '', author = '' } = {}) {
         const names = [], seen = new Set();
         for (let c = t.c1; c <= t.c2; c++) { const d = wb.display(s, t.r1, c); let n = d ? d.text : 'Colonne' + (c - t.c1 + 1); let k = 2; const base = n; while (seen.has(n.toLowerCase())) n = base + k++; seen.add(n.toLowerCase()); names.push(n); }
         const ref = rangeStr(t.r1, t.c1, t.r2, t.c2), fref = rangeStr(t.r1, t.c1, t.total ? t.r2 - 1 : t.r2, t.c2);
-        file(`xl/tables/table${tableN}.xml`, `${XML}<table xmlns="${NS}" id="${tableN}" name="${esc(t.name)}" displayName="${esc(t.name)}" ref="${ref}"${t.header === false ? ' headerRowCount="0"' : ''}${t.total ? ' totalsRowCount="1"' : ' totalsRowShown="0"'}>${t.header === false ? '' : `<autoFilter ref="${fref}"/>`}<tableColumns count="${names.length}">${names.map((n, i) => `<tableColumn id="${i + 1}" name="${esc(n)}"${t.total && i === 0 ? ' totalsRowLabel="Total"' : ''}/>`).join('')}</tableColumns><tableStyleInfo name="${TABLE_STYLE_NAMES[t.style] || 'TableStyleMedium2'}" showFirstColumn="${t.firstCol ? 1 : 0}" showLastColumn="${t.lastCol ? 1 : 0}" showRowStripes="${t.banded === false ? 0 : 1}" showColumnStripes="${t.bandedCols ? 1 : 0}"/></table>`);
+        file(`xl/tables/table${tableN}.xml`, `${XML}<table xmlns="${NS}" id="${tableN}" name="${esc(t.name)}" displayName="${esc(t.name)}" ref="${ref}"${t.header === false ? ' headerRowCount="0"' : ''}${t.total ? ' totalsRowCount="1"' : ' totalsRowShown="0"'}>${t.header === false ? '' : s.filter && s.filter.r1 === t.r1 && s.filter.c1 === t.c1 ? filterXml({ ...s, filter: { ...s.filter, r2: t.total ? t.r2 - 1 : t.r2 } }, wb) : `<autoFilter ref="${fref}"/>`}<tableColumns count="${names.length}">${names.map((n, i) => `<tableColumn id="${i + 1}" name="${esc(n)}"${t.total && i === 0 ? ' totalsRowLabel="Total"' : ''}/>`).join('')}</tableColumns><tableStyleInfo name="${TABLE_STYLE_NAMES[t.style] || 'TableStyleMedium2'}" showFirstColumn="${t.firstCol ? 1 : 0}" showLastColumn="${t.lastCol ? 1 : 0}" showRowStripes="${t.banded === false ? 0 : 1}" showColumnStripes="${t.bandedCols ? 1 : 0}"/></table>`);
         ct.push(`<Override PartName="/xl/tables/table${tableN}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>`);
         parts.push(`<tablePart r:id="${rid(REL + 'table', `../tables/table${tableN}.xml`)}"/>`);
       }
       tableParts = `<tableParts count="${parts.length}">${parts.join('')}</tableParts>`;
     }
-    // sparklines (extension x14)
+    // extensions Excel 2010 : mises en forme conditionnelles récentes, sparklines
+    const x14cf = [];
+    cfXml(s, new Styles(), x14cf); // repère les règles à placer dans l'extension (les styles de ce passage sont ignorés)
     let ext = '';
     if (s.sparklines.length) {
       const groups = new Map();
       for (const sp of s.sparklines) { const key = sp.kind + '|' + (sp.color || ''); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(sp); }
-      ext = `<extLst><ext uri="{05C60535-1F16-4fd2-B633-F4F36F0B64E0}" xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main"><x14:sparklineGroups xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main">${[...groups.values()].map((g) => `<x14:sparklineGroup${g[0].kind === 'column' ? ' type="column"' : g[0].kind === 'winloss' ? ' type="stacked"' : ''} displayEmptyCellsAs="gap"><x14:colorSeries rgb="${argb(g[0].color || '#2f6fb6')}"/><x14:colorNegative rgb="FFC00000"/><x14:sparklines>${g.map((sp) => `<x14:sparkline><xm:f>${esc(qn(sp.sheet || s.name))}!${rangeStr(sp.range.r1, sp.range.c1, sp.range.r2, sp.range.c2)}</xm:f><xm:sqref>${addr(sp.r, sp.c)}</xm:sqref></x14:sparkline>`).join('')}</x14:sparklines></x14:sparklineGroup>`).join('')}</x14:sparklineGroups></ext></extLst>`;
+      ext = `<ext uri="{05C60535-1F16-4fd2-B633-F4F36F0B64E0}" xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main"><x14:sparklineGroups xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main">${[...groups.values()].map((g) => `<x14:sparklineGroup${g[0].kind === 'column' ? ' type="column"' : g[0].kind === 'winloss' ? ' type="stacked"' : ''} displayEmptyCellsAs="gap"><x14:colorSeries rgb="${argb(g[0].color || '#2f6fb6')}"/><x14:colorNegative rgb="FFC00000"/><x14:sparklines>${g.map((sp) => `<x14:sparkline><xm:f>${esc(qn(sp.sheet || s.name))}!${rangeStr(sp.range.r1, sp.range.c1, sp.range.r2, sp.range.c2)}</xm:f><xm:sqref>${addr(sp.r, sp.c)}</xm:sqref></x14:sparkline>`).join('')}</x14:sparklines></x14:sparklineGroup>`).join('')}</x14:sparklineGroups></ext>`;
     }
-    const xml = `${XML}<worksheet xmlns="${NS}" xmlns:r="${RNS}"><sheetPr>${s.tabColor ? `<tabColor rgb="${argb(s.tabColor)}"/>` : ''}${s.pageSetup.fitWidth ? '<pageSetUpPr fitToPage="1"/>' : ''}</sheetPr><dimension ref="${rangeStr(0, 0, u.r2, u.c2)}"/>${views}<sheetFormatPr defaultRowHeight="15"/>${cols ? `<cols>${cols}</cols>` : ''}<sheetData>${data}</sheetData>${s.protected ? '<sheetProtection sheet="1" objects="1" scenarios="1"/>' : ''}${autoFilter}${merges}${cfXml(s, styles)}${dvXml(s)}${hl}${page}${drawingRef}${legacy}${tableParts}${ext}</worksheet>`;
+    if (x14cf.length) ext += `<ext uri="{78C0D931-6437-407d-A8EE-F0AAD7539E65}" xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main"><x14:conditionalFormattings>${x14cf.join('')}</x14:conditionalFormattings></ext>`;
+    if (ext) ext = `<extLst>${ext.replace(/^<extLst>/, '')}</extLst>`;
+    const xml = `${XML}<worksheet xmlns="${NS}" xmlns:r="${RNS}"><sheetPr>${s.tabColor ? `<tabColor rgb="${argb(s.tabColor)}"/>` : ''}${s.pageSetup.fitWidth ? '<pageSetUpPr fitToPage="1"/>' : ''}</sheetPr><dimension ref="${rangeStr(0, 0, u.r2, u.c2)}"/>${views}<sheetFormatPr defaultRowHeight="15"${rowLevel.size ? ` outlineLevelRow="${Math.min(7, Math.max(...rowLevel.values()))}"` : ''}${colLevel.size ? ` outlineLevelCol="${Math.min(7, Math.max(...colLevel.values()))}"` : ''}/>${cols ? `<cols>${cols}</cols>` : ''}<sheetData>${data}</sheetData>${s.protected ? `<sheetProtection${s.password ? ` password="${xlPasswordHash(s.password)}"` : ''} sheet="1" objects="1" scenarios="1"/>` : ''}${autoFilter}${merges}${cfXml(s, styles, x14cf)}${dvXml(s)}${hl}${page}${drawingRef}${legacy}${tableParts}${ext}</worksheet>`;
     sheetXmls.push(xml);
     file(`xl/worksheets/sheet${si + 1}.xml`, xml);
     if (rels.length) file(`xl/worksheets/_rels/sheet${si + 1}.xml.rels`, `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels.join('')}</Relationships>`);
@@ -350,12 +401,17 @@ export async function exportXlsx(native, wb, { title = '', author = '' } = {}) {
   const n = wb.sheets.length;
   const workbookXml = `${XML}<workbook xmlns="${NS}" xmlns:r="${RNS}"><workbookPr/>${wb.props.locked ? '<workbookProtection lockStructure="1"/>' : ''}<bookViews><workbookView activeTab="${wb.active}"/></bookViews><sheets>${sheetsXml.join('')}</sheets>${defined.length ? `<definedNames>${defined.join('')}</definedNames>` : ''}<calcPr calcId="191029"${wb.calcMode === 'manual' ? ' calcMode="manual"' : ''} fullCalcOnLoad="1"/></workbook>`;
   file('xl/workbook.xml', workbookXml);
-  file('xl/_rels/workbook.xml.rels', `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${wbRels.join('')}<Relationship Id="rId${n + 1}" Type="${REL}styles" Target="styles.xml"/><Relationship Id="rId${n + 2}" Type="${REL}sharedStrings" Target="sharedStrings.xml"/></Relationships>`);
+  file('xl/_rels/workbook.xml.rels', `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${wbRels.join('')}<Relationship Id="rId${n + 1}" Type="${REL}styles" Target="styles.xml"/><Relationship Id="rId${n + 2}" Type="${REL}sharedStrings" Target="sharedStrings.xml"/>${people.size ? `<Relationship Id="rId${n + 3}" Type="http://schemas.microsoft.com/office/2017/10/relationships/person" Target="persons/person.xml"/>` : ''}</Relationships>`);
   file('xl/styles.xml', styles.xml());
   file('xl/sharedStrings.xml', `${XML}<sst xmlns="${NS}" count="${sst.length}" uniqueCount="${sst.length}">${sst.map((t) => `<si><t xml:space="preserve">${esc(t)}</t></si>`).join('')}</sst>`);
   const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
-  file('docProps/core.xml', `${XML}<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${esc(title)}</dc:title><dc:creator>${esc(author)}</dc:creator><cp:lastModifiedBy>${esc(author)}</cp:lastModifiedBy><dcterms:created xsi:type="dcterms:W3CDTF">${esc((wb.props.created || now).replace(/\.\d+Z$/, 'Z'))}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified></cp:coreProperties>`);
-  file('docProps/app.xml', `${XML}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Plume Tableur</Application></Properties>`);
+  const pr = wb.props || {};
+  if (people.size) {
+    file('xl/persons/person.xml', `${XML}<personList xmlns="http://schemas.microsoft.com/office/spreadsheetml/2018/threadedcomments" xmlns:x="${NS}">${[...people].map(([n, id]) => `<person displayName="${esc(n)}" id="${id}" userId="${esc(n)}" providerId="None"/>`).join('')}</personList>`);
+    ct.push('<Override PartName="/xl/persons/person.xml" ContentType="application/vnd.ms-excel.person+xml"/>');
+  }
+  file('docProps/core.xml', `${XML}<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${esc(title)}</dc:title>${pr.subject ? `<dc:subject>${esc(pr.subject)}</dc:subject>` : ''}<dc:creator>${esc(pr.author || author)}</dc:creator>${pr.keywords ? `<cp:keywords>${esc(pr.keywords)}</cp:keywords>` : ''}${pr.description ? `<dc:description>${esc(pr.description)}</dc:description>` : ''}${pr.category ? `<cp:category>${esc(pr.category)}</cp:category>` : ''}<cp:lastModifiedBy>${esc(author)}</cp:lastModifiedBy><dcterms:created xsi:type="dcterms:W3CDTF">${esc((pr.created || now).replace(/\.\d+Z$/, 'Z'))}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified></cp:coreProperties>`);
+  file('docProps/app.xml', `${XML}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>Plume Tableur</Application>${pr.company ? `<Company>${esc(pr.company)}</Company>` : ''}</Properties>`);
   file('_rels/.rels', `${XML}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}officeDocument" Target="xl/workbook.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/><Relationship Id="rId3" Type="${REL}extended-properties" Target="docProps/app.xml"/></Relationships>`);
   file('[Content_Types].xml', `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="json" ContentType="application/json"/><Default Extension="vml" ContentType="application/vnd.openxmlformats-officedocument.vmlDrawing"/><Default Extension="png" ContentType="image/png"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="gif" ContentType="image/gif"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>${ct.join('')}</Types>`);
   file('plume/workbook.json', JSON.stringify({ version: 1, signature: hashString(workbookXml + sheetXmls.map((x) => x.length).join(',')), data: native }));

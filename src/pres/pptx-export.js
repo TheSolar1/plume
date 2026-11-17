@@ -50,6 +50,19 @@ export async function exportPptx(pres, { title = '', author = '', show = false }
     return name;
   };
 
+  // Graphiques PowerPoint : partie graphique + petit classeur Excel intégré (« Modifier les données »)
+  let chartN = 0;
+  const addChart = async (el) => {
+    const n = ++chartN;
+    const d = parseTable(el.chart.data || '');
+    d.head = String(el.chart.data || '').split('\n')[0].split(/;|\t/)[0].trim();
+    files(`ppt/charts/chart${n}.xml`, pptChartXml(el.chart, d, pres.theme, n));
+    files(`ppt/embeddings/Microsoft_Excel_Worksheet${n}.xlsx`, await chartWorkbook(d));
+    files(`ppt/charts/_rels/chart${n}.xml.rels`, rels([['rId1', 'package', `../embeddings/Microsoft_Excel_Worksheet${n}.xlsx`]]));
+    ct.push(`<Override PartName="/ppt/charts/chart${n}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>`);
+    return `../charts/chart${n}.xml`;
+  };
+
   // ── Thème ──
   const t = pres.theme;
   const sch = ['dk1', 'lt1', 'dk2', 'lt2', 'accent1', 'accent2', 'accent3', 'accent4', 'accent5', 'accent6'];
@@ -74,7 +87,11 @@ export async function exportPptx(pres, { title = '', author = '', show = false }
   };
   const spTreeHead = '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>';
   layoutKeys.forEach((k, i) => {
-    const phs = LAYOUTS[k].ph(W, H).map((p, j) => phSp(p, j + 2)).join('');
+    let phs = LAYOUTS[k].ph(W, H).map((p, j) => phSp(p, j + 2)).join('');
+    if (t.accentBar) {
+      const [bx, by, bw, bh] = k === 'title' ? [W * 0.125, H * 0.5, W * 0.75, 4] : k === 'section' ? [W * 0.07, H * 0.585, W * 0.3, 4] : [0, 0, W * 0.012, H];
+      phs += `<p:sp><p:nvSpPr><p:cNvPr id="90" name="Plume:accentBar"/><p:cNvSpPr/><p:nvPr userDrawn="1"/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${e(bx)}" y="${e(by)}"/><a:ext cx="${e(bw)}" cy="${e(bh)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="${hex(t.accentBar) || '4472C4'}"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr></p:sp>`;
+    }
     files(`ppt/slideLayouts/slideLayout${i + 1}.xml`, `${XML}<p:sldLayout ${NS} type="${layoutType[k] || 'obj'}" preserve="1"><p:cSld name="${esc(LAYOUTS[k].name)}"><p:spTree>${spTreeHead}${phs}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`);
     files(`ppt/slideLayouts/_rels/slideLayout${i + 1}.xml.rels`, rels([['rId1', 'slideMaster', '../slideMasters/slideMaster1.xml']]));
     ct.push(`<Override PartName="/ppt/slideLayouts/slideLayout${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>`);
@@ -105,7 +122,7 @@ export async function exportPptx(pres, { title = '', author = '', show = false }
     for (const el of flat) {
       const sid = id++;
       shapeIds.set(el.id, sid);
-      parts.push(await elementXml(el, sid, { pres, addRel, addMedia, W, H }));
+      parts.push(await elementXml(el, sid, { pres, addRel, addMedia, addChart, W, H }));
     }
     // pied de page
     const f = pres.footer || {};
@@ -123,7 +140,7 @@ export async function exportPptx(pres, { title = '', author = '', show = false }
       trans = `<p:transition spd="${dur < 0.6 ? 'fast' : dur < 1 ? 'med' : 'slow'}"${tr.advanceOnClick === false ? ' advClick="0"' : ''}${tr.advanceAfter != null ? ` advTm="${Math.round(tr.advanceAfter * 1000)}"` : ''}>${inner}</p:transition>`;
     } else if (tr.advanceAfter != null) trans = `<p:transition${tr.advanceOnClick === false ? ' advClick="0"' : ''} advTm="${Math.round(tr.advanceAfter * 1000)}"/>`;
     const timing = timingXml(flat, shapeIds);
-    const show = s.hidden ? ' show="0"' : '';
+    const show = (s.hidden ? ' show="0"' : '') + (s.background && s.background.hideGraphics ? ' showMasterSp="0"' : '');
     // notes
     if (s.notes) {
       const nid = addRel('notesSlide', `../notesSlides/notesSlide${n}.xml`);
@@ -161,8 +178,62 @@ export async function exportPptx(pres, { title = '', author = '', show = false }
   // copie fidèle
   const presXml = await zip.file('ppt/presentation.xml').async('string');
   files('plume/presentation.json', JSON.stringify({ version: 1, signature: hashString(presXml + pres.slides.length), data: pres }));
-  files('[Content_Types].xml', `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="json" ContentType="application/json"/><Default Extension="png" ContentType="image/png"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="gif" ContentType="image/gif"/><Default Extension="bmp" ContentType="image/bmp"/><Override PartName="/ppt/presentation.xml" ContentType="${mainType}"/><Override PartName="/ppt/presProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presProps+xml"/><Override PartName="/ppt/viewProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml"/><Override PartName="/ppt/tableStyles.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.tableStyles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>${ct.join('')}</Types>`);
+  files('[Content_Types].xml', `${XML}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="json" ContentType="application/json"/><Default Extension="png" ContentType="image/png"/><Default Extension="jpeg" ContentType="image/jpeg"/><Default Extension="gif" ContentType="image/gif"/><Default Extension="bmp" ContentType="image/bmp"/><Default Extension="xlsx" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"/><Override PartName="/ppt/presentation.xml" ContentType="${mainType}"/><Override PartName="/ppt/presProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presProps+xml"/><Override PartName="/ppt/viewProps.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.viewProps+xml"/><Override PartName="/ppt/tableStyles.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.tableStyles+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/><Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>${ct.join('')}</Types>`);
   return zip.generateAsync({ type: 'blob', mimeType: show ? 'application/vnd.openxmlformats-officedocument.presentationml.slideshow' : 'application/vnd.openxmlformats-officedocument.presentationml.presentation', compression: 'DEFLATE' });
+}
+
+// Lettres de colonne Excel
+const colL = (i) => { let s = '', n = i + 1; while (n > 0) { s = String.fromCharCode(65 + ((n - 1) % 26)) + s; n = Math.floor((n - 1) / 26); } return s; };
+// Graphique DrawingML (même structure que ceux de PowerPoint), données reliées au classeur intégré
+function pptChartXml(c, d, theme, n) {
+  const kind = c.kind || 'column';
+  const pal = theme.colors.slice(4, 10);
+  const pie = kind === 'pie' || kind === 'doughnut', scatter = kind === 'scatter';
+  const nC = d.cats.length;
+  const strCache = (arr) => `<c:strCache><c:ptCount val="${arr.length}"/>${arr.map((v, i) => `<c:pt idx="${i}"><c:v>${esc(v)}</c:v></c:pt>`).join('')}</c:strCache>`;
+  const numCache = (arr) => `<c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="${arr.length}"/>${arr.map((v, i) => `<c:pt idx="${i}"><c:v>${v}</c:v></c:pt>`).join('')}</c:numCache>`;
+  const catRef = `Feuil1!$A$2:$A$${nC + 1}`;
+  const sers = d.series.map((name, i) => {
+    const col = colL(i + 1), color = `<a:solidFill><a:srgbClr val="${hex(pal[i % pal.length]) || '4472C4'}"/></a:solidFill>`;
+    const tx = `<c:tx><c:strRef><c:f>Feuil1!$${col}$1</c:f>${strCache([name])}</c:strRef></c:tx>`;
+    const vals = d.values[i] || [];
+    const valRef = `Feuil1!$${col}$2:$${col}$${nC + 1}`;
+    const sp = kind === 'line' ? `<c:spPr><a:ln w="28575" cap="rnd">${color}<a:round/></a:ln></c:spPr><c:marker><c:symbol val="circle"/><c:size val="5"/><c:spPr>${color}</c:spPr></c:marker>` : scatter ? `<c:spPr><a:ln w="19050"><a:noFill/></a:ln></c:spPr><c:marker><c:symbol val="circle"/><c:size val="7"/><c:spPr>${color}</c:spPr></c:marker>` : pie ? '' : `<c:spPr>${color}</c:spPr>`;
+    const dpts = pie ? d.cats.map((_, k) => `<c:dPt><c:idx val="${k}"/><c:bubble3D val="0"/><c:spPr><a:solidFill><a:srgbClr val="${hex(pal[k % pal.length]) || '4472C4'}"/></a:solidFill></c:spPr></c:dPt>`).join('') : '';
+    const lbl = c.labels ? `<c:dLbls><c:showLegendKey val="0"/><c:showVal val="${pie ? 0 : 1}"/><c:showCatName val="0"/><c:showSerName val="0"/><c:showPercent val="${pie ? 1 : 0}"/><c:showBubbleSize val="0"/></c:dLbls>` : '';
+    if (scatter) return `<c:ser><c:idx val="${i}"/><c:order val="${i}"/>${tx}${sp}${lbl}<c:xVal><c:numRef><c:f>${catRef}</c:f>${numCache(d.cats.map((v) => (isFinite(+String(v).replace(',', '.')) ? +String(v).replace(',', '.') : 0)))}</c:numRef></c:xVal><c:yVal><c:numRef><c:f>${valRef}</c:f>${numCache(vals)}</c:numRef></c:yVal><c:smooth val="0"/></c:ser>`;
+    return `<c:ser><c:idx val="${i}"/><c:order val="${i}"/>${tx}${sp}${dpts}${lbl}<c:cat><c:strRef><c:f>${catRef}</c:f>${strCache(d.cats)}</c:strRef></c:cat><c:val><c:numRef><c:f>${valRef}</c:f>${numCache(vals)}</c:numRef></c:val>${kind === 'line' ? '<c:smooth val="0"/>' : ''}</c:ser>`;
+  }).join('');
+  const ax = '<c:axId val="111111111"/><c:axId val="222222222"/>';
+  let plot;
+  if (kind === 'pie') plot = `<c:pieChart><c:varyColors val="1"/>${sers}<c:firstSliceAng val="0"/></c:pieChart>`;
+  else if (kind === 'doughnut') plot = `<c:doughnutChart><c:varyColors val="1"/>${sers}<c:firstSliceAng val="0"/><c:holeSize val="50"/></c:doughnutChart>`;
+  else if (scatter) plot = `<c:scatterChart><c:scatterStyle val="lineMarker"/><c:varyColors val="0"/>${sers}${ax}</c:scatterChart>`;
+  else if (kind === 'line') plot = `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${sers}<c:marker val="1"/>${ax}</c:lineChart>`;
+  else if (kind === 'area') plot = `<c:areaChart><c:grouping val="standard"/><c:varyColors val="0"/>${sers}${ax}</c:areaChart>`;
+  else if (kind === 'radar') plot = `<c:radarChart><c:radarStyle val="marker"/><c:varyColors val="0"/>${sers}${ax}</c:radarChart>`;
+  else { const horiz = kind === 'bar' || kind === 'hbar' || kind === 'funnel'; plot = `<c:barChart><c:barDir val="${horiz ? 'bar' : 'col'}"/><c:grouping val="${kind === 'stacked' ? 'stacked' : 'clustered'}"/><c:varyColors val="0"/>${sers}<c:gapWidth val="80"/>${kind === 'stacked' ? '<c:overlap val="100"/>' : ''}${ax}</c:barChart>`; }
+  const horiz = kind === 'bar' || kind === 'hbar' || kind === 'funnel';
+  const grid = '<c:majorGridlines><c:spPr><a:ln w="9525"><a:solidFill><a:srgbClr val="D9D9D9"/></a:solidFill></a:ln></c:spPr></c:majorGridlines>';
+  const valAx = (id, cross, pos, g) => `<c:valAx><c:axId val="${id}"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${pos}"/>${g ? grid : ''}<c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="${cross}"/><c:crosses val="autoZero"/><c:crossBetween val="${kind === 'area' || scatter ? 'midCat' : 'between'}"/></c:valAx>`;
+  const axes = pie ? '' : scatter ? valAx('111111111', '222222222', 'b', false) + valAx('222222222', '111111111', 'l', true) : `<c:catAx><c:axId val="111111111"/><c:scaling><c:orientation val="${horiz ? 'maxMin' : 'minMax'}"/></c:scaling><c:delete val="0"/><c:axPos val="${horiz ? 'l' : 'b'}"/><c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="none"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="222222222"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>${valAx('222222222', '111111111', horiz ? 'b' : 'l', true)}`;
+  const title = c.title ? `<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1800" b="0"/></a:pPr><a:r><a:rPr lang="fr-FR" sz="1800" b="0"/><a:t>${esc(c.title)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/>` : '<c:autoTitleDeleted val="1"/>';
+  const legend = c.legend ? '<c:legend><c:legendPos val="b"/><c:overlay val="0"/></c:legend>' : '';
+  void n;
+  return `${XML}<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${R}"><c:date1904 val="0"/><c:lang val="fr-FR"/><c:roundedCorners val="0"/><c:chart>${title}<c:plotArea><c:layout/>${plot}${axes}</c:plotArea>${legend}<c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart><c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1200"/></a:pPr><a:endParaRPr lang="fr-FR"/></a:p></c:txPr><c:externalData r:id="rId1"><c:autoUpdate val="0"/></c:externalData></c:chartSpace>`;
+}
+// Classeur Excel minimal contenant les données du graphique
+async function chartWorkbook(d) {
+  const z = new JSZip();
+  const X = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  const cell = (r, c, v) => (typeof v === 'number' ? `<c r="${colL(c)}${r}"><v>${v}</v></c>` : `<c r="${colL(c)}${r}" t="inlineStr"><is><t xml:space="preserve">${esc(v)}</t></is></c>`);
+  const rows = [`<row r="1">${cell(1, 0, d.head || '')}${d.series.map((s, i) => cell(1, i + 1, s)).join('')}</row>`, ...d.cats.map((cat, k) => `<row r="${k + 2}">${cell(k + 2, 0, String(cat))}${d.series.map((_, i) => cell(k + 2, i + 1, +(d.values[i] || [])[k] || 0)).join('')}</row>`)];
+  z.file('[Content_Types].xml', `${X}<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`);
+  z.file('_rels/.rels', `${X}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`);
+  z.file('xl/workbook.xml', `${X}<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${R}"><sheets><sheet name="Feuil1" sheetId="1" r:id="rId1"/></sheets></workbook>`);
+  z.file('xl/_rels/workbook.xml.rels', `${X}<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`);
+  z.file('xl/worksheets/sheet1.xml', `${X}<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rows.join('')}</sheetData></worksheet>`);
+  return z.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });
 }
 
 function rels(list) {
@@ -175,6 +246,9 @@ function colorXml(c, theme) {
   if (!c) return '';
   const m = /^accent(\d)$/.exec(c);
   if (m) return `<a:schemeClr val="accent${m[1]}"/>`;
+  const dk1 = String(theme.colors[1]).toLowerCase();
+  if ((c === 'text' && String(theme.text).toLowerCase() === dk1) || (c === 'title' && String(theme.title).toLowerCase() === dk1)) return '<a:schemeClr val="tx1"/>';
+  if (c === 'muted' && String(theme.text).toLowerCase() === dk1) return '<a:schemeClr val="tx1"><a:lumMod val="55000"/><a:lumOff val="45000"/></a:schemeClr>';
   const v = hex(themeColor(theme, c));
   return v ? `<a:srgbClr val="${v}"/>` : '';
 }
@@ -283,6 +357,10 @@ async function elementXml(el, sid, ctx) {
     const spPr = `<p:spPr>${xfrm(el)}${geomXml}${el.type === 'shape' || st.fill || st.gradient ? fill() : '<a:noFill/>'}${ln()}${effects()}</p:spPr>`;
     const txt = el.ph === 'pic' && !docText(el.text).trim() ? '' : txBodyXml(el, ctx);
     return `<p:sp><p:nvSpPr>${cNvPr}<p:cNvSpPr${el.type === 'text' && !isPh ? ' txBox="1"' : ''}>${isPh ? '<a:spLocks noGrp="1"/>' : ''}</p:cNvSpPr><p:nvPr>${ph}</p:nvPr></p:nvSpPr>${spPr}${txt || (el.type === 'shape' ? txBodyXml(el, ctx) : '')}</p:sp>`;
+  }
+  if (el.type === 'chart' && el.chart && el.chart.kind !== 'smartart' && ctx.addChart) {
+    const rid = ctx.addRel('chart', await ctx.addChart(el));
+    return `<p:graphicFrame><p:nvGraphicFramePr>${cNvPr}<p:cNvGraphicFramePr><a:graphicFrameLocks noGrp="1"/></p:cNvGraphicFramePr><p:nvPr/></p:nvGraphicFramePr><p:xfrm${el.rot ? ` rot="${Math.round(el.rot * 60000)}"` : ''}><a:off x="${e(el.x)}" y="${e(el.y)}"/><a:ext cx="${e(el.w)}" cy="${e(el.h)}"/></p:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" r:id="${rid}"/></a:graphicData></a:graphic></p:graphicFrame>`;
   }
   if (el.type === 'image' || el.type === 'chart' || el.type === 'ink' || el.type === 'video') {
     let src = el.src;

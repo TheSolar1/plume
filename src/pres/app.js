@@ -1028,6 +1028,14 @@ export class PresApp {
   }
 
   // ── Fichiers ──
+  // Convertit la présentation en .pptx tel que PowerPoint le lira (sans la copie Plume), puis la relit.
+  async roundTripPptx() {
+    const { default: JSZip } = await import('jszip');
+    const blob = await exportPptx(this.pres, { title: this.titleInput.value, author: this.user.name });
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    zip.remove('plume/presentation.json');
+    return importPptx(await zip.generateAsync({ type: 'arraybuffer' }));
+  }
   toNative() { return { app: 'pres', ...JSON.parse(JSON.stringify(this.pres)), props: { ...this.pres.props, title: this.titleInput.value } }; }
   loadNative(p, title) {
     this.exitEdit(false);

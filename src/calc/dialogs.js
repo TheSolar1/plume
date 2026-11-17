@@ -4,6 +4,7 @@
 // mise en forme conditionnelle, validation, tableaux, graphiques,
 // objets, commentaires, liens, mise en page et impression, aide.
 // ══════════════════════════════════════════════════════════════════
+import { xlPasswordHash } from './xlsx-export.js';
 import { h, icon, toast, dialog, alertDlg, confirmDlg, field, select, numberInput, checkbox, tabs, closeMenus, prefs, allIconNames, iconSvgString, download } from '../common/ui.js';
 import { MAX_ROWS, MAX_COLS, keyOf } from './model.js';
 import { colName, addr, rangeStr, parseRange, toLocal, toCanonical, ALL_FUNCTIONS, localName, FN_HELP, CATEGORIES, FR, isErr } from './formula.js';
@@ -534,7 +535,7 @@ export function protectSheet(app) {
     const pw = h('input.pl-input', { type: 'password', style: { width: '100%' } });
     const undo = () => { app.tx('Ôter la protection', (wb) => { wb.snapshot(s); s.protected = false; s.password = null; }); toast('Protection de la feuille retirée'); };
     if (!s.password) return undo();
-    dialog({ title: 'Ôter la protection de la feuille', width: 320, body: field('Mot de passe :', pw), buttons: [{ label: 'OK', primary: true, action: () => { if (pw.value !== s.password) { toast('Le mot de passe est incorrect.', 'error'); return false; } undo(); } }, { label: 'Annuler' }] });
+    dialog({ title: 'Ôter la protection de la feuille', width: 320, body: field('Mot de passe :', pw), buttons: [{ label: 'OK', primary: true, action: () => { if (/^xlhash:/.test(s.password) ? xlPasswordHash(pw.value) !== s.password.slice(7) : pw.value !== s.password) { toast('Le mot de passe est incorrect.', 'error'); return false; } undo(); } }, { label: 'Annuler' }] });
     return;
   }
   const pw = h('input.pl-input', { type: 'password', style: { width: '100%' } }), pw2 = h('input.pl-input', { type: 'password', style: { width: '100%' } });
