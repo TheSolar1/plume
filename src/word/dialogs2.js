@@ -191,10 +191,6 @@ export function drawingDialog(app, opts = {}) {
 }
 
 // Équation manuscrite : dessin + saisie assistée
-export function inkEquationDialog(app) {
-  drawingDialog(app, { title: 'Équation manuscrite — dessinez, puis saisissez la formule reconnue', onDone: () => { import('./dialogs.js').then((D) => D.equationDialog(app, null, '', true)); toast('Saisissez maintenant la formule (aperçu en direct).'); } });
-}
-
 export function shapeTextDialog(app) {
   const s = app.state.selection;
   if (!(s instanceof NodeSelection) || s.node.type.name !== 'shape') return;

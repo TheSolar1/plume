@@ -560,38 +560,6 @@ export function symbolDialog(app, onPick) {
 }
 
 // ── Équations ──
-export function equationDialog(app, pos, tex = '', block = false) {
-  const area = h('textarea.pl-input', { rows: 3, style: { fontFamily: 'Consolas, monospace', width: '100%' }, on: { keydown: (e) => e.stopPropagation() } });
-  area.value = tex;
-  const preview = h('div.pl-preview', { style: { fontSize: '22px', textAlign: 'center', minHeight: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' } });
-  const upd = () => { preview.innerHTML = area.value.trim() ? texToMathML(area.value, true) : '<span style="color:#888;font-size:14px">Tapez une équation (syntaxe LaTeX) ou utilisez les structures ci-dessous</span>'; };
-  area.addEventListener('input', upd);
-  upd();
-  const ins = (t) => { const s = area.selectionStart, e = area.selectionEnd; area.value = area.value.slice(0, s) + t + area.value.slice(e); area.focus(); area.selectionStart = area.selectionEnd = s + t.length; upd(); };
-  const structs = h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '4px' } }, EQUATION_STRUCTURES.map(([l, t]) => { const b = h('button.pl-btn.small', { type: 'button', title: l, on: { click: () => ins(t) } }); b.innerHTML = texToMathML(t, false); return b; }));
-  const syms = h('div.pl-symbols', { style: { gridTemplateColumns: 'repeat(16, 1fr)', maxHeight: '110px' } }, EQUATION_SYMBOLS.map((s) => h('button', { type: 'button', title: s, on: { click: () => ins(s + ' ') } }, symbolOf(s))));
-  const display = checkbox('Afficher (équation centrée sur sa propre ligne)', block);
-  dialog({ title: 'Équation', width: 640, body: h('div', area, h('div.pl-field-label', { style: { margin: '6px 0 2px' } }, 'Aperçu'), preview, h('div.pl-field-label', { style: { margin: '8px 0 4px' } }, 'Structures'), structs, h('div.pl-field-label', { style: { margin: '8px 0 4px' } }, 'Symboles'), syms, display), buttons: [
-    { label: 'OK', primary: true, action: () => {
-      const t = area.value.trim();
-      const asBlock = display.querySelector('input').checked;
-      const v = app.activeView;
-      if (pos != null) {
-        const node = v.state.doc.nodeAt(pos);
-        if (node && (node.type.name === 'equation') === !asBlock) v.dispatch(v.state.tr.setNodeMarkup(pos, null, { tex: t }));
-        else if (node) {
-          const tr = v.state.tr.delete(pos, pos + node.nodeSize);
-          v.dispatch(tr);
-          app.cmd(asBlock ? C.insertBlock(N.equation_block.create({ tex: t })) : C.insertNode(N.equation.create({ tex: t })));
-        }
-      } else if (t) app.cmd(asBlock ? C.insertBlock(N.equation_block.create({ tex: t })) : C.insertNode(N.equation.create({ tex: t })));
-      app.focus();
-    } },
-    { label: 'Annuler' },
-  ] });
-}
-
-// ── Date et heure ──
 export function dateTimeDialog(app) {
   const now = new Date();
   const list = h('div.pl-list', { style: { height: '220px' } });
@@ -1153,5 +1121,4 @@ export function shortcutsDialog() {
   dialog({ title: 'Raccourcis clavier', width: 620, body: h('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: '12px' } }, list.map(([k, l]) => h('tr', h('td', { style: { padding: '3px 8px 3px 0', fontFamily: 'Consolas, monospace', whiteSpace: 'nowrap' } }, k), h('td', l)))), buttons: [{ label: 'Fermer', primary: true }] });
 }
 
-export { equationDialog as editEquationDialog };
 void TableMap; void selectedRect; void TextSelection; void confirmDlg; void icon; void stylePreviewCss; void MARGIN_PRESETS; void uid;

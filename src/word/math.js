@@ -87,6 +87,10 @@ export function texToMathML(tex, display = false) {
         if (cmd === 'underline') return `<munder>${base}<mo>_</mo></munder>`;
         return `<mover accent="true">${base}<mo>${ACCENTS[cmd]}</mo></mover>`;
       }
+      if (cmd === 'overset' || cmd === 'stackrel') { const top = readGroup(); const base = readGroup(); return `<mover>${base}${top}</mover>`; }
+      if (cmd === 'underset') { const bot = readGroup(); const base = readGroup(); return `<munder>${base}${bot}</munder>`; }
+      if (cmd === 'xrightarrow' || cmd === 'xleftarrow') return `<mover><mo stretchy="true">${cmd === 'xrightarrow' ? '→' : '←'}</mo>${readGroup()}</mover>`;
+      if (cmd === '|') return '<mo>‖</mo>';
       if (cmd === 'overbrace') return `<mover>${readGroup()}<mo>⏞</mo></mover>`;
       if (cmd === 'underbrace') return `<munder>${readGroup()}<mo>⏟</mo></munder>`;
       if (cmd === 'left' || cmd === 'right' || cmd === 'big' || cmd === 'Big' || cmd === 'bigg') {
@@ -124,7 +128,8 @@ export function texToMathML(tex, display = false) {
       while (i < src.length && /[0-9.,]/.test(src[i]) && !(src[i] === ',' && !/[0-9]/.test(src[i + 1] || ''))) n += src[i++];
       return `<mn>${n}</mn>`;
     }
-    if (/[a-zA-Zà-ÿ]/.test(c)) return `<mi>${c}</mi>`;
+    if (/[a-zA-Zà-ÿα-ωΑ-Ωℏℓ∞∂∇]/.test(c)) return `<mi>${c}</mi>`;
+    if (c === '▢') return '<mi class="pl-eq-slot">▢</mi>'; // case à remplir
     if (c === "'") return '<mo>′</mo>';
     return `<mo>${esc(c)}</mo>`;
   }
@@ -180,3 +185,100 @@ export const EQUATION_STRUCTURES = [
 ];
 export const EQUATION_SYMBOLS = ['\\pm', '\\infty', '=', '\\neq', '\\sim', '\\times', '\\div', '!', '\\propto', '<', '\\ll', '>', '\\gg', '\\le', '\\ge', '\\mp', '\\cong', '\\approx', '\\equiv', '\\forall', '\\partial', '\\nabla', '\\exists', '\\in', '\\notin', '\\subset', '\\cup', '\\cap', '\\emptyset', '\\to', '\\Rightarrow', '\\Leftrightarrow', '\\alpha', '\\beta', '\\gamma', '\\delta', '\\epsilon', '\\theta', '\\lambda', '\\mu', '\\pi', '\\sigma', '\\phi', '\\omega', '\\Delta', '\\Sigma', '\\Omega'];
 export const symbolOf = (cmd) => SYMBOLS[cmd.replace(/^\\/, '')] || cmd;
+
+
+// ══════════════════════════════════════════════════════════════════
+// Saisie « linéaire » à la façon de Word : on tape a/b, x^2, sqrt(x),
+// \alpha + espace… et la formule se construit toute seule.
+// ══════════════════════════════════════════════════════════════════
+
+// Corrections automatiques pendant la frappe (comme la correction automatique mathématique de Word)
+const AUTO = [['<=', '≤'], ['>=', '≥'], ['!=', '≠'], ['/=', '≠'], ['->', '→'], ['<-', '←'], ['+-', '±'], ['-+', '∓'], ['...', '…'], ['~=', '≈'], ['<<', '≪'], ['>>', '≫']];
+// Texte saisi + position du curseur → texte corrigé + nouvelle position (ou null si rien à corriger)
+export function mathAutocorrect(text, caret) {
+  const before = text.slice(0, caret), after = text.slice(caret);
+  // \nom suivi d'un espace : symbole (\alpha → α). Les commandes à arguments (\frac, \sqrt…) restent telles quelles.
+  const m = /\\([A-Za-z]+) $/.exec(before);
+  if (m && SYMBOLS[m[1]] && SYMBOLS[m[1]].trim() && !['N', 'Z', 'Q', 'R', 'C'].includes(m[1])) { const t = before.slice(0, m.index) + SYMBOLS[m[1]]; return { text: t + after, caret: t.length }; }
+  if (m && BIG[m[1]]) { const t = before.slice(0, m.index) + BIG[m[1]]; return { text: t + after, caret: t.length }; }
+  for (const [a, b] of AUTO) if (before.endsWith(a) && !(a === '...' && before.endsWith('....'))) { const t = before.slice(0, -a.length) + b; return { text: t + after, caret: t.length }; }
+  return null;
+}
+
+const BIG_REV = Object.fromEntries(Object.entries(BIG).map(([k, v]) => [v, '\\' + k]));
+// Forme linéaire → LaTeX : a/b devient une fraction, sqrt(x) une racine, ∑ ∫ √ sont compris.
+export function linearToTex(src) {
+  let s = String(src || '').replace(/[∑∏∐∫∬∭∮⋃⋂]/g, (c) => BIG_REV[c] + ' ');
+  s = s.replace(/√\s*(?=[({])/g, '\\sqrt').replace(/∛\s*(?=[({])/g, '\\sqrt[3]').replace(/(?<![\\A-Za-z])(?:sqrt|racine)\s*(?=\()/g, '\\sqrt').replace(/(?<![\\A-Za-z])cbrt\s*(?=\()/g, '\\sqrt[3]');
+  s = s.replace(/√\s*([\p{L}\p{N}.]+)/gu, '\\sqrt{$1}');
+  s = s.replace(new RegExp('(?<![\\\\A-Za-z])(' + FUNCS.filter((f) => f.length > 2 || f === 'ln' || f === 'lg').join('|') + ')(?![A-Za-z])', 'g'), '\\$1');
+  // \sqrt(…) et \sqrt[n](…) : parenthèses → accolades
+  for (let guard = 0; guard < 50; guard++) {
+    const m = /\\sqrt(\[[^\]]*\])?\(/.exec(s);
+    if (!m) break;
+    const open = m.index + m[0].length - 1, close = matching(s, open, '(', ')');
+    if (close < 0) break;
+    s = s.slice(0, open) + '{' + s.slice(open + 1, close) + '}' + s.slice(close + 1);
+  }
+  // fractions : opérande / opérande
+  for (let guard = 0; guard < 80; guard++) {
+    let i = -1;
+    for (let k = 0, depth = 0; k < s.length; k++) { if (s[k] === '\\') { k++; continue; } if (s[k] === '/' ) { i = k; break; } void depth; }
+    if (i < 0) break;
+    const L = operandLeft(s, i), R = operandRight(s, i + 1);
+    if (!L || !R) { s = s.slice(0, i) + '\u0001' + s.slice(i + 1); continue; } // barre oblique isolée : laissée telle quelle
+    s = s.slice(0, L.start) + '\\frac{' + strip(L.text) + '}{' + strip(R.text) + '}' + s.slice(R.end);
+  }
+  return s.replace(/\u0001/g, '/').replace(/[ \t]+/g, ' ').trim();
+}
+function matching(s, i, o, c) { let d = 0; for (let k = i; k < s.length; k++) { if (s[k] === '\\') { k++; continue; } if (s[k] === o) d++; else if (s[k] === c && --d === 0) return k; } return -1; }
+function matchingBack(s, i, o, c) { let d = 0; for (let k = i; k >= 0; k--) { if (s[k] === c) d++; else if (s[k] === o && --d === 0) return k; } return -1; }
+const strip = (t) => { t = t.trim(); return t[0] === '(' && matching(t, 0, '(', ')') === t.length - 1 ? t.slice(1, -1).trim() : t; };
+const WORD = /[\p{L}\p{N}.,′'!%]/u;
+function operandLeft(s, slash) {
+  let e = slash; while (e > 0 && s[e - 1] === ' ') e--;
+  if (e === 0) return null;
+  let b = e;
+  if (s[e - 1] === ')') { b = matchingBack(s, e - 1, '(', ')'); const fn = /\\?[A-Za-z]+$/.exec(s.slice(0, Math.max(0, b))); if (fn && b > 0) b = fn.index; } // f(x)/… : la fonction fait partie de l'opérande
+  else if (s[e - 1] === '}') {
+    b = matchingBack(s, e - 1, '{', '}');
+    // {…} appartient à ce qui précède : x^{2}, \sqrt{x}, \frac{a}{b}
+    for (let guard = 0; b > 0 && guard < 20; guard++) {
+      if (s[b - 1] === '}') { b = matchingBack(s, b - 1, '{', '}'); continue; }
+      if (s[b - 1] === ']') { b = matchingBack(s, b - 1, '[', ']'); continue; }
+      if (s[b - 1] === '^' || s[b - 1] === '_') { b--; if (s[b - 1] === ')') b = matchingBack(s, b - 1, '(', ')'); else if (s[b - 1] === '}') continue; else while (b > 0 && WORD.test(s[b - 1])) b--; continue; }
+      break;
+    }
+    const cm = /\\[A-Za-z]+$/.exec(s.slice(0, b)); if (cm) b = cm.index;
+  } else { while (b > 0 && (WORD.test(s[b - 1]) || ((s[b - 1] === '^' || s[b - 1] === '_') && b > 1 && WORD.test(s[b - 2])))) b--; const cm = /\\[A-Za-z]*$/.exec(s.slice(0, b)); if (cm && b < e) b = cm.index; else if (cm && /\\[A-Za-z]+$/.test(s.slice(0, e))) b = cm.index; }
+  if (b < 0 || b === e) return null;
+  return { start: b, text: s.slice(b, e) };
+}
+function operandRight(s, from) {
+  let b = from; while (s[b] === ' ') b++;
+  if (b >= s.length) return null;
+  let e = b;
+  const group = () => { if (s[e] === '(') { const c = matching(s, e, '(', ')'); if (c < 0) return false; e = c + 1; return true; } if (s[e] === '{') { const c = matching(s, e, '{', '}'); if (c < 0) return false; e = c + 1; return true; } return false; };
+  if (s[e] === '-' || s[e] === '−') e++;
+  if (s[e] === '\\') { e++; while (e < s.length && /[A-Za-z]/.test(s[e])) e++; while (s[e] === '[') { const c = matching(s, e, '[', ']'); if (c < 0) break; e = c + 1; } while (s[e] === '{') { if (!group()) break; } }
+  else if (!group()) { const w0 = e; while (e < s.length && WORD.test(s[e])) e++; if (s[e] === '(' && /^[A-Za-z]+$/.test(s.slice(w0, e))) group(); } // g(x) : fonction appliquée
+  // exposants et indices collés à l'opérande : 1/x^2
+  for (let guard = 0; guard < 10 && (s[e] === '^' || s[e] === '_'); guard++) { e++; if (!group()) { if (s[e] === '\\') { e++; while (e < s.length && /[A-Za-z]/.test(s[e])) e++; } else if (e < s.length) e++; } }
+  if (e === b) return null;
+  return { end: e, text: s.slice(b, e) };
+}
+
+// Structures de l'onglet Équation, rangées comme dans Word. « ▢ » marque les cases à remplir.
+export const EQUATION_GROUPS = [
+  ['Fraction', 'Divide', [['Fraction empilée', '\\frac{▢}{▢}'], ['Fraction oblique', '▢/▢'], ['Petite fraction', '\\tfrac{▢}{▢}'], ['dy/dx', '\\frac{dy}{dx}'], ['Δy/Δx', '\\frac{\\Delta y}{\\Delta x}'], ['∂y/∂x', '\\frac{\\partial y}{\\partial x}'], ['π/2', '\\frac{\\pi}{2}']]],
+  ['Script', 'Superscript', [['Exposant', '▢^{▢}'], ['Indice', '▢_{▢}'], ['Indice et exposant', '▢_{▢}^{▢}'], ['x²', 'x^{2}'], ['e^(−iωt)', 'e^{-i\\omega t}'], ['xᵢ', 'x_{i}']]],
+  ['Radical', 'Radical', [['Racine carrée', '\\sqrt{▢}'], ['Racine n-ième', '\\sqrt[▢]{▢}'], ['Racine cubique', '\\sqrt[3]{▢}'], ['Formule quadratique', '\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}'], ['√(a²+b²)', '\\sqrt{a^2+b^2}']]],
+  ['Intégrale', 'Sigma', [['Intégrale', '\\int ▢'], ['Intégrale bornée', '\\int_{▢}^{▢} ▢'], ['Intégrale double', '\\iint ▢'], ['Intégrale triple', '\\iiint ▢'], ['Intégrale de contour', '\\oint ▢'], ['dx', '\\,dx'], ['dθ', '\\,d\\theta']]],
+  ['Grand opérateur', 'Sigma', [['Somme', '\\sum ▢'], ['Somme bornée', '\\sum_{▢}^{▢} ▢'], ['Produit', '\\prod_{▢}^{▢} ▢'], ['Union', '\\bigcup_{▢}^{▢} ▢'], ['Intersection', '\\bigcap_{▢}^{▢} ▢'], ['Somme sur k', '\\sum_{k=0}^{n} \\binom{n}{k}']]],
+  ['Crochet', 'Parentheses', [['( )', '\\left( ▢ \\right)'], ['[ ]', '\\left[ ▢ \\right]'], ['{ }', '\\left\\{ ▢ \\right\\}'], ['| |', '\\left| ▢ \\right|'], ['‖ ‖', '\\left\\| ▢ \\right\\|'], ['⟨ ⟩', '\\left\\langle ▢ \\right\\rangle'], ['⌊ ⌋', '\\left\\lfloor ▢ \\right\\rfloor'], ['⌈ ⌉', '\\left\\lceil ▢ \\right\\rceil'], ['Cas (accolade)', '\\begin{cases}▢\\\\▢\\end{cases}'], ['Coefficient binomial', '\\binom{▢}{▢}']]],
+  ['Fonction', 'SquareFunction', [['sin', '\\sin ▢'], ['cos', '\\cos ▢'], ['tan', '\\tan ▢'], ['sin⁻¹', '\\sin^{-1} ▢'], ['cos⁻¹', '\\cos^{-1} ▢'], ['tan⁻¹', '\\tan^{-1} ▢'], ['sinh', '\\sinh ▢'], ['cosh', '\\cosh ▢'], ['tanh', '\\tanh ▢'], ['sin θ', '\\sin\\theta'], ['cos 2x', '\\cos 2x'], ['tan θ = sin θ / cos θ', '\\tan\\theta=\\frac{\\sin\\theta}{\\cos\\theta}']]],
+  ['Accent', 'CaseSensitive', [['Point', '\\dot{▢}'], ['Deux points', '\\ddot{▢}'], ['Chapeau', '\\hat{▢}'], ['Tilde', '\\tilde{▢}'], ['Barre', '\\bar{▢}'], ['Vecteur', '\\vec{▢}'], ['Barre supérieure', '\\overline{▢}'], ['Soulignement', '\\underline{▢}'], ['Flèche au-dessus', '\\overrightarrow{▢}']]],
+  ['Limite et log', 'ArrowRightToLine', [['Logarithme base b', '\\log_{▢} ▢'], ['log', '\\log ▢'], ['ln', '\\ln ▢'], ['Limite', '\\lim_{▢} ▢'], ['min', '\\min_{▢} ▢'], ['max', '\\max_{▢} ▢'], ['lim n→∞', '\\lim_{n\\to\\infty}'], ['lim x→0', '\\lim_{x\\to 0}']]],
+  ['Opérateur', 'Equal', [['≔', ':='], ['≡', '\\equiv'], ['≝ (égal par définition)', '\\overset{\\mathrm{def}}{=}'], ['→ avec texte', '\\xrightarrow{▢}'], ['⇒', '\\Rightarrow'], ['⇔', '\\Leftrightarrow'], ['∝', '\\propto']]],
+  ['Matrice', 'Grid3x3', [['1×2', '\\begin{matrix}▢&▢\\end{matrix}'], ['2×1', '\\begin{matrix}▢\\\\▢\\end{matrix}'], ['2×2', '\\begin{matrix}▢&▢\\\\▢&▢\\end{matrix}'], ['3×3', '\\begin{matrix}▢&▢&▢\\\\▢&▢&▢\\\\▢&▢&▢\\end{matrix}'], ['2×2 entre parenthèses', '\\begin{pmatrix}▢&▢\\\\▢&▢\\end{pmatrix}'], ['2×2 entre crochets', '\\begin{bmatrix}▢&▢\\\\▢&▢\\end{bmatrix}'], ['Déterminant 2×2', '\\begin{vmatrix}▢&▢\\\\▢&▢\\end{vmatrix}'], ['Matrice identité 2×2', '\\begin{pmatrix}1&0\\\\0&1\\end{pmatrix}'], ['Matrice identité 3×3', '\\begin{pmatrix}1&0&0\\\\0&1&0\\\\0&0&1\\end{pmatrix}']]],
+];

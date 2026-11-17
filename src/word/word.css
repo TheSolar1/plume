@@ -337,3 +337,34 @@ del.pl-del { text-decoration: line-through; color: var(--rev-color, #c00000); }
 .pl-peer-caret { position: relative; border-left: 2px solid; margin-left: -1px; pointer-events: none; }
 .pl-peer-name { position: absolute; left: -2px; bottom: 100%; color: #fff; font: 600 10px/1.4 system-ui, sans-serif; padding: 0 4px; border-radius: 3px 3px 3px 0; white-space: nowrap; letter-spacing: 0; text-transform: none; font-style: normal; text-decoration: none; opacity: .92; }
 @media print { .pl-peer-caret { display: none; } }
+
+/* ── Équations : saisie directement dans le document ── */
+.pl-eq-out { display: inline-block; }
+.pl-eq.editing, .pl-eqb.editing { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; padding: 3px 8px 2px; background: #f3f7fc; border: 1px solid #8eaadb; border-radius: 3px; box-shadow: 0 1px 4px rgba(43, 87, 154, .25); cursor: text; }
+.pl-eqb.editing { display: flex; width: fit-content; margin-left: auto; margin-right: auto; }
+.pl-eq.editing:hover, .pl-eqb.editing:hover { background: #f3f7fc; }
+.pl-eq-input { font: 13px Consolas, "Cascadia Mono", "DejaVu Sans Mono", monospace; border: 0; border-top: 1px dashed #b7c7dc; margin-top: 3px; padding: 2px 0 0; background: transparent; outline: none; text-align: center; color: #1f3864; min-width: 12ch; max-width: 90vw; letter-spacing: 0; text-transform: none; }
+.pl-eq-input::placeholder { color: #9aa8bd; }
+.pl-eq-slot { color: #8eaadb; }
+@media print { .pl-eq-input { display: none; } .pl-eq.editing, .pl-eqb.editing { border: 0; box-shadow: none; background: none; } }
+
+/* ── Volet « Équation manuscrite » ── */
+.pl-inkmath { flex: none; display: flex; flex-direction: column; background: var(--ui-panel, #f3f3f3); border-top: 2px solid #2b579a; padding: 6px 10px 8px; gap: 6px; }
+.pl-inkmath-head { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.pl-inkmath-head .pl-hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-inkmath-body { display: flex; gap: 8px; height: 210px; }
+.pl-inkmath-preview { width: 32%; min-width: 180px; background: #fff; border: 1px solid var(--ui-border, #ccc); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 22px; overflow: auto; padding: 6px; color: #000; }
+.pl-inkmath-preview .pl-hint { font-size: 12px; text-align: center; }
+.pl-inkmath-pad { position: relative; flex: 1; background: #fffdf0; border: 1px solid #d8cf9c; border-radius: 4px; overflow: hidden; }
+.pl-inkmath-canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+.pl-inkmath-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #b3a86a; font-size: 20px; pointer-events: none; }
+.pl-inkmath-tools { display: flex; gap: 4px; flex-wrap: wrap; }
+.pl-inkmath-tool { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border: 1px solid transparent; border-radius: 4px; background: none; cursor: pointer; font-size: 12px; color: inherit; }
+.pl-inkmath-tool:hover { background: var(--ui-hover, #e5e5e5); }
+.pl-inkmath-tool.on { background: #dbe6f6; border-color: #8eaadb; }
+.pl-inkmath-pop { padding: 8px; max-width: 300px; }
+.pl-inkmath-cands { display: flex; flex-wrap: wrap; gap: 3px; margin: 3px 0 7px; }
+.pl-inkmath-cand { min-width: 28px; height: 28px; border: 1px solid var(--ui-border, #ccc); border-radius: 4px; background: #fff; cursor: pointer; font-size: 15px; color: #000; }
+.pl-inkmath-cand:hover { background: #dbe6f6; }
+.pl-inkmath-cand.on { border-color: #2b579a; background: #dbe6f6; font-weight: 700; }
+.pl-inkmath-cands.all .pl-inkmath-cand { min-width: 24px; height: 24px; font-size: 13px; }

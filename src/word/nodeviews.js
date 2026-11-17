@@ -4,8 +4,8 @@
 // équations, champs, notes, contrôles de contenu, tables des
 // matières, sauts de page/section.
 // ══════════════════════════════════════════════════════════════════
-import { NodeSelection } from 'prosemirror-state';
-import { texToMathML } from './math.js';
+import { NodeSelection, Selection } from 'prosemirror-state';
+import { texToMathML, linearToTex, mathAutocorrect } from './math.js';
 
 // ── Image avec poignées de redimensionnement et rotation ──
 class ImageView {
@@ -197,23 +197,117 @@ class ShapeView {
   ignoreMutation() { return true; }
 }
 
+// Équation : affichée en notation mathématique ; un clic l'ouvre pour la saisie directement dans
+// le document (comme dans Word), sans fenêtre : on tape a/b, x^2, sqrt(x), \alpha + espace…
+// et la formule se construit au fil de la frappe.
 class EquationView {
   constructor(node, view, getPos, app, block) {
     this.node = node; this.view = view; this.getPos = getPos; this.app = app; this.block = block;
     this.dom = document.createElement(block ? 'div' : 'span');
     this.dom.className = block ? 'pl-eqb' : 'pl-eq';
     this.dom.contentEditable = 'false';
-    this.dom.addEventListener('dblclick', () => app.editEquation(getPos(), node.attrs.tex, block));
+    this.dom.__eqView = this;
+    this.out = document.createElement('span');
+    this.out.className = 'pl-eq-out';
+    this.dom.appendChild(this.out);
+    this.dom.addEventListener('mousedown', (e) => { if (!this.editing && e.button === 0 && this.view.editable) { e.preventDefault(); this.startEdit(); } });
     this.render();
   }
-  render() {
-    this.dom.innerHTML = this.node.attrs.tex ? texToMathML(this.node.attrs.tex, this.block) : '<span class="pl-eq-empty">Tapez une équation ici.</span>';
-    this.dom.title = 'Double-cliquez pour modifier l’équation';
+  show(tex) { this.out.innerHTML = tex ? texToMathML(tex, this.block) : '<span class="pl-eq-empty">Tapez une équation ici.</span>'; }
+  render() { this.show(this.node.attrs.tex); this.dom.title = this.editing ? '' : 'Cliquez pour modifier l’équation'; }
+  startEdit() {
+    if (this.editing || !this.view.editable) return;
+    const v = this.view, pos = this.getPos();
+    this.editing = true;
+    try { v.dispatch(v.state.tr.setSelection(NodeSelection.create(v.state.doc, pos))); } catch { /* position devenue invalide */ }
+    this.dom.classList.add('editing');
+    this.dom.title = '';
+    const inp = this.input = document.createElement('input');
+    inp.type = 'text'; inp.className = 'pl-eq-input'; inp.spellcheck = false; inp.autocomplete = 'off'; inp.setAttribute('autocapitalize', 'off');
+    inp.setAttribute('aria-label', 'Équation (saisie linéaire)');
+    inp.placeholder = 'a/b   x^2   sqrt(x)   \\alpha';
+    inp.value = this.node.attrs.tex;
+    this.dom.appendChild(inp);
+    this.size();
+    inp.addEventListener('input', () => this.onInput(true));
+    inp.addEventListener('keydown', (e) => this.onKey(e));
+    inp.addEventListener('blur', () => setTimeout(() => { if (!this.editing || document.activeElement === inp) return; if (document.querySelector('.pl-menu, .pl-popup, .pl-gallery-grid')) return; const ae = document.activeElement; if (ae && ae.closest && ae.closest('.pl-ribbon, .pl-inkmath')) return; this.commit(null); }, 150));
+    // un clic ailleurs dans le document termine la saisie
+    this.outside = (e) => { if (!this.dom.contains(e.target) && !(e.target.closest && e.target.closest('.pl-ribbon, .pl-menu, .pl-popup, .pl-gallery-grid, .pl-inkmath'))) this.commit(null); };
+    document.addEventListener('mousedown', this.outside, true);
+    this.app.eqEditor = this;
+    inp.focus();
+    inp.setSelectionRange(inp.value.length, inp.value.length);
+    this.app.scheduleUI();
+    // comme dans Word, l'onglet Équation passe au premier plan pendant la saisie
+    setTimeout(() => { const rb = this.app.ribbon; if (this.editing && rb.allTabs().some((t) => t.id === 'equation') && rb.current !== 'equation') { rb.select('equation'); if (this.input) this.input.focus(); } }, 90);
   }
-  update(node) { if (node.type !== this.node.type) return false; this.node = node; this.render(); return true; }
+  size() { this.input.style.width = Math.max(10, this.input.value.length + 2) + 'ch'; }
+  onInput(typed) {
+    const inp = this.input;
+    if (typed && inp.selectionStart === inp.selectionEnd) { const r = mathAutocorrect(inp.value, inp.selectionStart); if (r) { inp.value = r.text; inp.setSelectionRange(r.caret, r.caret); } }
+    this.size();
+    this.show(linearToTex(inp.value));
+  }
+  onKey(e) {
+    const inp = this.input;
+    e.stopPropagation();
+    if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); this.commit('after'); return; }
+    if (e.key === 'Tab') {
+      // case à remplir suivante (ou précédente avec Maj)
+      const v = inp.value, from = e.shiftKey ? v.lastIndexOf('▢', inp.selectionStart - 1) : v.indexOf('▢', inp.selectionEnd);
+      e.preventDefault();
+      if (from >= 0) inp.setSelectionRange(from, from + 1); else this.commit('after');
+      return;
+    }
+    if (e.key === 'ArrowLeft' && inp.selectionStart === 0 && inp.selectionEnd === 0) { e.preventDefault(); this.commit('before'); return; }
+    if (e.key === 'ArrowRight' && inp.selectionStart === inp.value.length && inp.selectionEnd === inp.value.length) { e.preventDefault(); this.commit('after'); }
+  }
+  // Insère un symbole ou une structure à l'emplacement du curseur (onglet Équation, écriture manuscrite)
+  insert(text) {
+    const inp = this.input;
+    if (!inp) return;
+    const s = inp.selectionStart, e = inp.selectionEnd, sel = inp.value.slice(s, e);
+    let t = text;
+    if (sel && sel !== '▢' && t.includes('▢')) t = t.replace('▢', sel); // la sélection remplit la première case
+    inp.setRangeText(t, s, e, 'end');
+    const k = inp.value.indexOf('▢', s);
+    if (k >= 0 && k < s + t.length) inp.setSelectionRange(k, k + 1);
+    inp.focus();
+    this.onInput(false);
+  }
+  setText(text) { if (!this.input) return; this.input.value = text; this.input.setSelectionRange(text.length, text.length); this.input.focus(); this.onInput(false); }
+  // Termine la saisie. where : 'before' / 'after' place le curseur du document, null ne le déplace pas.
+  commit(where) {
+    if (!this.editing) return;
+    this.editing = false;
+    const tex = linearToTex(this.input.value);
+    this.input.remove(); this.input = null;
+    document.removeEventListener('mousedown', this.outside, true);
+    this.dom.classList.remove('editing');
+    if (this.app.eqEditor === this) this.app.eqEditor = null;
+    const v = this.view;
+    let pos;
+    try { pos = this.getPos(); } catch { pos = null; }
+    if (pos == null || !v.state.doc.nodeAt(pos)) { this.render(); return; }
+    const tr = v.state.tr;
+    if (!tex) tr.delete(pos, pos + this.node.nodeSize);
+    else if (tex !== this.node.attrs.tex) tr.setNodeMarkup(pos, null, { ...this.node.attrs, tex });
+    if (where) {
+      const at = where === 'before' ? pos : tex ? pos + this.node.nodeSize : pos;
+      tr.setSelection(Selection.near(tr.doc.resolve(Math.min(at, tr.doc.content.size)), where === 'before' ? -1 : 1));
+    }
+    if (tr.docChanged || where) v.dispatch(tr);
+    this.render();
+    if (where) v.focus();
+    this.app.scheduleUI();
+  }
+  update(node) { if (node.type !== this.node.type) return false; this.node = node; if (!this.editing) this.render(); return true; }
+  stopEvent(e) { return this.editing || e.type === 'mousedown'; }
   ignoreMutation() { return true; }
   selectNode() { this.dom.classList.add('ProseMirror-selectednode'); this.app && this.app.onObjectSelected('equation'); }
   deselectNode() { this.dom.classList.remove('ProseMirror-selectednode'); }
+  destroy() { if (this.editing) { this.editing = false; document.removeEventListener('mousedown', this.outside, true); if (this.app.eqEditor === this) this.app.eqEditor = null; } }
 }
 
 class FieldView {

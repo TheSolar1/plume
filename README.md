@@ -133,6 +133,24 @@ la session à partir de leur copie. Ouvert comme simple fichier ou sur un
 hébergement statique (GitHub Pages), le bouton explique qu'il faut un
 serveur.
 
+### Équations, comme dans Word
+
+- **Saisie directement dans le document** (Insertion › Équation ou `Alt` + `=`) :
+  aucune fenêtre. On tape en forme linéaire et la formule se construit en
+  direct : `a/b` devient une fraction, `x^2` un exposant, `sqrt(x)` une
+  racine, `\alpha` + espace la lettre α, `<=` devient ≤, `+-` devient ±.
+  `Entrée` ou `Échap` valide, `Tab` passe à la case suivante, un clic sur
+  l'équation la rouvre.
+- **Onglet Équation** : galerie de symboles et structures rangées comme dans
+  Word (Fraction, Script, Radical, Intégrale, Grand opérateur, Crochet,
+  Fonction, Accent, Limite et log, Opérateur, Matrice).
+- **Équation manuscrite** : volet ancré sous le document. On écrit au stylet,
+  à la souris ou au doigt ; l'équation est reconnue au fur et à mesure
+  (chiffres, lettres, opérateurs, fractions, racines, exposants, indices,
+  bornes de somme). Outils Écrire, Effacer, Sélectionner et corriger,
+  Effacer tout, puis Insérer. La reconnaissance se fait sur l'appareil et
+  apprend de chaque correction.
+
 ### Fonctions rares
 
 - **Historique des versions** (Fichier › Informations) : une copie à chaque

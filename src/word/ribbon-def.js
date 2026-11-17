@@ -20,7 +20,8 @@ import { FONTS, FONT_SIZES, THEMES, STYLE_SETS, PARA_SPACING, stylePreviewCss, r
 import { TABLE_STYLES } from './tablestyles.js';
 import { MARGIN_PRESETS, PAGE_SIZES } from './app.js';
 import { h, icon, colorPicker, colorPickerContent, showPopup, closeMenus, toast, prefs } from '../common/ui.js';
-import { EQUATION_PRESETS } from './math.js';
+import { EQUATION_PRESETS, EQUATION_GROUPS, EQUATION_SYMBOLS, symbolOf } from './math.js';
+import * as INK from './ink-panel.js';
 import { WORDART_STYLES } from './nodeviews.js';
 import { DATE_FORMATS } from './fields.js';
 
@@ -254,10 +255,10 @@ export function buildRibbon(app) {
       },
       {
         label: 'Symboles', items: [
-          { type: 'split', big: true, label: 'Équation', icon: 'Sigma', run: () => app.editEquation(null, '', false), menu: () => [
+          { type: 'split', big: true, label: 'Équation', icon: 'Sigma', shortcut: 'Alt+=', run: () => app.insertEquation(false), menu: () => [
             ...EQUATION_PRESETS.map(([l, tex]) => ({ label: l, action: () => app.cmd(C.insertBlock(N.equation_block.create({ tex }))) })),
-            '-', { label: 'Insérer une nouvelle équation', action: () => app.editEquation(null, '', true) },
-            { label: 'Équation manuscrite…', action: () => D.inkEquationDialog(app) },
+            '-', { label: 'Insérer une nouvelle équation', action: () => app.insertEquation(true) },
+            { label: 'Équation manuscrite', icon: 'PenLine', action: () => INK.toggleInkMath(app, true) },
           ] },
           { type: 'split', big: true, label: 'Symbole', icon: 'Omega', run: () => D.symbolDialog(app), menu: () => [
             ...['€', '£', '¥', '©', '®', '™', '±', '≠', '≤', '≥', '÷', '×', '∞', 'µ', 'α', 'β', 'π', 'Ω', '∑', '°'].map((s) => ({ label: s, action: () => T.insertText(app, s) })),
@@ -276,7 +277,7 @@ export function buildRibbon(app) {
         ...T.PENS.map((p) => ({ type: 'big', label: p.label, icon: p.icon, run: () => T.startInk(app, p), active: () => T.inkState(app)?.id === p.id, title: p.label })),
         big('Gomme', 'Eraser', () => T.startInk(app, { id: 'eraser', label: 'Gomme', eraser: true }), { active: () => T.inkState(app)?.id === 'eraser' }),
       ] },
-      { label: 'Convertir', items: [big('Encre en forme', 'Shapes', () => T.inkToShape(app), { active: () => !!prefs.get('inkToShape', false) }), big('Encre en équation', 'Sigma', () => D.inkEquationDialog(app))] },
+      { label: 'Convertir', items: [big('Encre en forme', 'Shapes', () => T.inkToShape(app), { active: () => !!prefs.get('inkToShape', false) }), big('Encre en équation', 'Sigma', () => INK.toggleInkMath(app), { active: () => INK.inkMathOpen() })] },
       { label: 'Insérer', items: [big('Zone de dessin', 'SquarePen', () => D.drawingDialog(app))] },
       { label: 'Relecture', items: [big('Relecture avec l’encre', 'Play', () => T.inkReplay(app))] },
     ],
@@ -835,14 +836,25 @@ function shapeTab(app) {
   };
 }
 
+// Bascule l'équation en cours entre « dans le texte » et « centrée sur sa ligne »
+function eqDisplay(app, block) {
+  if (app.eqEditor) { const ev = app.eqEditor; const pos = ev.getPos(); ev.commit(null); const n = app.activeView.state.doc.nodeAt(pos); if (n && /^equation/.test(n.type.name)) app.activeView.dispatch(app.activeView.state.tr.setSelection(NodeSelection.create(app.activeView.state.doc, pos))); }
+  T.equationDisplay(app, block);
+}
+
 function equationTab(app) {
   return {
     id: 'equation', label: 'Équation', context: 'Outils d’équation', groups: () => [
-      { label: 'Outils', items: [big('Modifier l’équation', 'Pencil', () => { const s = app.state.selection; app.editEquation(s.from, s.node.attrs.tex, s.node.type.name === 'equation_block'); }), menuBig('Équation', 'Sigma', EQUATION_PRESETS.map(([l, tex]) => ({ label: l, action: () => { const s = app.state.selection; app.activeView.dispatch(app.state.tr.setNodeMarkup(s.from, null, { tex })); } })))] },
+      { label: 'Outils', items: [
+        menuBig('Équation', 'Sigma', EQUATION_PRESETS.map(([l, tex]) => ({ label: l, action: () => { if (app.eqEditor) app.eqEditor.setText(tex); else { const s = app.state.selection; app.activeView.dispatch(app.state.tr.setNodeMarkup(s.from, null, { tex })); } } }))),
+        big('Équation manuscrite', 'PenLine', () => INK.toggleInkMath(app), { active: () => INK.inkMathOpen() }),
+      ] },
       { label: 'Conversions', items: [col(
-        btn('Afficher en ligne', 'WrapText', () => T.equationDisplay(app, false), { showLabel: true }),
-        btn('Afficher (centré)', 'AlignCenter', () => T.equationDisplay(app, true), { showLabel: true }),
+        btn('Afficher en ligne', 'WrapText', () => eqDisplay(app, false), { showLabel: true }),
+        btn('Afficher (centré)', 'AlignCenter', () => eqDisplay(app, true), { showLabel: true }),
       )] },
+      { label: 'Symboles', items: [{ type: 'gallery', width: 330, items: () => EQUATION_SYMBOLS.map((c) => { const ch = symbolOf(c); return { label: ch, key: c, title: c, style: 'font-size:15px', run: () => app.eqInsert(ch.length === 1 && ch !== c ? ch : c + ' ') }; }), current: () => null }] },
+      { label: 'Structures', items: EQUATION_GROUPS.map(([label, ic, items]) => menuBig(label, ic, items.map(([l, t]) => ({ label: l, action: () => app.eqInsert(t) })))) },
     ],
   };
 }

@@ -27,6 +27,7 @@ import { makeNodeViews } from './nodeviews.js';
 import { autoformatRules } from './autoformat.js';
 import * as C from './commands.js';
 import { collabPlugins, renderPresence, collabDialog, joinCollab } from './collab.js';
+import { toggleInkMath } from './ink-panel.js';
 import { decryptNative, exportOdt, exportEpub, saveVersion, maybeAutoVersion, docxRoundTrip } from './niche.js';
 import { exportDocx } from './docx-export.js';
 import { importDocx } from './docx-import.js';
@@ -182,6 +183,7 @@ export class WordApp {
       'Mod-z': undo, 'Mod-y': redo, 'Mod-Shift-z': redo,
       'Mod-b': C.toggle('bold'), 'Mod-g': C.toggle('bold'), 'Mod-i': C.toggle('italic'), 'Mod-u': C.toggle('underline'),
       'Mod-Shift-d': C.toggle('underline', { kind: 'double' }), 'Mod-Shift-w': C.toggle('underline', { kind: 'words' }),
+      'Alt-=': () => { app.insertEquation(false); return true; },
       'Mod-=': C.toggle('subscript'), 'Mod-Shift-=': C.toggle('superscript'), 'Mod-Shift-+': C.toggle('superscript'),
       'Mod-Shift-k': C.toggle('smallCaps'), 'Mod-Shift-a': C.toggle('allCaps'), 'Mod-Shift-h': C.toggle('hidden'),
       'Mod-e': C.setAlign('center'), 'Mod-l': C.setAlign('left'), 'Mod-r': C.setAlign('right'), 'Mod-j': C.setAlign('justify'),
@@ -1491,7 +1493,30 @@ export class WordApp {
   }
 
   // ── Objets ──
-  editEquation(pos, tex, block) { D.equationDialog(this, pos, tex, block); }
+  // ── Équations : saisie directement dans le document (comme dans Word) ──
+  equationViewAt(pos) { const dom = pos == null ? null : this.activeView.nodeDOM(pos); return dom && dom.__eqView ? dom.__eqView : null; }
+  editEquation(pos) { const ev = this.equationViewAt(pos); if (ev) ev.startEdit(); }
+  // Insère une zone d'équation vide à l'emplacement du curseur et y place la saisie.
+  insertEquation(block = false, text = '') {
+    if (this.eqEditor) this.eqEditor.commit('after');
+    const v = this.activeView;
+    this.cmd(block ? C.insertBlock(schema.nodes.equation_block.create({ tex: '' })) : C.insertNode(schema.nodes.equation.create({ tex: '' })));
+    // la zone vide la plus proche du curseur est celle qu'on vient d'insérer
+    const at = v.state.selection.from; let best = null;
+    v.state.doc.descendants((n, p) => { if ((n.type.name === 'equation' || n.type.name === 'equation_block') && !n.attrs.tex && (best == null || Math.abs(p - at) < Math.abs(best - at))) best = p; });
+    const ev = this.equationViewAt(best);
+    if (!ev) return;
+    ev.startEdit();
+    if (text) ev.insert(text);
+  }
+  inkMath() { toggleInkMath(this, true); } // volet « Équation manuscrite »
+  // Symbole ou structure choisi dans l'onglet Équation
+  eqInsert(text) {
+    if (this.eqEditor) return this.eqEditor.insert(text);
+    const s = this.state.selection;
+    if (s instanceof NodeSelection && /^equation/.test(s.node.type.name)) { const ev = this.equationViewAt(s.from); if (ev) { ev.startEdit(); ev.insert(text); return; } }
+    this.insertEquation(false, text);
+  }
   onObjectSelected() { this.scheduleUI(); }
 
   // ── Mini barre d'outils sur sélection ──
