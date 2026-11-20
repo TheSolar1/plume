@@ -167,79 +167,156 @@ export function showPopup(anchor, content, opts = {}) {
   return pop;
 }
 
-// ── Boîtes de dialogue ──
-// dialog({title, body: Node, buttons:[{label, primary, action:()=>bool|void}], width})
-export function dialog({ title, body, buttons = [{ label: 'OK', primary: true }], width = 460, onClose, modeless = false }) {
-  closeMenus();
-  const overlay = h('div.pl-overlay' + (modeless ? '.modeless' : ''));
-  const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey, true); onClose && onClose(); };
-  const footer = h('div.pl-dlg-footer');
-  for (const b of buttons) {
-    const btn = h('button.pl-btn' + (b.primary ? '.primary' : ''), { type: 'button' }, b.label);
-    btn.addEventListener('click', () => {
-      const r = b.action ? b.action() : undefined;
-      if (r !== false) close();
-    });
-    footer.appendChild(btn);
+// ── Réglages dans le ruban (à la place des boîtes de dialogue) ──
+// Comme les onglets contextuels de Word (Équation, Dessin…) : les réglages
+// s'affichent dans le ruban, sous un onglet à leur nom, et le document reste
+// visible et utilisable dessous. Rien ne flotte au-dessus, rien sur le côté.
+// dialog({title, body, buttons:[{label, primary, action:()=>bool|void}], onClose})
+// Un réglage ouvert depuis un autre prend sa place, puis la lui rend.
+let ribbonRef = null;
+export function registerRibbon(r) { ribbonRef = r; }
+const tools = [];
+let lastDown = null, closingAll = false;
+document.addEventListener('pointerdown', (e) => { lastDown = e.target; }, true);
+const isField = (el) => !!el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
+const plainDiv = (n) => !!n && n.nodeType === 1 && n.tagName === 'DIV' && !n.className && !n.getAttribute('style');
+const unwrap = (n) => { while (plainDiv(n) && n.childNodes.length === 1 && n.firstChild.nodeType === 1) n = n.firstChild; return n; };
+const flowItems = (nodes) => nodes.filter((c) => c.nodeType === 1 || c.textContent.trim());
+const itemsOf = (n) => { n = unwrap(n); return plainDiv(n) ? flowItems([...n.childNodes]) : [n]; };
+
+// Contenu → groupes du ruban : chaque onglet interne devient un groupe, et les
+// commandes s'empilent en colonnes comme dans un groupe du ruban.
+function toolGroups(body, title) {
+  const groups = [], pending = [];
+  const flush = () => { if (pending.length) groups.push({ label: groups.length ? '' : title, items: pending.splice(0) }); };
+  for (const it of itemsOf(body)) {
+    if (it.nodeType === 1 && it.classList.contains('pl-tabs')) {
+      flush();
+      const labels = [...it.querySelectorAll(':scope > .pl-tabs-head > .pl-tab-btn')].map((b) => b.textContent);
+      [...it.querySelectorAll(':scope > .pl-tabs-body > .pl-tab-pane')].forEach((p, i) => {
+        p.style.display = '';
+        groups.push({ label: labels[i] || '', items: p.childNodes.length === 1 ? itemsOf(p.firstChild) : flowItems([...p.childNodes]) });
+      });
+    } else pending.push(it);
   }
-  const head = h('div.pl-dlg-head', h('span', title), h('button.pl-dlg-x', { type: 'button', title: 'Fermer', on: { click: close } }, '×'));
-  const dlg = h('div.pl-dlg', { style: { width: width + 'px' }, role: 'dialog' }, head, h('div.pl-dlg-body', body), buttons.length ? footer : null);
-  overlay.appendChild(dlg);
-  document.body.appendChild(overlay);
-  makeDraggable(dlg, head);
-  const onKey = (e) => {
-    if (e.key === 'Escape') { e.stopPropagation(); close(); }
+  flush();
+  return groups;
+}
+// Range les commandes en colonnes, aussi bas que le ruban le permet.
+function packTool(el) {
+  const width = (el.parentElement && el.parentElement.clientWidth) || innerWidth;
+  const flows = [...el.querySelectorAll('.pl-tool-flow')];
+  const all = flows.map((f) => f.plItems || (f.plItems = [...f.childNodes]));
+  for (const H of [150, 210, 280, 380]) {
+    flows.forEach((f, k) => {
+      f.textContent = '';
+      let col = f.appendChild(h('div.pl-tool-col'));
+      for (const it of all[k]) {
+        col.appendChild(it);
+        if (col.childNodes.length > 1 && col.offsetHeight > H) { col.removeChild(it); col = f.appendChild(h('div.pl-tool-col')); col.appendChild(it); }
+      }
+    });
+    if (el.scrollWidth <= width + 2) break;
+  }
+}
+function backstageMain() {
+  const bs = [...document.querySelectorAll('.pl-backstage')].find((b) => getComputedStyle(b).display !== 'none');
+  return bs && bs.querySelector('.pl-bs-main');
+}
+function showTool(entry) {
+  const main = backstageMain();
+  if (main) { // menu Fichier ouvert : les réglages s'affichent en haut de sa page
+    entry.host = 'page';
+    entry.el.classList.add('in-page');
+    main.insertBefore(entry.el, main.firstChild);
+    main.scrollTop = 0;
+    entry.fit();
+  } else if (ribbonRef) {
+    entry.host = 'ribbon';
+    ribbonRef.openTool({ title: entry.title, el: entry.el, fit: entry.fit });
+  } else {
+    entry.host = 'page';
+    document.body.appendChild(entry.el);
+    entry.fit();
+  }
+}
+function hideTools(entry) { if (entry.host === 'ribbon' && ribbonRef) ribbonRef.closeTool(); }
+
+export function dialog({ title, body, buttons = [{ label: 'OK', primary: true }], onClose }) {
+  closeMenus();
+  const top = tools[tools.length - 1];
+  const nested = top && (top.el.contains(document.activeElement) || (lastDown && top.el.contains(lastDown)));
+  if (!nested) closeDialogs();
+  let closed = false;
+  const entry = { title };
+  const close = () => {
+    if (closed) return;
+    closed = true;
+    const i = tools.indexOf(entry);
+    const wasTop = i === tools.length - 1;
+    if (i >= 0) tools.splice(i, 1);
+    entry.el.remove();
+    if (!closingAll && wasTop) { if (tools.length) showTool(tools[tools.length - 1]); else hideTools(entry); }
+    if (onClose) onClose();
+  };
+  const btns = buttons.map((b) => {
+    const el = h('button.pl-btn' + (b.primary ? '.primary' : ''), { type: 'button' }, b.label);
+    el.addEventListener('click', () => { const r = b.action ? b.action() : undefined; if (r !== false) close(); });
+    return el;
+  });
+  if (!buttons.some((b) => /^(Annuler|Fermer|OK)$/.test(b.label))) btns.push(h('button.pl-btn', { type: 'button', on: { click: close } }, 'Fermer'));
+  const groups = toolGroups(body, title).map((g) => h('div.pl-tool-group', h('div.pl-tool-flow', g.items), h('div.pl-group-label', g.label)));
+  const el = h('div.pl-tool', { role: 'region', 'aria-label': title }, groups,
+    h('div.pl-tool-group.pl-tool-actions', h('div.pl-tool-btns', btns), h('div.pl-group-label', '')));
+  // Échap ferme, Entrée valide (avant les champs, qui arrêtent souvent leurs touches).
+  el.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }
     if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && !e.target.closest('.ProseMirror')) {
       const prim = buttons.findIndex((b) => b.primary);
-      if (prim >= 0) { e.preventDefault(); footer.children[prim].click(); }
+      if (prim >= 0) { e.preventDefault(); btns[prim].click(); }
     }
-  };
-  document.addEventListener('keydown', onKey, true);
-  setTimeout(() => {
-    const f = dlg.querySelector('input:not([type=checkbox]):not([type=radio]),select,textarea');
-    if (f) { f.focus(); f.select && f.select(); }
-  }, 30);
-  return { close, el: dlg };
-}
-
-function makeDraggable(dlg, handle) {
-  handle.addEventListener('mousedown', (e) => {
-    if (e.target.closest('button')) return;
-    const r = dlg.getBoundingClientRect();
-    const dx = e.clientX - r.left, dy = e.clientY - r.top;
-    dlg.style.position = 'fixed';
-    dlg.style.margin = 0;
-    const move = (ev) => {
-      dlg.style.left = Math.max(0, ev.clientX - dx) + 'px';
-      dlg.style.top = Math.max(0, ev.clientY - dy) + 'px';
-    };
-    const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
-    document.addEventListener('mousemove', move);
-    document.addEventListener('mouseup', up);
+  }, true);
+  // Les touches tapées ici n'agissent pas sur le document ;
+  // les raccourcis Ctrl restent disponibles hors des champs de saisie.
+  el.addEventListener('keydown', (e) => {
+    if (!((e.ctrlKey || e.metaKey) && !isField(e.target))) e.stopPropagation();
   });
+  Object.assign(entry, { el, close, fit: () => packTool(el) });
+  tools.push(entry);
+  showTool(entry);
+  setTimeout(() => {
+    if (closed) return;
+    const f = el.querySelector('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea');
+    if (f) { f.focus({ preventScroll: true }); if (f.select) f.select(); }
+  }, 30);
+  return { close, el };
+}
+export function closeDialogs() {
+  if (!tools.length) return;
+  const last = tools[tools.length - 1];
+  closingAll = true;
+  try { while (tools.length) tools[tools.length - 1].close(); } finally { closingAll = false; }
+  hideTools(last);
 }
 
+// Messages et questions : dans le ruban aussi, sous un onglet à leur nom.
 export function alertDlg(title, msg) {
-  return new Promise((res) => dialog({ title, body: h('p', msg), buttons: [{ label: 'OK', primary: true, action: res }], onClose: res }));
+  return new Promise((res) => dialog({ title, body: h('p.pl-tool-msg', msg), buttons: [{ label: 'OK', primary: true }], onClose: res }));
 }
 export function confirmDlg(title, msg, okLabel = 'OK') {
   return new Promise((res) => {
-    let done = false;
-    dialog({
-      title, body: h('p', msg),
-      buttons: [{ label: okLabel, primary: true, action: () => { done = true; res(true); } }, { label: 'Annuler', action: () => { done = true; res(false); } }],
-      onClose: () => { if (!done) res(false); },
-    });
+    let ok = false;
+    dialog({ title, body: h('p.pl-tool-msg', msg), buttons: [{ label: okLabel, primary: true, action: () => { ok = true; } }, { label: 'Annuler' }], onClose: () => res(ok) });
   });
 }
 export function promptDlg(title, label, value = '') {
   return new Promise((res) => {
-    const inp = h('input.pl-input', { value, style: { width: '100%' } });
-    let done = false;
+    const inp = h('input.pl-input', { value, style: { width: '260px' } });
+    let v = null;
     dialog({
       title, body: h('label.pl-field-row', h('div', label), inp),
-      buttons: [{ label: 'OK', primary: true, action: () => { done = true; res(inp.value); } }, { label: 'Annuler', action: () => { done = true; res(null); } }],
-      onClose: () => { if (!done) res(null); },
+      buttons: [{ label: 'OK', primary: true, action: () => { v = inp.value; } }, { label: 'Annuler' }],
+      onClose: () => res(v),
     });
   });
 }

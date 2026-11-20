@@ -12,15 +12,20 @@ navigateur + fichiers téléchargés).
 
 ## Utiliser
 
-Aucune installation côté serveur : ce sont des fichiers statiques. Le dossier
-`dist/` contient la version compilée, il suffit de servir le dépôt :
+Ce sont des fichiers statiques : le dossier `dist/` contient la version
+compilée, il suffit de servir le dépôt. Le serveur fourni, écrit en Rust
+(`serveur/`), sert les fichiers et la coédition en temps réel :
 
 ```sh
-node serve.mjs 8080        # puis http://localhost:8080/
+npm run serve              # = cargo run --release --manifest-path serveur/Cargo.toml
+                           # puis http://localhost:8080/
+serveur/target/release/plume-serveur [port] [dossier] [--reseau]
 ```
 
-N'importe quel serveur de fichiers statiques convient (nginx, Caddy, le
-serveur de VEX…).
+Par défaut il n'accepte que ce PC ; `--reseau` l'ouvre aux autres appareils
+du réseau local (coédition à plusieurs). N'importe quel serveur de fichiers
+statiques convient aussi (nginx, Caddy, le serveur de VEX…), mais sans
+coédition hors VEX.
 
 ## Développer
 
@@ -29,6 +34,16 @@ npm install
 npm run build      # compile src/ → dist/
 npm run watch      # recompile à chaque modification
 ```
+
+## Interface : pas de fenêtres surgissantes
+
+Comme dans Office, les commandes agissent directement (menus, galeries,
+édition sur place) : on dessine sur la page, on tape les équations dans le
+texte (onglet **Équation** du ruban : symboles et structures au curseur), on
+écrit les notes en bas de page. Les réglages détaillés, messages et questions
+s'affichent **dans le ruban**, sous un onglet à leur nom (groupes, puis OK /
+Annuler) : rien ne flotte au-dessus du document, rien sur le côté. Échap
+referme et rend l'onglet précédent.
 
 ## Plume Texte — fonctionnalités
 
@@ -63,8 +78,9 @@ ligne de signature, date et heure (16 formats, mise à jour auto), objets
 (éditeur LaTeX avec aperçu, structures, symboles, équations prêtes),
 symboles et caractères spéciaux.
 
-**Dessin** : stylos, crayon, surligneur, gomme, encre en forme, zone de
-dessin. **Conception** : thèmes (11), jeux de styles, couleurs, polices,
+**Dessin** : stylos, crayon et surligneur pour écrire directement sur la page
+(le dessin suit son paragraphe et se déplace à la souris), gomme trait par
+trait, encre en forme, zone de dessin, relecture avec l'encre. **Conception** : thèmes (11), jeux de styles, couleurs, polices,
 espacement des paragraphes, effets, définir par défaut, filigrane (texte ou
 image), couleur de page, bordures de page.
 

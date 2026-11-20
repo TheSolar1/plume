@@ -14,7 +14,7 @@
 // Chaque commande peut définir active(), enabled(), value() : le
 // ruban les réévalue à chaque changement de sélection.
 // ══════════════════════════════════════════════════════════════════
-import { h, icon, showMenu, closeMenus, showPopup } from './ui.js';
+import { h, icon, showMenu, closeMenus, showPopup, registerRibbon } from './ui.js';
 
 export class Ribbon {
   constructor(host, { onFileTab, appName } = {}) {
@@ -31,6 +31,24 @@ export class Ribbon {
     host.append(this.tabBar, this.panel);
     this.appName = appName;
     this.keyTips = false;
+    this.tool = null; // réglages affichés dans le ruban (à la place d'une boîte de dialogue)
+    registerRibbon(this);
+  }
+
+  // Réglages : un onglet contextuel à leur nom, sélectionné, comme dans Word.
+  openTool({ title, el, fit }) {
+    const prev = this.tool ? this.tool.prev : this.current;
+    this.tool = { tab: { id: 'pl-tool', label: title }, el, fit, prev };
+    if (this.collapsed) this.toggleCollapse();
+    this.renderTabBar();
+    this.select('pl-tool');
+  }
+  closeTool() {
+    if (!this.tool) return;
+    const { prev } = this.tool;
+    this.tool = null;
+    this.renderTabBar();
+    this.select(this.allTabs().some((t) => t.id === prev) ? prev : this.tabs[0].id);
   }
 
   setTabs(tabs) {
@@ -40,7 +58,7 @@ export class Ribbon {
     else this.select(this.current);
   }
 
-  allTabs() { return [...this.tabs, ...this.contextual]; }
+  allTabs() { return [...this.tabs, ...this.contextual, ...(this.tool ? [this.tool.tab] : [])]; }
 
   setContextual(tabs) {
     const ids = tabs.map((t) => t.id).join();
@@ -64,6 +82,7 @@ export class Ribbon {
       grp.appendChild(row);
       this.tabBar.appendChild(grp);
     }
+    if (this.tool) this.tabBar.appendChild(h('div.pl-ctx-tabs.pl-tool-tabs', h('span.pl-ctx-label', 'Réglages'), h('div.pl-ctx-row', this.tabButton(this.tool.tab, true))));
     this.tabBar.appendChild(h('div.pl-tab-spacer'));
     if (this.extraRight) this.tabBar.appendChild(this.extraRight);
     this.tabBar.appendChild(h('button.pl-tab-collapse', { type: 'button', title: 'Réduire / afficher le ruban (Ctrl+F1)', on: { click: () => this.toggleCollapse() } }, icon('ChevronUp', 16)));
@@ -99,6 +118,9 @@ export class Ribbon {
     this.markCurrent();
     this.updaters = [];
     this.panel.innerHTML = '';
+    const isTool = !!this.tool && id === this.tool.tab.id;
+    this.panel.classList.toggle('tool', isTool);
+    if (isTool) { this.panel.appendChild(this.tool.el); if (this.tool.fit) this.tool.fit(); return; }
     const groups = typeof tab.groups === 'function' ? tab.groups() : tab.groups;
     for (const g of groups) this.panel.appendChild(this.renderGroup(g));
     this.refresh();

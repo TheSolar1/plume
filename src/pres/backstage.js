@@ -28,7 +28,7 @@ export class PresBackstage {
   go(k) {
     const app = this.app;
     if (k === 'save') { this.close(); app.save('pptx'); return; }
-    if (k === 'close') { this.close(); confirmDlg('Fermer', 'Fermer la présentation (elle reste enregistrée dans ce navigateur) ?', 'Fermer').then((ok) => ok && app.saveLocal().then(() => app.newPresentation())); return; }
+    if (k === 'close') { this.close(); app.saveLocal().then(() => app.newPresentation()); return; }
     if (k === 'print') return this.printPage();
     this.nav.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.k === k));
     this.main.innerHTML = '';

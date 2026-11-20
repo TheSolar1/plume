@@ -9,7 +9,7 @@ import { NodeSelection } from 'prosemirror-state';
 import { schema } from './schema.js';
 import * as C from './commands.js';
 import * as T from './tools.js';
-import { h, icon, dialog, field, select, checkbox, tabs, toast, prefs, pickFile, readAsText, allIconNames, iconSvgString, closeMenus } from '../common/ui.js';
+import { h, icon, dialog, field, select, checkbox, tabs, toast, prefs, pickFile, readAsText, allIconNames, iconSvgString, closeMenus, closeDialogs } from '../common/ui.js';
 import { texToMathML } from './math.js';
 import { chartSvg, smartArtSvg, parseTable } from '../common/charts.js';
 export { chartSvg };
@@ -44,7 +44,7 @@ export function stockImagesDialog(app) {
   for (const [l, svg] of items) grid.appendChild(h('button.pl-template', { type: 'button', on: { click: () => { closeAll(); app.insertImage(svgData(svg), { alt: l }); } } }, h('img', { src: svgData(svg), style: { width: '100%', border: '1px solid #ddd' } }), h('div.cap', l)));
   dialog({ title: 'Images de la bibliothèque', width: 620, body: grid, buttons: [{ label: 'Fermer' }] });
 }
-function closeAll() { document.querySelectorAll('.pl-overlay').forEach((o) => o.remove()); }
+function closeAll() { closeDialogs(); }
 
 export function iconsDialog(app) {
   const names = allIconNames();
@@ -192,7 +192,8 @@ export function drawingDialog(app, opts = {}) {
 
 // Équation manuscrite : dessin + saisie assistée
 export function inkEquationDialog(app) {
-  drawingDialog(app, { title: 'Équation manuscrite — dessinez, puis saisissez la formule reconnue', onDone: () => { import('./dialogs.js').then((D) => D.equationDialog(app, null, '', true)); toast('Saisissez maintenant la formule (aperçu en direct).'); } });
+  // Comme une nouvelle équation : on la tape directement dans le texte.
+  app.editEquation(null, '', true);
 }
 
 export function shapeTextDialog(app) {

@@ -810,11 +810,215 @@ export const PENS = [
   { id: 'pencil', label: 'Crayon', icon: 'Pencil', color: '#404040', width: 1.5, alpha: 0.85 },
   { id: 'highlighter', label: 'Surligneur', icon: 'Highlighter', color: '#ffe600', width: 14, alpha: 0.4 },
 ];
+// Comme dans Word : on choisit un stylo puis on dessine directement sur la page.
+// Les traits tracés d'affilée forment un dessin « devant le texte », ancré au
+// paragraphe qu'il recouvre (il suit le texte) ; tracés dans une zone de dessin,
+// ils s'y ajoutent. La gomme efface trait par trait. Échap ou « Sélectionner » : fin.
+import { undo as pmUndo, redo as pmRedo } from 'prosemirror-history';
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const INK_PAUSE = 900; // ms sans tracer avant de déposer le dessin dans le document
+const ERASER = 8;      // rayon de la gomme (px)
+const r1 = (v) => Math.round(v * 10) / 10;
+const pathD = (pts) => 'M' + pts.map(([x, y]) => r1(x) + ' ' + r1(y)).join(' L');
+export function inkSvg(ink) {
+  const [w, hh] = ink.v;
+  const paths = ink.s.map((s) => `<path d="${pathD(s.p)}" fill="none" stroke="${s.c}" stroke-width="${r1(s.w)}" stroke-opacity="${s.a}" stroke-linecap="round" stroke-linejoin="round"/>`).join('');
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="${SVG_NS}" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}">${paths}</svg>`);
+}
+// Repère du document (px non zoomés, origine en haut à gauche de la zone zoomée)
+function frame(app) {
+  const r = app.zoomEl.getBoundingClientRect();
+  const k = r.width / app.zoomEl.offsetWidth || 1;
+  return { k, pt: (e) => [(e.clientX - r.left) / k, (e.clientY - r.top) / k], box: (b) => ({ left: (b.left - r.left) / k, top: (b.top - r.top) / k, w: b.width / k, hh: b.height / k }), client: (x, y) => [r.left + x * k, r.top + y * k] };
+}
+function inkImages(app) {
+  const out = [], view = app.view, f = frame(app);
+  view.state.doc.descendants((node, pos) => {
+    if (node.type.name !== 'image' || !node.attrs.ink) return;
+    const dom = view.nodeDOM(pos), img = dom && dom.querySelector && dom.querySelector('img');
+    if (img) out.push({ node, pos, img, b: f.box(img.getBoundingClientRect()) });
+  });
+  return out;
+}
+function nearStroke(pts, w, x, y, R) {
+  const lim = R + w / 2;
+  for (let i = 0; i < pts.length; i++) {
+    const [ax, ay] = pts[i], [bx, by] = pts[Math.min(i + 1, pts.length - 1)];
+    const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+    const t = L ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / L)) : 0;
+    if (Math.hypot(x - (ax + t * dx), y - (ay + t * dy)) <= lim) return true;
+  }
+  return false;
+}
+function penCursor(pen) {
+  const r = Math.max(2, Math.min(8, pen.w / 2 + 1));
+  const svg = `<svg xmlns="${SVG_NS}" width="20" height="20"><circle cx="10" cy="10" r="${r}" fill="${pen.c}" fill-opacity="${Math.max(0.5, pen.a)}" stroke="#fff" stroke-width="1"/></svg>`;
+  return `url("data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}") 10 10, crosshair`;
+}
+
 export function inkState(app) { return app.ink || null; }
 export function startInk(app, pen) {
-  import('./dialogs.js').then((D) => D.drawingDialog(app, { title: 'Dessin — ' + pen.label, initialPen: pen.eraser ? { color: '#000', width: 18, alpha: 1, erase: true } : { color: pen.color, width: pen.width, alpha: pen.alpha } }));
+  const st = app.ink || setupInk(app);
+  st.id = pen.id || 'pen';
+  st.eraser = !!pen.eraser;
+  st.pen = st.eraser ? null : { c: pen.color, w: pen.width, a: pen.alpha };
+  st.layer.classList.add('on');
+  st.layer.classList.toggle('erase', st.eraser);
+  st.layer.style.cursor = st.eraser ? '' : penCursor(st.pen);
+  app.ink = st;
+  app.updateUI();
 }
-export function stopInk(app) { app.ink = null; app.updateUI(); }
+export function stopInk(app) {
+  const st = app.ink;
+  if (!st) return;
+  commitInk(app);
+  document.removeEventListener('keydown', st.onKey, true);
+  st.layer.remove();
+  app.ink = null;
+  app.updateUI();
+  app.focus();
+}
+function setupInk(app) {
+  const layer = document.createElementNS(SVG_NS, 'svg');
+  layer.setAttribute('class', 'pl-ink-layer');
+  app.zoomEl.appendChild(layer);
+  const st = { layer, pending: [], cur: null, timer: 0, erasing: null };
+  layer.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    layer.setPointerCapture(e.pointerId);
+    clearTimeout(st.timer);
+    const p = frame(app).pt(e);
+    if (st.eraser) { st.erasing = { images: inkImages(app), changed: new Map() }; erase(st, p); return; }
+    const s = { ...st.pen, p: [p], el: document.createElementNS(SVG_NS, 'path') };
+    for (const [k, v] of Object.entries({ fill: 'none', stroke: s.c, 'stroke-width': s.w, 'stroke-opacity': s.a, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', d: pathD(s.p) })) s.el.setAttribute(k, v);
+    layer.appendChild(s.el);
+    st.cur = s;
+  });
+  layer.addEventListener('pointermove', (e) => {
+    if (st.erasing) { erase(st, frame(app).pt(e)); return; }
+    const s = st.cur;
+    if (!s) return;
+    const p = frame(app).pt(e), last = s.p[s.p.length - 1];
+    if (Math.hypot(p[0] - last[0], p[1] - last[1]) < 1.2) return;
+    s.p.push(p);
+    s.el.setAttribute('d', pathD(s.p));
+  });
+  const end = () => {
+    if (st.erasing) { flushErase(app, st); return; }
+    const s = st.cur;
+    if (!s) return;
+    st.cur = null;
+    if (s.p.length === 1) s.p.push([s.p[0][0] + 0.1, s.p[0][1] + 0.1]); // simple point
+    if (prefs.get('inkToShape', false)) { const tmp = { pts: s.p }; recognizeShape(tmp); s.p = tmp.pts; s.el.setAttribute('d', pathD(s.p)); }
+    st.pending.push(s);
+    st.timer = setTimeout(() => commitInk(app), INK_PAUSE);
+  };
+  layer.addEventListener('pointerup', end);
+  layer.addEventListener('pointercancel', end);
+  st.onKey = (e) => {
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); stopInk(app); }
+    else if ((e.ctrlKey || e.metaKey) && /^[zy]$/i.test(e.key)) {
+      // Annuler / Rétablir marchent aussi pendant qu'on dessine (le dessin en cours est d'abord déposé).
+      e.preventDefault(); e.stopPropagation();
+      commitInk(app);
+      app.cmd(e.key.toLowerCase() === 'z' && !e.shiftKey ? pmUndo : pmRedo);
+    }
+  };
+  document.addEventListener('keydown', st.onKey, true);
+  return st;
+}
+// Dépose les traits en attente dans le document (une seule étape d'annulation).
+function commitInk(app) {
+  const st = app.ink;
+  if (!st) return;
+  clearTimeout(st.timer);
+  const strokes = st.pending;
+  if (!strokes.length) return;
+  st.pending = [];
+  const view = app.view, f = frame(app);
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const s of strokes) for (const [x, y] of s.p) { x0 = Math.min(x0, x - s.w); y0 = Math.min(y0, y - s.w); x1 = Math.max(x1, x + s.w); y1 = Math.max(y1, y + s.w); }
+  x0 = Math.floor(x0); y0 = Math.floor(y0); x1 = Math.ceil(x1); y1 = Math.ceil(y1);
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  const zone = inkImages(app).find((it) => it.node.attrs.canvas && cx >= it.b.left && cx <= it.b.left + it.b.w && cy >= it.b.top && cy <= it.b.top + it.b.hh);
+  const tr = view.state.tr;
+  if (zone) {
+    const ink = zone.node.attrs.ink, sx = ink.v[0] / zone.b.w, sy = ink.v[1] / zone.b.hh;
+    const added = strokes.map((s) => ({ c: s.c, w: r1(s.w * sx), a: s.a, p: s.p.map(([x, y]) => [r1((x - zone.b.left) * sx), r1((y - zone.b.top) * sy)]) }));
+    const next = { v: ink.v, s: [...ink.s, ...added] };
+    tr.setNodeMarkup(zone.pos, null, { ...zone.node.attrs, ink: next, src: inkSvg(next) });
+  } else {
+    const anchor = inkAnchor(app, x0, y0, f);
+    if (anchor) {
+      const ink = { v: [x1 - x0, y1 - y0], s: strokes.map((s) => ({ c: s.c, w: s.w, a: s.a, p: s.p.map(([x, y]) => [r1(x - x0), r1(y - y0)]) })) };
+      tr.insert(anchor.pos, N.image.create({ src: inkSvg(ink), alt: 'Dessin', width: ink.v[0], height: ink.v[1], wrap: 'front', x: Math.round(x0 - anchor.left), y: Math.round(y0 - anchor.top), ink }));
+    }
+  }
+  if (tr.docChanged) view.dispatch(tr);
+  for (const s of strokes) s.el.remove();
+}
+// Paragraphe sous le dessin : le dessin y est ancré et le suit quand le texte bouge.
+function inkAnchor(app, x, y, f) {
+  const view = app.view, doc = view.state.doc, vr = view.dom.getBoundingClientRect();
+  const [cx, cy] = f.client(x, y);
+  const hit = view.posAtCoords({ left: Math.min(Math.max(cx, vr.left + 4), vr.right - 4), top: Math.min(Math.max(cy, vr.top + 2), vr.bottom - 2) });
+  let $p = doc.resolve(hit ? hit.pos : view.state.selection.from);
+  let d = $p.depth;
+  while (d > 0 && !$p.node(d).isTextblock) d--;
+  if (d === 0) {
+    let found = null;
+    doc.nodesBetween($p.pos, doc.content.size, (n, pos) => { if (found == null && n.isTextblock) found = pos; return found == null; });
+    if (found == null) doc.descendants((n, pos) => { if (n.isTextblock) found = pos; });
+    if (found == null) return null;
+    $p = doc.resolve(found + 1);
+    d = $p.depth;
+  }
+  const dom = view.nodeDOM($p.before(d));
+  if (!dom || !dom.getBoundingClientRect) return null;
+  const b = f.box(dom.getBoundingClientRect());
+  return { pos: $p.start(d), left: b.left, top: b.top };
+}
+function erase(st, [x, y]) {
+  st.pending = st.pending.filter((s) => { if (nearStroke(s.p, s.w, x, y, ERASER)) { s.el.remove(); return false; } return true; });
+  for (const it of st.erasing.images) {
+    const b = it.b;
+    if (x < b.left - ERASER || x > b.left + b.w + ERASER || y < b.top - ERASER || y > b.top + b.hh + ERASER) continue;
+    const cur = st.erasing.changed.get(it.pos) || it.node.attrs.ink;
+    const sx = cur.v[0] / b.w, sy = cur.v[1] / b.hh;
+    const keep = cur.s.filter((s) => !nearStroke(s.p, s.w, (x - b.left) * sx, (y - b.top) * sy, ERASER * sx));
+    if (keep.length === cur.s.length) continue;
+    const ink = { v: cur.v, s: keep };
+    st.erasing.changed.set(it.pos, ink);
+    it.img.src = inkSvg(ink); // aperçu immédiat, enregistré au relâchement
+  }
+}
+function flushErase(app, st) {
+  const { changed, images } = st.erasing;
+  st.erasing = null;
+  if (!changed.size) return;
+  const view = app.view, tr = view.state.tr;
+  for (const [pos, ink] of [...changed].sort((a, b) => b[0] - a[0])) {
+    const node = images.find((it) => it.pos === pos).node;
+    if (!ink.s.length && !node.attrs.canvas) tr.delete(pos, pos + node.nodeSize);
+    else tr.setNodeMarkup(pos, null, { ...node.attrs, ink, src: inkSvg(ink) });
+  }
+  view.dispatch(tr);
+}
+// Texte d'une forme : on écrit directement dedans, comme dans Word.
+export function editShapeText(app) {
+  const s = app.state.selection;
+  if (!(s instanceof NodeSelection) || s.node.type.name !== 'shape') return;
+  const dom = app.activeView.nodeDOM(s.from);
+  if (dom) dom.dispatchEvent(new MouseEvent('dblclick'));
+}
+// Zone de dessin : un cadre dans le texte, prêt à recevoir l'encre (le stylo s'active).
+export function insertDrawingCanvas(app) {
+  const w = Math.max(240, Math.min(600, Math.round(app.view.dom.clientWidth * 0.9) || 480)), hh = 260;
+  const ink = { v: [w, hh], s: [] };
+  app.cmd(C.insertNode(N.image.create({ src: inkSvg(ink), alt: 'Zone de dessin', width: w, height: hh, wrap: 'top-bottom', ink, canvas: true })));
+  startInk(app, PENS[0]);
+}
 export function inkToShape(app) { const v = !prefs.get('inkToShape', false); prefs.set('inkToShape', v); toast(v ? 'Encre en forme : activée (les traits seront redressés)' : 'Encre en forme : désactivée'); app.updateUI(); }
 export function recognizeShape(stroke) {
   const pts = stroke.pts;
@@ -830,10 +1034,37 @@ export function recognizeShape(stroke) {
   if (dev < 0.12) stroke.pts = Array.from({ length: 49 }, (_, i) => [cx + ((maxX - minX) / 2) * Math.cos((i / 48) * Math.PI * 2), cy + ((maxY - minY) / 2) * Math.sin((i / 48) * Math.PI * 2)]);
   else stroke.pts = [[minX, minY], [maxX, minY], [maxX, maxY], [minX, maxY], [minX, minY]];
 }
-export function inkReplay(app) { toast('Relecture : les dessins sont insérés en tant qu’images — ouvrez une zone de dessin pour tracer à nouveau.'); void app; }
+// Relecture avec l'encre : les traits se redessinent dans l'ordre, comme dans Word.
+export function inkReplay(app) {
+  if (app.ink) commitInk(app);
+  const items = inkImages(app).filter((it) => it.node.attrs.ink.s.length);
+  if (!items.length) { toast('Aucun dessin à relire dans ce document.'); return; }
+  const layer = document.createElementNS(SVG_NS, 'svg');
+  layer.setAttribute('class', 'pl-ink-layer');
+  app.zoomEl.appendChild(layer);
+  const queue = [];
+  for (const it of items) {
+    const { v, s } = it.node.attrs.ink, sx = it.b.w / v[0], sy = it.b.hh / v[1];
+    it.img.style.visibility = 'hidden';
+    for (const st of s) queue.push({ st, pts: st.p.map(([x, y]) => [it.b.left + x * sx, it.b.top + y * sy]), w: st.w * sx });
+  }
+  let i = 0, n = 0, el = null;
+  const done = () => { layer.remove(); for (const it of items) it.img.style.visibility = ''; };
+  const step = () => {
+    if (!layer.isConnected) return done();
+    for (let k = 0; k < 6 && i < queue.length; k++) {
+      const q = queue[i];
+      if (!el) { el = document.createElementNS(SVG_NS, 'path'); for (const [a, b] of Object.entries({ fill: 'none', stroke: q.st.c, 'stroke-width': q.w, 'stroke-opacity': q.st.a, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' })) el.setAttribute(a, b); layer.appendChild(el); }
+      n++;
+      el.setAttribute('d', pathD(q.pts.slice(0, n)));
+      if (n >= q.pts.length) { i++; n = 0; el = null; }
+    }
+    if (i < queue.length) requestAnimationFrame(step); else setTimeout(done, 500);
+  };
+  requestAnimationFrame(step);
+}
 export function toggleInkVisible(app) {
-  const hidden = app.docRoot.classList.toggle('hide-ink');
-  app.view.dom.querySelectorAll('img[alt="Dessin"]').forEach((i) => (i.style.visibility = hidden ? 'hidden' : ''));
+  app.docRoot.classList.toggle('hide-ink');
 }
 
 // ── Voix ──

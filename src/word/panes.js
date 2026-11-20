@@ -326,7 +326,7 @@ export class Panes {
       if (n.type !== N.footnote) return;
       any = true;
       const info = map.get(n.attrs.id) || {};
-      const ta = h('textarea.pl-input', { rows: 2, on: { keydown: (e) => e.stopPropagation(), change: () => app.setNoteText(n.attrs.id, ta.value) } });
+      const ta = h('textarea.pl-input', { rows: 2, 'data-note': n.attrs.id, on: { keydown: (e) => e.stopPropagation(), change: () => app.setNoteText(n.attrs.id, ta.value) } });
       ta.value = n.attrs.text;
       body.appendChild(h('div.pl-cmt', h('div.pl-cmt-head', h('b', (n.attrs.kind === 'end' ? 'Note de fin ' : 'Note ') + (info.num || '')), h('button.pl-btn.small', { type: 'button', style: { marginLeft: 'auto' }, on: { click: () => app.scrollToPos(pos) } }, 'Atteindre')), ta));
     });

@@ -1061,8 +1061,15 @@ async function parseDrawing(ctx, d, res) {
   if (lum && lum.getAttribute('contrast')) filters.push(`contrast(${r2(1 + +lum.getAttribute('contrast') / 100000)})`);
   const am = blip.getElementsByTagNameNS(A, 'alphaModFix')[0];
   if (am && +am.getAttribute('amt') < 100000) filters.push(`opacity(${r2(+am.getAttribute('amt') / 100000)})`);
+  // Position d'un objet devant/derrière le texte, par rapport à son paragraphe (comme l'encre de Word)
+  let x = null, y = null;
+  if (wrap === 'front' || wrap === 'behind') {
+    const off = (tag) => { const el = container.getElementsByTagNameNS(WP, tag)[0]; const o = el && el.getElementsByTagNameNS(WP, 'posOffset')[0]; return o ? { v: Math.round(+o.textContent / 9525), rel: el.getAttribute('relativeFrom') } : null; };
+    const ph = off('positionH'), pv = off('positionV');
+    if (ph && pv && pv.rel === 'paragraph') { x = ph.v; y = pv.v; }
+  }
   return N.image.create({
-    src, width: w, height: hh, alt: docPr ? docPr.getAttribute('descr') || null : null, title: docPr ? docPr.getAttribute('title') || null : null, wrap, rotate: rot,
+    src, width: w, height: hh, alt: docPr ? docPr.getAttribute('descr') || null : null, title: docPr ? docPr.getAttribute('title') || null : null, wrap, rotate: rot, x, y,
     filter: filters.length ? filters.join(' ') : null, border, crop,
     shadow: !!(spPr && spPr.getElementsByTagNameNS(A, 'outerShdw')[0]), rounded: !!(geom && /round/i.test(geom.getAttribute('prst') || '')),
   });

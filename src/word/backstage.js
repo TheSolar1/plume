@@ -249,7 +249,7 @@ export class Backstage {
   }
   async closeDoc() {
     const app = this.app;
-    if (app.dirty && !(await confirmDlg('Fermer', 'Le document a été enregistré automatiquement dans ce navigateur. Fermer et créer un document vierge ?', 'Fermer'))) return;
+    // Le document est déjà enregistré dans ce navigateur : on ferme sans question.
     await app.saveLocal();
     app.newDocument();
   }

@@ -159,15 +159,21 @@ button { font: inherit; color: inherit; }
 .pl-grid-picker .label { text-align: center; padding: 4px; font-size: 12px; }
 
 /* ── Boîtes de dialogue ── */
-.pl-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.28); display: flex; align-items: center; justify-content: center; z-index: 900; }
-.pl-overlay.modeless { background: transparent; pointer-events: none; }
-.pl-overlay.modeless .pl-dlg { pointer-events: auto; }
-.pl-dlg { background: var(--ui-panel); border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,.3); max-width: calc(100vw - 24px); max-height: calc(100vh - 24px); display: flex; flex-direction: column; border: 1px solid var(--ui-border); }
-.pl-dlg-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; font-weight: 600; font-size: 14px; cursor: move; user-select: none; border-bottom: 1px solid var(--ui-border); }
-.pl-dlg-x { background: none; border: 0; font-size: 22px; line-height: 1; cursor: pointer; padding: 0 6px; border-radius: 4px; color: var(--ui-muted); }
-.pl-dlg-x:hover { background: #e81123; color: #fff; }
-.pl-dlg-body { padding: 14px; overflow: auto; }
-.pl-dlg-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--ui-border); }
+/* Réglages dans le ruban (remplacent les boîtes de dialogue), comme un onglet
+   contextuel de Word : ni fenêtre par-dessus le document, ni volet sur le côté */
+.pl-ribbon-panel.tool { height: auto; min-height: 104px; max-height: 58vh; overflow: auto; }
+.pl-tool { display: flex; align-items: stretch; flex: none; }
+.pl-tool-group { display: flex; flex-direction: column; flex: none; padding: 2px 10px 0; border-right: 1px solid var(--ui-border); }
+.pl-tool-flow { flex: 1; display: flex; align-items: flex-start; gap: 18px; }
+.pl-tool-col { display: flex; flex-direction: column; gap: 6px; flex: none; min-width: 140px; max-width: 480px; }
+.pl-tool-col > * { margin-top: 0; margin-bottom: 0; }
+.pl-tool-btns { display: flex; flex-direction: column; gap: 6px; padding: 2px; flex: 1; }
+.pl-tool-btns .pl-btn { min-width: 100px; }
+.pl-tool-msg { margin: 6px 0; white-space: pre-wrap; max-width: 70ch; }
+.pl-tool.in-page { border: 1px solid var(--ui-border); border-radius: 6px; margin-bottom: 18px; padding: 8px 0; background: var(--ui-bg); overflow-x: auto; }
+.pl-tool-tabs { border-top-color: var(--app); }
+.pl-tool-tabs .pl-ctx-label { color: var(--app); background: var(--app-light); }
+.pl-tool-tabs .pl-tab.ctx { color: var(--app); font-weight: 600; }
 .pl-btn { padding: 6px 16px; border-radius: 4px; border: 1px solid var(--ui-border); background: var(--ui-panel); cursor: pointer; min-width: 80px; }
 .pl-btn:hover { background: var(--ui-hover); }
 .pl-btn.primary { background: var(--app); border-color: var(--app); color: #fff; }
@@ -249,8 +255,7 @@ textarea.pl-input { width: 100%; resize: vertical; }
 
 @media (max-width: 700px) {
   .pl-search-box, .pl-save-state { display: none; }
-  .pl-pane { position: absolute; right: 0; top: 0; bottom: 0; z-index: 30; box-shadow: var(--shadow); width: min(300px, 92vw); }
-  .pl-bs-nav { width: 64px; }
+  .pl-pane { position: absolute; right: 0; top: 0; bottom: 0; z-index: 30; box-shadow: var(--shadow); width: min(300px, 92vw); }  .pl-bs-nav { width: 64px; }
   .pl-bs-nav button span { display: none; }
   .pl-bs-main { padding: 16px; }
 }

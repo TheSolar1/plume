@@ -13,7 +13,7 @@ import { isInTable, setCellAttr, CellSelection, TableMap, selectedRect, splitCel
 import { schema } from './schema.js';
 import * as C from './commands.js';
 import * as T from './tools.js';
-import { h, icon, dialog, field, select, checkbox, tabs, toast, prefs, uid, colorPickerContent, showPopup, readAsDataURL, pickFile, confirmDlg, promptDlg, showMenu, closeMenus } from '../common/ui.js';
+import { h, icon, dialog, field, select, checkbox, tabs, toast, prefs, uid, colorPickerContent, showPopup, readAsDataURL, pickFile, confirmDlg, promptDlg, showMenu, closeMenus, closeDialogs } from '../common/ui.js';
 import { FONTS, FONT_SIZES, resolveStyle, stylePreviewCss } from './styles.js';
 import { setQuery, gotoMatch, replaceCurrent, replaceAll, findKey } from './find.js';
 import { texToMathML, EQUATION_STRUCTURES, EQUATION_SYMBOLS, symbolOf } from './math.js';
@@ -246,7 +246,7 @@ export function bordersShadingDialog(app, scope = 'para') {
     } }, { label: 'Annuler' }],
   });
 }
-function closeAll() { document.querySelectorAll('.pl-overlay').forEach((o) => o.remove()); }
+function closeAll() { closeDialogs(); }
 
 // ── Styles : créer / modifier ──
 export function styleDialog(app, styleId) {
@@ -868,7 +868,7 @@ export function cropDialog(app) {
 export function noteDialog(app, node, pos) {
   const area = h('textarea.pl-input', { rows: 4, on: { keydown: (e) => e.stopPropagation() } });
   area.value = node.attrs.text;
-  dialog({ title: node.attrs.kind === 'end' ? 'Note de fin' : 'Note de bas de page', width: 440, body: area, buttons: [
+  dialog({ title: node.attrs.kind === 'end' ? 'Note de fin' : 'Note de bas de page', width: 440, body: area, anchor: app.view.nodeDOM(pos) || null, buttons: [
     { label: 'OK', primary: true, action: () => app.view.dispatch(app.view.state.tr.setNodeMarkup(pos, null, { ...node.attrs, text: area.value }).setMeta('notrack', true)) },
     { label: 'Supprimer la note', action: () => app.view.dispatch(app.view.state.tr.delete(pos, pos + 1)) },
     { label: 'Convertir en ' + (node.attrs.kind === 'end' ? 'note de bas de page' : 'note de fin'), action: () => app.view.dispatch(app.view.state.tr.setNodeMarkup(pos, null, { ...node.attrs, text: area.value, kind: node.attrs.kind === 'end' ? 'foot' : 'end' })) },

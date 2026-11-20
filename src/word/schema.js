@@ -313,17 +313,30 @@ export const nodes = {
       rotate: { default: 0 },
       filter: { default: null },     // grayscale | sepia | blur | brightness…
       crop: { default: null },
+      x: { default: null },          // devant/derrière le texte : position (px) par rapport au paragraphe
+      y: { default: null },
+      ink: { default: null },        // encre (onglet Dessin) : traits [{c, w, a, p:[[x,y]…]}] pour gommer et relire
+      canvas: { default: false },    // zone de dessin : on peut dessiner dedans
     },
     parseDOM: [{
       tag: 'img[src]',
-      getAttrs: (d) => ({
-        src: d.getAttribute('src'),
-        alt: d.getAttribute('alt'),
-        title: d.getAttribute('title'),
-        width: d.getAttribute('width') ? +d.getAttribute('width') : null,
-        height: d.getAttribute('height') ? +d.getAttribute('height') : null,
-        wrap: d.getAttribute('data-wrap') || 'inline',
-      }),
+      getAttrs: (d) => {
+        const num = (k) => (d.getAttribute(k) != null && d.getAttribute(k) !== '' ? +d.getAttribute(k) : null);
+        let ink = null;
+        try { ink = d.getAttribute('data-ink') ? JSON.parse(d.getAttribute('data-ink')) : null; } catch { ink = null; }
+        return {
+          src: d.getAttribute('src'),
+          alt: d.getAttribute('alt'),
+          title: d.getAttribute('title'),
+          width: num('width'),
+          height: num('height'),
+          wrap: d.getAttribute('data-wrap') || 'inline',
+          x: num('data-x'),
+          y: num('data-y'),
+          ink: Array.isArray(ink) ? ink : null,
+          canvas: d.hasAttribute('data-canvas'),
+        };
+      },
     }],
     toDOM: (n) => {
       const a = n.attrs;
@@ -333,7 +346,10 @@ export const nodes = {
       if (a.rounded) css.push('border-radius:12px');
       if (a.rotate) css.push(`transform:rotate(${a.rotate}deg)`);
       if (a.filter) css.push(`filter:${a.filter}`);
-      return ['img', { src: a.src, alt: a.alt, title: a.title, width: a.width, height: a.height, 'data-wrap': a.wrap, class: 'wrap-' + a.wrap, style: css.join(';') || null }];
+      return ['img', {
+        src: a.src, alt: a.alt, title: a.title, width: a.width, height: a.height, 'data-wrap': a.wrap, class: 'wrap-' + a.wrap, style: css.join(';') || null,
+        'data-x': a.x, 'data-y': a.y, 'data-ink': a.ink ? JSON.stringify(a.ink) : null, 'data-canvas': a.canvas ? '' : null,
+      }];
     },
   },
 

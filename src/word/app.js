@@ -1143,10 +1143,22 @@ export class WordApp {
       if (pos != null) this.editNote(pos);
     }, 120);
   }
+  // Comme dans Word : le curseur va dans la note, en bas de la page, où on la tape.
   editNote(pos) {
     const node = this.view.state.doc.nodeAt(pos);
     if (!node) return;
-    D.noteDialog(this, node, pos);
+    const id = String(node.attrs.id);
+    const go = (tries) => {
+      const el = [...this.pagesEl.querySelectorAll('[contenteditable][data-id]')].find((t) => t.dataset.id === id && t.offsetParent);
+      if (el) {
+        el.scrollIntoView({ block: 'center' });
+        el.focus();
+        const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
+        const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      } else if (tries > 0) setTimeout(() => go(tries - 1), 80);
+      else D.noteDialog(this, node, pos); // mode Web/Brouillon : pas de bas de page
+    };
+    go(6);
   }
 
   // ── Champs ──
@@ -1491,7 +1503,38 @@ export class WordApp {
   }
 
   // ── Objets ──
-  editEquation(pos, tex, block) { D.equationDialog(this, pos, tex, block); }
+  // Équations : comme dans Word, on les tape directement dans le texte, avec
+  // l'onglet Équation du ruban (paragraphe vide → équation centrée sur sa ligne).
+  editEquation(pos, tex = '', block = false) {
+    const v = this.view, N = v.state.schema.nodes;
+    if (this.eqEditing) this.eqEditing.finish(false);
+    if (pos == null) {
+      const $f = v.state.selection.$from;
+      const asBlock = block || ($f.parent.isTextblock && $f.parent.content.size === 0);
+      this.cmd(asBlock ? C.insertBlock(N.equation_block.create({ tex })) : C.insertNode(N.equation.create({ tex })));
+      const head = v.state.selection.from;
+      let dist = Infinity;
+      v.state.doc.descendants((n, p) => {
+        if ((n.type === N.equation || n.type === N.equation_block) && n.attrs.tex === tex && Math.abs(p - head) < dist) { dist = Math.abs(p - head); pos = p; }
+      });
+      if (pos == null) return;
+    }
+    const dom = v.nodeDOM(pos);
+    if (dom && dom.plEq) dom.plEq.startEdit();
+  }
+  // Ruban (onglet Équation) : symbole ou structure au curseur de l'équation en cours.
+  eqInsert(text) {
+    if (!this.eqEditing) {
+      const s = this.view.state.selection;
+      if (s instanceof NodeSelection && /^equation/.test(s.node.type.name)) this.editEquation(s.from);
+      else this.editEquation(null, '', false);
+    }
+    if (this.eqEditing) this.eqEditing.insert(text);
+  }
+  eqSetAll(tex) {
+    if (this.eqEditing) this.eqEditing.insert(tex, true);
+    else this.cmd(C.insertBlock(this.view.state.schema.nodes.equation_block.create({ tex })));
+  }
   onObjectSelected() { this.scheduleUI(); }
 
   // ── Mini barre d'outils sur sélection ──

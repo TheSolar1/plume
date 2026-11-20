@@ -134,7 +134,7 @@ export class CalcBackstage {
   go(k) {
     const app = this.app;
     if (k === 'save') { this.close(); app.save('xlsx'); return; }
-    if (k === 'close') { this.close(); confirmDlg('Fermer', 'Fermer le classeur (il reste enregistré dans ce navigateur) ?', 'Fermer').then((ok) => ok && app.saveLocal().then(() => app.newWorkbook())); return; }
+    if (k === 'close') { this.close(); app.saveLocal().then(() => app.newWorkbook()); return; }
     if (k === 'print') { this.close(); D.printDialog(app); return; }
     this.nav.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.k === k));
     this.main.innerHTML = '';

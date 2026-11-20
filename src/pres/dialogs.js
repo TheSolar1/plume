@@ -5,7 +5,7 @@
 // ══════════════════════════════════════════════════════════════════
 import { EditorState, AllSelection } from 'prosemirror-state';
 import { Node as PMNode } from 'prosemirror-model';
-import { h, icon, dialog, field, select, checkbox, tabs, toast, prefs, pickFile, readAsDataURL, readAsArrayBuffer, readAsText, showMenu, closeMenus, promptDlg, confirmDlg, allIconNames, iconSvgString, uid, colorPickerContent, showPopup } from '../common/ui.js';
+import { h, icon, dialog, field, select, checkbox, tabs, toast, prefs, pickFile, readAsDataURL, readAsArrayBuffer, readAsText, showMenu, closeMenus, promptDlg, confirmDlg, allIconNames, iconSvgString, uid, colorPickerContent, showPopup, closeDialogs } from '../common/ui.js';
 import { textSchema, textDoc, docText, makeElement, newSlide, cloneSlide, ANIMATIONS, animLabel, animKind, themeColor, LAYOUTS, SLIDE_SIZES } from './model.js';
 import { renderSlide, fitTexts } from './render.js';
 import { texToMathML, EQUATION_STRUCTURES, EQUATION_SYMBOLS, symbolOf } from '../word/math.js';
@@ -208,7 +208,7 @@ export function stockImages(app) {
     `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="720"><rect width="720" height="720" fill="#f1f8ec"/><path d="M360 90 C580 190 600 480 360 630 C120 480 140 190 360 90Z" fill="${pal[5]}"/></svg>`,
     `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720"><rect width="1280" height="720" fill="#fff"/>${Array.from({ length: 48 }, (_, i) => `<rect x="${(i % 12) * 107}" y="${Math.floor(i / 12) * 180}" width="107" height="180" fill="${pal[(i * 5) % 6]}" opacity="${0.25 + (i % 3) * 0.25}"/>`).join('')}</svg>`,
   ];
-  const grid = h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' } }, items.map((s) => h('button.pl-template', { type: 'button', on: { click: () => { document.querySelectorAll('.pl-overlay').forEach((o) => o.remove()); app.insertImage(svgData(s)); } } }, h('img', { src: svgData(s), style: { width: '100%', border: '1px solid #ddd' } }))));
+  const grid = h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' } }, items.map((s) => h('button.pl-template', { type: 'button', on: { click: () => { closeDialogs(); app.insertImage(svgData(s)); } } }, h('img', { src: svgData(s), style: { width: '100%', border: '1px solid #ddd' } }))));
   dialog({ title: 'Images de la bibliothèque', width: 620, body: grid, buttons: [{ label: 'Fermer' }] });
 }
 export async function screenshot(app) {
@@ -327,7 +327,7 @@ export function symbolDialog(app) {
 }
 export function videoDialog(app) {
   const u = inp('', { placeholder: 'https://www.youtube.com/watch?v=… ou fichier .mp4', style: { width: '100%' } });
-  dialog({ title: 'Insérer une vidéo', width: 460, body: h('div', field('Adresse :', u), h('button.pl-btn.small', { type: 'button', on: { click: async () => { const f = await pickFile('video/*'); if (f) { document.querySelectorAll('.pl-overlay').forEach((o) => o.remove()); app.addElement(makeElement('video', { ...app.centerBox(640, 360), url: await readAsDataURL(f), name: f.name })); } } } }, 'Vidéo de cet appareil…')), buttons: [{ label: 'Insérer', primary: true, action: () => u.value && app.addElement(makeElement('video', { ...app.centerBox(640, 360), url: u.value.trim() })) }, { label: 'Annuler' }] });
+  dialog({ title: 'Insérer une vidéo', width: 460, body: h('div', field('Adresse :', u), h('button.pl-btn.small', { type: 'button', on: { click: async () => { const f = await pickFile('video/*'); if (f) { closeDialogs(); app.addElement(makeElement('video', { ...app.centerBox(640, 360), url: await readAsDataURL(f), name: f.name })); } } } }, 'Vidéo de cet appareil…')), buttons: [{ label: 'Insérer', primary: true, action: () => u.value && app.addElement(makeElement('video', { ...app.centerBox(640, 360), url: u.value.trim() })) }, { label: 'Annuler' }] });
 }
 export async function insertObject(app) {
   const f = await pickFile('.pptx,.txt,.md');

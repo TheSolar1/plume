@@ -4,7 +4,7 @@
 // équations, champs, notes, contrôles de contenu, tables des
 // matières, sauts de page/section.
 // ══════════════════════════════════════════════════════════════════
-import { NodeSelection } from 'prosemirror-state';
+import { NodeSelection, TextSelection } from 'prosemirror-state';
 import { texToMathML } from './math.js';
 
 // ── Image avec poignées de redimensionnement et rotation ──
@@ -15,6 +15,8 @@ class ImageView {
     this.dom.className = 'pl-imgwrap';
     this.img = document.createElement('img');
     this.dom.appendChild(this.img);
+    // Objet placé devant/derrière le texte (encre…) : on le déplace en le faisant glisser, comme dans Word.
+    this.img.addEventListener('mousedown', (e) => { if (this.isPlaced()) this.startMove(e); });
     for (const c of ['nw', 'ne', 'sw', 'se', 'e', 's', 'rot']) {
       const hdl = document.createElement('span');
       hdl.className = 'pl-hdl pl-hdl-' + c;
@@ -38,6 +40,39 @@ class ImageView {
     this.img.style.cssText += ';' + css.join(';');
     this.dom.style.transform = a.rotate ? `rotate(${a.rotate}deg)` : '';
     this.dom.dataset.wrap = a.wrap;
+    const placed = this.isPlaced();
+    this.dom.classList.toggle('pl-abs', placed);
+    this.dom.style.left = placed ? a.x + 'px' : '';
+    this.dom.style.top = placed ? a.y + 'px' : '';
+    this.dom.classList.toggle('pl-ink', !!a.ink);
+    this.dom.classList.toggle('pl-ink-canvas', !!a.canvas);
+    this.img.draggable = !placed;
+  }
+  isPlaced() {
+    const a = this.node.attrs;
+    return (a.wrap === 'front' || a.wrap === 'behind') && a.x != null && a.y != null;
+  }
+  startMove(e) {
+    if (e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    const pos = this.getPos();
+    this.view.dispatch(this.view.state.tr.setSelection(NodeSelection.create(this.view.state.doc, pos)));
+    const scale = this.view.dom.getBoundingClientRect().width / this.view.dom.offsetWidth || 1;
+    const sx = e.clientX, sy = e.clientY, x0 = this.node.attrs.x, y0 = this.node.attrs.y;
+    let x = x0, y = y0;
+    const move = (ev) => {
+      x = Math.round(x0 + (ev.clientX - sx) / scale); y = Math.round(y0 + (ev.clientY - sy) / scale);
+      this.dom.style.left = x + 'px'; this.dom.style.top = y + 'px';
+    };
+    const up = () => {
+      document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
+      if (x === x0 && y === y0) return;
+      const p = this.getPos();
+      const tr = this.view.state.tr.setNodeMarkup(p, null, { ...this.node.attrs, x, y });
+      tr.setSelection(NodeSelection.create(tr.doc, p));
+      this.view.dispatch(tr);
+    };
+    document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
   }
   update(node) {
     if (node.type !== this.node.type) return false;
@@ -86,7 +121,10 @@ class ImageView {
     document.addEventListener('mousemove', move);
     document.addEventListener('mouseup', up);
   }
-  stopEvent(e) { return e.target.classList && e.target.classList.contains('pl-hdl'); }
+  stopEvent(e) {
+    if (e.target.classList && e.target.classList.contains('pl-hdl')) return true;
+    return this.isPlaced() && e.target === this.img && /^(mouse|drag)/.test(e.type);
+  }
   ignoreMutation() { return true; }
 }
 
@@ -197,23 +235,113 @@ class ShapeView {
   ignoreMutation() { return true; }
 }
 
+// Équation : comme dans Word, on la tape directement dans le texte (formule à
+// gauche, résultat en direct à droite) ; l'onglet Équation du ruban insère les
+// symboles et structures au curseur. Entrée, Échap ou un clic ailleurs : terminé.
 class EquationView {
   constructor(node, view, getPos, app, block) {
     this.node = node; this.view = view; this.getPos = getPos; this.app = app; this.block = block;
+    this.editing = false;
     this.dom = document.createElement(block ? 'div' : 'span');
     this.dom.className = block ? 'pl-eqb' : 'pl-eq';
     this.dom.contentEditable = 'false';
-    this.dom.addEventListener('dblclick', () => app.editEquation(getPos(), node.attrs.tex, block));
+    this.dom.plEq = this;
+    this.dom.addEventListener('dblclick', (e) => { e.preventDefault(); this.startEdit(); });
     this.render();
   }
   render() {
+    if (this.editing) return;
+    this.dom.classList.remove('editing');
     this.dom.innerHTML = this.node.attrs.tex ? texToMathML(this.node.attrs.tex, this.block) : '<span class="pl-eq-empty">Tapez une équation ici.</span>';
     this.dom.title = 'Double-cliquez pour modifier l’équation';
   }
-  update(node) { if (node.type !== this.node.type) return false; this.node = node; this.render(); return true; }
+  startEdit() {
+    const app = this.app;
+    if (this.editing) { this.focusEnd(); return; }
+    if (app.eqEditing && app.eqEditing !== this) app.eqEditing.finish(false);
+    this.editing = true;
+    app.eqEditing = this;
+    this.view.dispatch(this.view.state.tr.setSelection(NodeSelection.create(this.view.state.doc, this.getPos())));
+    this.dom.classList.add('editing');
+    this.dom.removeAttribute('title');
+    this.dom.innerHTML = '';
+    const src = this.src = document.createElement('span');
+    src.className = 'pl-eq-src';
+    src.contentEditable = 'true';
+    src.spellcheck = false;
+    src.dataset.placeholder = 'Tapez une équation ici';
+    src.textContent = this.node.attrs.tex;
+    const live = document.createElement('span');
+    live.className = 'pl-eq-live';
+    this.dom.append(src, live);
+    const upd = () => { const t = src.textContent; live.innerHTML = t.trim() ? texToMathML(t, false) : ''; this.saveRange(); };
+    upd();
+    src.addEventListener('input', upd);
+    src.addEventListener('keyup', () => this.saveRange());
+    src.addEventListener('mouseup', () => this.saveRange());
+    src.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); this.finish(true); }
+    });
+    src.addEventListener('paste', (e) => { e.preventDefault(); document.execCommand('insertText', false, e.clipboardData.getData('text/plain')); });
+    src.addEventListener('focusout', () => setTimeout(() => {
+      if (!this.editing) return;
+      const a = document.activeElement;
+      if (a && (src.contains(a) || a.closest('.pl-ribbon, .pl-menu'))) return; // ruban et ses menus : on continue
+      this.finish(false);
+    }, 0));
+    app.updateUI();
+    if (app.ribbon.allTabs().some((t) => t.id === 'equation')) app.ribbon.select('equation');
+    this.focusEnd();
+  }
+  saveRange() {
+    const s = getSelection();
+    if (this.src && s && s.rangeCount && this.src.contains(s.anchorNode)) this.range = s.getRangeAt(0).cloneRange();
+  }
+  focusEnd() {
+    this.src.focus();
+    const r = document.createRange();
+    r.selectNodeContents(this.src);
+    r.collapse(false);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    this.range = r.cloneRange();
+  }
+  // Depuis le ruban : insère au curseur (ou remplace tout).
+  insert(text, replaceAll = false) {
+    if (!this.editing) this.startEdit();
+    this.src.focus();
+    const s = getSelection();
+    if (replaceAll) { const r = document.createRange(); r.selectNodeContents(this.src); s.removeAllRanges(); s.addRange(r); }
+    else if (this.range && this.src.contains(this.range.startContainer)) { s.removeAllRanges(); s.addRange(this.range); }
+    else this.focusEnd();
+    document.execCommand('insertText', false, text);
+    this.saveRange();
+  }
+  finish(moveOut) {
+    if (!this.editing) return;
+    const tex = this.src.textContent.trim();
+    this.editing = false;
+    if (this.app.eqEditing === this) this.app.eqEditing = null;
+    const v = this.view;
+    let pos = null;
+    try { pos = this.getPos(); } catch { pos = null; }
+    const node = pos == null ? null : v.state.doc.nodeAt(pos);
+    this.render();
+    if (!node) return;
+    const tr = v.state.tr;
+    if (!tex) tr.delete(pos, pos + node.nodeSize);
+    else if (tex !== node.attrs.tex) tr.setNodeMarkup(pos, null, { ...node.attrs, tex });
+    if (moveOut) tr.setSelection(TextSelection.near(tr.doc.resolve(Math.min(tex ? pos + node.nodeSize : pos, tr.doc.content.size))));
+    if (tr.docChanged || moveOut) v.dispatch(tr);
+    if (moveOut) this.app.focus();
+    this.app.updateUI();
+  }
+  update(node) { if (node.type !== this.node.type) return false; this.node = node; if (!this.editing) this.render(); return true; }
+  stopEvent(e) { return !!(this.editing && this.src && this.src.contains(e.target)); }
   ignoreMutation() { return true; }
   selectNode() { this.dom.classList.add('ProseMirror-selectednode'); this.app && this.app.onObjectSelected('equation'); }
   deselectNode() { this.dom.classList.remove('ProseMirror-selectednode'); }
+  destroy() { if (this.app && this.app.eqEditing === this) this.app.eqEditing = null; }
 }
 
 class FieldView {

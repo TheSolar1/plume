@@ -20,7 +20,7 @@ import { FONTS, FONT_SIZES, THEMES, STYLE_SETS, PARA_SPACING, stylePreviewCss, r
 import { TABLE_STYLES } from './tablestyles.js';
 import { MARGIN_PRESETS, PAGE_SIZES } from './app.js';
 import { h, icon, colorPicker, colorPickerContent, showPopup, closeMenus, toast, prefs } from '../common/ui.js';
-import { EQUATION_PRESETS } from './math.js';
+import { EQUATION_PRESETS, EQUATION_SYMBOLS, symbolOf, texToMathML } from './math.js';
 import { WORDART_STYLES } from './nodeviews.js';
 import { DATE_FORMATS } from './fields.js';
 
@@ -277,7 +277,7 @@ export function buildRibbon(app) {
         big('Gomme', 'Eraser', () => T.startInk(app, { id: 'eraser', label: 'Gomme', eraser: true }), { active: () => T.inkState(app)?.id === 'eraser' }),
       ] },
       { label: 'Convertir', items: [big('Encre en forme', 'Shapes', () => T.inkToShape(app), { active: () => !!prefs.get('inkToShape', false) }), big('Encre en équation', 'Sigma', () => D.inkEquationDialog(app))] },
-      { label: 'Insérer', items: [big('Zone de dessin', 'SquarePen', () => D.drawingDialog(app))] },
+      { label: 'Insérer', items: [big('Zone de dessin', 'SquarePen', () => T.insertDrawingCanvas(app))] },
       { label: 'Relecture', items: [big('Relecture avec l’encre', 'Play', () => T.inkReplay(app))] },
     ],
   };
@@ -826,7 +826,7 @@ function shapeTab(app) {
         ),
       ] },
       { label: 'Styles WordArt', items: [{ type: 'gallery', width: 240, items: () => Object.entries(WORDART_STYLES).map(([k, css]) => ({ label: k, key: k, preview: () => h('span', { style: css + ';font-weight:700;font-size:20px;display:block;text-align:center' }, 'A'), run: set({ kind: 'wordart', wordartStyle: k }) })) }] },
-      { label: 'Texte', items: [big('Modifier le texte', 'Type', () => D.shapeTextDialog(app)), col(btn('Gauche', 'AlignLeft', set({ align: 'left' }), { showLabel: true }), btn('Centre', 'AlignCenter', set({ align: 'center' }), { showLabel: true }), btn('Droite', 'AlignRight', set({ align: 'right' }), { showLabel: true }))] },
+      { label: 'Texte', items: [big('Modifier le texte', 'Type', () => T.editShapeText(app)), col(btn('Gauche', 'AlignLeft', set({ align: 'left' }), { showLabel: true }), btn('Centre', 'AlignCenter', set({ align: 'center' }), { showLabel: true }), btn('Droite', 'AlignRight', set({ align: 'right' }), { showLabel: true }))] },
       { label: 'Taille', items: [col(
         row(h('span', { style: { fontSize: '12px', width: '54px' } }, 'Hauteur'), pxSpin(() => node()?.attrs.height, (v) => set({ height: v })())),
         row(h('span', { style: { fontSize: '12px', width: '54px' } }, 'Largeur'), pxSpin(() => node()?.attrs.width, (v) => set({ width: v })())),
@@ -835,14 +835,45 @@ function shapeTab(app) {
   };
 }
 
+// Onglet Équation, comme dans Word : symboles et structures s'insèrent au curseur
+// de l'équation, qu'on tape directement dans le texte.
+const EQ_STRUCTURES = [
+  ['Fraction', '\\frac{a}{b}', [['Fraction', '\\frac{a}{b}'], ['Fraction en ligne', 'a/b']]],
+  ['Script', 'x^{n}', [['Exposant', 'x^{n}'], ['Indice', 'x_{i}'], ['Indice et exposant', 'x_{i}^{n}']]],
+  ['Radical', '\\sqrt{x}', [['Racine carrée', '\\sqrt{x}'], ['Racine n-ième', '\\sqrt[n]{x}']]],
+  ['Intégrale', '\\int', [['Intégrale', '\\int f(x)\\,dx'], ['Intégrale définie', '\\int_{a}^{b} f(x)\\,dx'], ['Intégrale double', '\\iint f\\,dA'], ['Intégrale de contour', '\\oint f\\,ds']]],
+  ['Grand opérateur', '\\sum', [['Somme', '\\sum_{i=1}^{n} x_i'], ['Produit', '\\prod_{i=1}^{n} x_i'], ['Union', '\\bigcup_{i} A_i'], ['Intersection', '\\bigcap_{i} A_i']]],
+  ['Crochet', '\\left( x \\right)', [['Parenthèses', '\\left( x \\right)'], ['Crochets', '\\left[ x \\right]'], ['Accolades', '\\left\\{ x \\right\\}'], ['Valeur absolue', '\\left| x \\right|'], ['Système', '\\begin{cases}x+y=1\\\\x-y=0\\end{cases}'], ['Coefficient binomial', '\\binom{n}{k}']]],
+  ['Fonction', '\\sin\\theta', [['Sinus', '\\sin\\theta'], ['Cosinus', '\\cos\\theta'], ['Tangente', '\\tan\\theta']]],
+  ['Accentuation', '\\vec{v}', [['Vecteur', '\\vec{v}'], ['Barre', '\\bar{x}'], ['Chapeau', '\\hat{y}'], ['Point', '\\dot{x}']]],
+  ['Limite et log', '\\lim', [['Limite', '\\lim_{x\\to 0}'], ['Logarithme', '\\log_{b} x'], ['Logarithme népérien', '\\ln x'], ['Minimum', '\\min_{x}'], ['Maximum', '\\max_{x}']]],
+  ['Matrice', '\\begin{pmatrix}1&0\\\\0&1\\end{pmatrix}', [['Matrice 2×2', '\\begin{pmatrix}a&b\\\\c&d\\end{pmatrix}'], ['Matrice identité', '\\begin{pmatrix}1&0\\\\0&1\\end{pmatrix}'], ['Déterminant', '\\begin{vmatrix}a&b\\\\c&d\\end{vmatrix}']]],
+];
+const mathEl = (tex, cls) => { const s = h('span.' + cls); s.innerHTML = texToMathML(tex, false); return s; };
+function equationSymbols(app) {
+  const grid = h('div.pl-eq-syms');
+  for (const s of EQUATION_SYMBOLS) {
+    const b = h('button', { type: 'button', title: s }, symbolOf(s));
+    b.addEventListener('mousedown', (e) => e.preventDefault()); // le curseur reste dans l'équation
+    b.addEventListener('click', () => app.eqInsert(s + ' '));
+    grid.appendChild(b);
+  }
+  return grid;
+}
 function equationTab(app) {
+  const finishThen = (fn) => () => { if (app.eqEditing) app.eqEditing.finish(false); fn(); };
   return {
     id: 'equation', label: 'Équation', context: 'Outils d’équation', groups: () => [
-      { label: 'Outils', items: [big('Modifier l’équation', 'Pencil', () => { const s = app.state.selection; app.editEquation(s.from, s.node.attrs.tex, s.node.type.name === 'equation_block'); }), menuBig('Équation', 'Sigma', EQUATION_PRESETS.map(([l, tex]) => ({ label: l, action: () => { const s = app.state.selection; app.activeView.dispatch(app.state.tr.setNodeMarkup(s.from, null, { tex })); } })))] },
-      { label: 'Conversions', items: [col(
-        btn('Afficher en ligne', 'WrapText', () => T.equationDisplay(app, false), { showLabel: true }),
-        btn('Afficher (centré)', 'AlignCenter', () => T.equationDisplay(app, true), { showLabel: true }),
-      )] },
+      { label: 'Outils', items: [
+        menuBig('Équation', 'Sigma', EQUATION_PRESETS.map(([l, tex]) => ({ label: l, action: () => app.eqSetAll(tex) }))),
+        col(
+          btn('Afficher en ligne', 'WrapText', finishThen(() => T.equationDisplay(app, false)), { showLabel: true }),
+          btn('Afficher (centré)', 'AlignCenter', finishThen(() => T.equationDisplay(app, true)), { showLabel: true }),
+        ),
+      ] },
+      { label: 'Symboles', items: [{ type: 'custom', render: () => equationSymbols(app) }] },
+      { label: 'Structures', items: EQ_STRUCTURES.map(([label, ico, list]) => menuBig(label, () => mathEl(ico, 'pl-eq-ico'),
+        list.map(([l, tex]) => ({ label: h('span.pl-eq-item', mathEl(tex, 'pl-eq-prev'), h('span', l)), action: () => app.eqInsert(tex) })))) },
     ],
   };
 }

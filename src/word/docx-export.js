@@ -623,18 +623,19 @@ class ExportContext {
     const srcRect = cr ? `<a:srcRect l="${pc(cr.x)}" t="${pc(cr.y)}" r="${pc(1 - cr.x - cr.w)}" b="${pc(1 - cr.y - cr.h)}"/>` : '';
     const graphic = `<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${id}" name="Image ${id}" descr="${esc(a.alt || '')}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rId}"${blipFx ? `>${blipFx}</a:blip>` : '/>'}${srcRect}<a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm${rot}><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="${geom}"><a:avLst/></a:prstGeom>${ln}${effect}</pic:spPr></pic:pic></a:graphicData></a:graphic>`;
     const docPr = `<wp:docPr id="${id}" name="Image ${id}" descr="${esc(a.alt || '')}"${a.title ? ` title="${esc(a.title)}"` : ''}/>`;
-    return this.drawingFrame(a.wrap || 'inline', cx, cy, docPr, graphic, id, true);
+    return this.drawingFrame(a.wrap || 'inline', cx, cy, docPr, graphic, id, true, a.x != null && a.y != null ? { x: a.x, y: a.y } : null);
   }
 
-  // Cadre d'un dessin : en ligne avec le texte, ou ancré (habillage carré, haut et bas, devant, derrière)
-  drawingFrame(wrap, cx, cy, docPr, graphic, id, lockAspect) {
+  // Cadre d'un dessin : en ligne avec le texte, ou ancré (habillage carré, haut et bas, devant, derrière).
+  // pos : position (px) par rapport au paragraphe, pour l'encre et les objets placés à la main.
+  drawingFrame(wrap, cx, cy, docPr, graphic, id, lockAspect, pos = null) {
     if (wrap === 'inline') {
       return `<wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>${docPr}<wp:cNvGraphicFramePr>${lockAspect ? '<a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/>' : ''}</wp:cNvGraphicFramePr>${graphic}</wp:inline>`;
     }
     const behind = wrap === 'behind' ? 1 : 0;
     const align = wrap === 'right' ? 'right' : wrap === 'left' ? 'left' : 'center';
     const wrapXml = wrap === 'left' || wrap === 'right' ? '<wp:wrapSquare wrapText="bothSides"/>' : wrap === 'top-bottom' ? '<wp:wrapTopAndBottom/>' : '<wp:wrapNone/>';
-    return `<wp:anchor distT="0" distB="0" distL="114300" distR="114300" simplePos="0" relativeHeight="${251658240 + id}" behindDoc="${behind}" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="column"><wp:align>${align}</wp:align></wp:positionH><wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset></wp:positionV><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>${wrapXml}${docPr}<wp:cNvGraphicFramePr/>${graphic}</wp:anchor>`;
+    return `<wp:anchor distT="0" distB="0" distL="114300" distR="114300" simplePos="0" relativeHeight="${251658240 + id}" behindDoc="${behind}" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="column">${pos ? `<wp:posOffset>${Math.round(pos.x * 9525)}</wp:posOffset>` : `<wp:align>${align}</wp:align>`}</wp:positionH><wp:positionV relativeFrom="paragraph"><wp:posOffset>${pos ? Math.round(pos.y * 9525) : 0}</wp:posOffset></wp:positionV><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>${wrapXml}${docPr}<wp:cNvGraphicFramePr/>${graphic}</wp:anchor>`;
   }
 
   // Formes, zones de texte et WordArt : vraies formes Word (DrawingML « wps »), donc modifiables

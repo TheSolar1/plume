@@ -7,7 +7,7 @@
 // diapositive suivante), diaporama personnalisé, mode borne.
 // ══════════════════════════════════════════════════════════════════
 import { renderSlide, fitTexts } from './render.js';
-import { h, icon, toast, prefs, showMenu } from '../common/ui.js';
+import { h, icon, toast, prefs, showMenu, confirmDlg } from '../common/ui.js';
 
 // ── Transitions (Web Animations) ──
 export function playTransition(oldEl, newEl, t = {}) {
@@ -277,15 +277,20 @@ export class Slideshow {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     this.root.remove();
     if (this.presenter && !this.presenter.closed) this.presenter.close();
+    // Questions de fin de diaporama : barre de message, pas de fenêtre.
     if (this.opts.rehearse && this.timings.length) {
       const total = this.timings.reduce((a, b) => a + (b || 0), 0);
-      if (confirm(`Durée totale du diaporama : ${fmtTime(total * 1000)}. Conserver le nouveau minutage des diapositives ?`)) {
+      confirmDlg('Minutage', `Durée totale du diaporama : ${fmtTime(total * 1000)}. Conserver le nouveau minutage des diapositives ?`, 'Conserver').then((ok) => {
+        if (!ok) return;
         this.timings.forEach((t, p) => { if (t != null) this.app.pres.slides[this.order[p]].transition.advanceAfter = Math.round(t * 10) / 10; });
         this.app.pres.useTimings = true;
         this.app.commit('Minutage');
-      }
+        this.app.renderAll();
+      });
     }
-    if (this.inkStrokes && this.inkStrokes.some((x) => x.length) && confirm('Conserver vos annotations manuscrites ?')) this.keepInk();
+    if (this.inkStrokes && this.inkStrokes.some((x) => x.length)) {
+      confirmDlg('Annotations', 'Conserver vos annotations manuscrites ?', 'Conserver').then((ok) => { if (ok) { this.keepInk(); this.app.renderAll(); } });
+    }
     this.app.show = null;
     this.app.renderAll();
   }
