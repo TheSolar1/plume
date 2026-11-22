@@ -2,7 +2,12 @@
 // backstage.js — onglet Fichier de Plume Tableur et modèles
 // ══════════════════════════════════════════════════════════════════
 import { h, icon, store, confirmDlg, toast } from '../common/ui.js';
+import { fenetreParente, fermerVersHote } from '../common/hote.js';
 import { Workbook } from './model.js';
+import { galerieModeles } from '../common/galerie.js';
+import { catalogueTableur, CATEGORIES_TABLEUR } from './catalogue.js';
+import { apercuTableur } from './apercus.js';
+import { themesGalerie, CATEGORIES_THEMES, classeurCanva, donneesClasseurCanva } from './themes-canva.js';
 import * as D from './dialogs.js';
 
 function build(title, fn) {
@@ -118,7 +123,7 @@ export class CalcBackstage {
     const nav = h('div.pl-bs-nav');
     this.main = h('div.pl-bs-main');
     nav.appendChild(h('button.pl-bs-back', { type: 'button', on: { click: () => this.close() } }, '←'));
-    for (const it of [['home', 'Accueil', 'House'], ['new', 'Nouveau', 'FilePlus2'], ['open', 'Ouvrir', 'FolderOpen'], '-', ['info', 'Informations', 'Info'], ['save', 'Enregistrer', 'Save'], ['saveas', 'Enregistrer sous', 'SaveAll'], ['print', 'Imprimer', 'Printer'], ['export', 'Exporter', 'FileOutput'], ['close', 'Fermer', 'X']]) {
+    for (const it of [['home', 'Accueil', 'House'], ['new', 'Nouveau', 'FilePlus2'], ['themes', 'Thèmes', 'Palette'], ['open', 'Ouvrir', 'FolderOpen'], '-', ['info', 'Informations', 'Info'], ['save', 'Enregistrer', 'Save'], ['saveas', 'Enregistrer sous', 'SaveAll'], ['print', 'Imprimer', 'Printer'], ['export', 'Exporter', 'FileOutput'], ['close', 'Fermer', 'X']]) {
       if (it === '-') { nav.appendChild(h('div.sep')); continue; }
       const [k, l, ic] = it;
       nav.appendChild(h('button' + (k === section ? '.active' : ''), { type: 'button', 'data-k': k, on: { click: () => this.go(k) } }, icon(ic, 18), h('span', l)));
@@ -134,12 +139,23 @@ export class CalcBackstage {
   go(k) {
     const app = this.app;
     if (k === 'save') { this.close(); app.save('xlsx'); return; }
-    if (k === 'close') { this.close(); app.saveLocal().then(() => app.newWorkbook()); return; }
+    if (k === 'close') { this.close(); fermerVersHote(app).then((fait) => !fait && app.saveLocal().then(() => { const b = fenetreParente(); if (b) b.fermerFenetre(window); else app.newWorkbook(); })); return; }
     if (k === 'print') { this.close(); D.printDialog(app); return; }
     this.nav.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.k === k));
     this.main.innerHTML = '';
     if (k === 'home') this.home();
-    else if (k === 'new') this.main.append(h('h1', 'Nouveau'), this.templates());
+    else if (k === 'themes') {
+      const tous = themesGalerie().slice().sort((a, b) => a.rang - b.rang);
+      this.main.append(h('h1', 'Thèmes'), h('p.pl-hint', `${tous.length} thèmes décorés : cliquez sur un thème pour créer un classeur avec son bandeau, ses couleurs et ses polices.`),
+        galerieModeles({ type: 'calc', modeles: tous, categories: CATEGORIES_THEMES, etat: this.etatThemes || (this.etatThemes = {}), apercu: (x) => apercuTableur({ classeur: () => classeurCanva(x.combo) }),
+          choisir: (x) => { this.close(); this.app.newWorkbook(() => donneesClasseurCanva(x.combo)); } }));
+    }
+    else if (k === 'new') {
+      const tous = catalogueTableur();
+      this.main.append(h('h1', 'Nouveau'), this.templates(), h('h2', `Tous les modèles (${tous.length})`),
+        galerieModeles({ type: 'calc', modeles: tous, categories: CATEGORIES_TABLEUR, apercu: (x) => apercuTableur(x), etat: this.etatGalerie || (this.etatGalerie = {}),
+          choisir: (x) => { this.close(); this.app.newWorkbook(() => x.build()); } }));
+    }
     else if (k === 'open') this.openPage();
     else if (k === 'info') this.info();
     else if (k === 'saveas' || k === 'export') this.saveas(k);

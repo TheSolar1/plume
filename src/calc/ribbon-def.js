@@ -146,6 +146,7 @@ export function buildRibbon(app) {
   const layout = {
     id: 'layout', label: 'Mise en page', groups: () => [
       { label: 'Thèmes', items: [
+        { type: 'big', label: 'Thèmes décorés', icon: 'Sparkles', run: () => app.backstage.open('themes') },
         { type: 'menu', big: true, label: 'Thèmes', icon: 'Palette', menu: () => Object.entries(THEMES).map(([n, t]) => ({ label: n, checked: app.wb.theme.name === n, action: () => { app.tx('Thème', (wb) => { wb.snapshotBook(); wb.theme = { name: n, ...t }; }); } })) },
         col({ type: 'menu', label: 'Couleurs', icon: 'Palette', showLabel: true, menu: () => Object.entries(THEMES).map(([n, t]) => ({ label: n, action: () => app.tx('Couleurs du thème', (wb) => { wb.snapshotBook(); wb.theme = { ...wb.theme, colors: t.colors }; }) })) }, { type: 'menu', label: 'Polices', icon: 'Type', showLabel: true, menu: () => ['Calibri', 'Arial', 'Cambria', 'Georgia', 'Verdana', 'Times New Roman'].map((f) => ({ label: f, style: `font-family:"${f}"`, action: () => app.tx('Police du thème', (wb) => { wb.snapshotBook(); wb.theme = { ...wb.theme, font: f }; }) })) }),
       ] },
@@ -348,6 +349,15 @@ const THEMES = {
   Rétrospective: { colors: ['#ffffff', '#000000', '#ffe1ae', '#637052', '#fe8637', '#7598d9', '#b32c16', '#f5cd2d', '#aebad5', '#777c84'], font: 'Georgia' },
   Brin: { colors: ['#ffffff', '#000000', '#d5d5d5', '#3b3059', '#ad84c6', '#8784c7', '#5d739a', '#6997af', '#84acb6', '#6f8183'], font: 'Verdana' },
   Galerie: { colors: ['#ffffff', '#000000', '#eeece1', '#1f497d', '#b71e42', '#de478e', '#bc72f0', '#795faf', '#586ea6', '#6892a0'], font: 'Arial' },
+  Aurore: { colors: ['#ffffff', '#1a1a2e', '#ecebff', '#1c2147', '#0891b2', '#9333ea', '#db2777', '#059669', '#d97706', '#2563eb'], font: 'Segoe UI' },
+  Bauhaus: { colors: ['#ffffff', '#1d1d1b', '#f4efe6', '#1d1d1b', '#e63946', '#e9a400', '#1d3557', '#2a9d8f', '#e76f51', '#457b9d'], font: 'Bahnschrift' },
+  'Papier kraft': { colors: ['#ffffff', '#3e2a17', '#f3e7d3', '#5b3a1e', '#a4471f', '#2f6f73', '#b07d1f', '#6b7f3a', '#7a4e8c', '#3c6e9e'], font: 'Georgia' },
+  Minuit: { colors: ['#ffffff', '#0b1a3a', '#e6ecff', '#0b1a3a', '#1e3a8a', '#b45309', '#6d28d9', '#047857', '#be123c', '#0369a1'], font: 'Segoe UI' },
+  Corail: { colors: ['#ffffff', '#3d2c2e', '#ffe8dc', '#3d2c2e', '#e8543f', '#f08a5d', '#1f9e93', '#5c80bc', '#d4a017', '#6a9e4f'], font: 'Century Gothic' },
+  Ardoise: { colors: ['#ffffff', '#1f2a24', '#e8efea', '#2f3b35', '#2f6f4f', '#8b5a2b', '#3b7ea1', '#c2603d', '#6b5b95', '#88a03c'], font: 'Calibri' },
+  Vague: { colors: ['#ffffff', '#0b2545', '#dbeafe', '#0b2545', '#1d4ed8', '#0ea5e9', '#0f766e', '#14b8a6', '#f59e0b', '#6366f1'], font: 'Segoe UI' },
+  Prisme: { colors: ['#ffffff', '#16161a', '#f2f2f7', '#16161a', '#7f5af0', '#2cb67d', '#ff8906', '#e53170', '#3da9fc', '#f25f4c'], font: 'Trebuchet MS' },
+  Forêt: { colors: ['#ffffff', '#1b2a1e', '#e7f0e4', '#24382a', '#2d6a4f', '#95a5a6', '#b7791f', '#52796f', '#8d6e63', '#40916c'], font: 'Corbel' },
 };
 function setPage(app, patch) { app.tx('Mise en page', (wb, s) => { wb.snapshot(s); s.pageSetup = { ...s.pageSetup, ...patch }; }); if (app.viewMode !== 'normal') app.setView(app.viewMode); }
 
@@ -368,7 +378,7 @@ function cfMenu(app) {
 }
 function tablePreview(ts) {
   const g = h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', width: '56px', height: '26px', border: '1px solid #bbb' } });
-  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) g.appendChild(h('span', { style: { background: r === 0 ? ts.head || '#fff' : r % 2 === 1 ? ts.band || '#fff' : '#fff', borderRight: '1px solid rgba(0,0,0,.06)' } }));
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) g.appendChild(h('span', { style: { background: r === 0 ? ts.head || '#fff' : r % 2 === 1 ? ts.band || ts.body || '#fff' : ts.body || '#fff', borderRight: '1px solid rgba(0,0,0,.06)', borderBottom: r === 0 && ts.line ? `2px solid ${ts.line}` : r === 3 && ts.line ? `1px solid ${ts.line}` : '' } }));
   return g;
 }
 function tablePicker(app) {

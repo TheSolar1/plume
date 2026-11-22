@@ -2,8 +2,14 @@
 // backstage.js — onglet Fichier de Plume Présentation
 // ══════════════════════════════════════════════════════════════════
 import { h, icon, store, confirmDlg, toast, prefs } from '../common/ui.js';
+import { fenetreParente, fermerVersHote } from '../common/hote.js';
 import { PRES_THEMES, blankPresentation, newSlide, textDoc, makeElement } from './model.js';
 import { renderSlide, fitTexts } from './render.js';
+import { modeleRiche, construireModele } from './modeles-riches.js';
+import { galerieModeles } from '../common/galerie.js';
+import { cataloguePres, CATEGORIES_PRES } from './catalogue.js';
+import { apercuDiapo } from './designs.js';
+import { themesGalerie, CATEGORIES_THEMES, themeCanva, apercuThemeDiapo, presentationCanva, comboDe, survolTheme, NB_DIAPOS } from './themes-canva.js';
 
 export class PresBackstage {
   constructor(app) { this.app = app; }
@@ -12,7 +18,7 @@ export class PresBackstage {
     const nav = h('div.pl-bs-nav');
     this.main = h('div.pl-bs-main');
     nav.appendChild(h('button.pl-bs-back', { type: 'button', on: { click: () => this.close() } }, '←'));
-    for (const it of [['home', 'Accueil', 'House'], ['new', 'Nouveau', 'FilePlus2'], ['open', 'Ouvrir', 'FolderOpen'], '-', ['info', 'Informations', 'Info'], ['save', 'Enregistrer', 'Save'], ['saveas', 'Enregistrer sous', 'SaveAll'], ['print', 'Imprimer', 'Printer'], ['export', 'Exporter', 'FileOutput'], ['close', 'Fermer', 'X']]) {
+    for (const it of [['home', 'Accueil', 'House'], ['new', 'Nouveau', 'FilePlus2'], ['themes', 'Thèmes', 'Palette'], ['open', 'Ouvrir', 'FolderOpen'], '-', ['info', 'Informations', 'Info'], ['save', 'Enregistrer', 'Save'], ['saveas', 'Enregistrer sous', 'SaveAll'], ['print', 'Imprimer', 'Printer'], ['export', 'Exporter', 'FileOutput'], ['close', 'Fermer', 'X']]) {
       if (it === '-') { nav.appendChild(h('div.sep')); continue; }
       const [k, l, ic] = it;
       nav.appendChild(h('button' + (k === section ? '.active' : ''), { type: 'button', 'data-k': k, on: { click: () => this.go(k) } }, icon(ic, 18), h('span', l)));
@@ -28,12 +34,27 @@ export class PresBackstage {
   go(k) {
     const app = this.app;
     if (k === 'save') { this.close(); app.save('pptx'); return; }
-    if (k === 'close') { this.close(); app.saveLocal().then(() => app.newPresentation()); return; }
+    if (k === 'close') { this.close(); fermerVersHote(app).then((fait) => !fait && app.saveLocal().then(() => { const b = fenetreParente(); if (b) b.fermerFenetre(window); else app.newPresentation(); })); return; }
     if (k === 'print') return this.printPage();
     this.nav.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.k === k));
     this.main.innerHTML = '';
     if (k === 'home') this.home();
-    else if (k === 'new') { this.main.append(h('h1', 'Nouveau'), this.themes()); }
+    else if (k === 'themes') {
+      const tous = themesGalerie().slice().sort((a, b) => a.rang - b.rang);
+      const et = this.etatThemes || (this.etatThemes = { mode: 'nouvelle' });
+      const mode = (k2, l) => h('button.pl-galerie-puce' + (et.mode === k2 ? '.on' : ''), { type: 'button', on: { click: () => { et.mode = k2; this.go('themes'); } } }, l);
+      this.main.append(h('h1', 'Thèmes'), h('p.pl-hint', `${tous.length} thèmes. Chaque thème est une présentation complète de ${NB_DIAPOS} diapositives (survolez un thème pour les voir défiler).`),
+        h('div.pl-galerie-filtres', h('span.pl-galerie-titre', 'Choisir'), mode('nouvelle', `Nouvelle présentation (${NB_DIAPOS} diapositives)`), mode('appliquer', 'Appliquer à ma présentation')),
+        galerieModeles({ type: 'pres', modeles: tous, categories: CATEGORIES_THEMES, etat: et, apercu: (x) => apercuThemeDiapo(x), survol: (x, el, entre) => survolTheme(x, el, entre, apercuDiapo),
+          choisir: (x) => { this.close(); if (et.mode === 'appliquer') this.app.applyThemeObject(themeCanva(x.combo)); else { this.app.docId = null; this.app.loadNative(presentationCanva(x.combo), x.nom.split(' · ')[0]); } } }));
+    }
+    else if (k === 'new') {
+      const tous = cataloguePres();
+      this.main.append(h('h1', 'Nouveau'), this.themes(), h('h2', `Tous les modèles (${tous.length})`),
+        galerieModeles({ type: 'pres', modeles: tous, categories: CATEGORIES_PRES, etat: this.etatGalerie || (this.etatGalerie = {}),
+          apercu: (x) => { const d = h('div.pl-mini-diapo'); const p = x.build(); d.innerHTML = apercuDiapo(p, p.slides[0]); return d; },
+          choisir: (x) => { this.close(); this.app.docId = null; this.app.loadNative(construireModele(modeleRiche(x.modele), x.design), x.nom); } }));
+    }
     else if (k === 'open') this.openPage();
     else if (k === 'info') this.info();
     else if (k === 'saveas' || k === 'export') this.saveas(k);
@@ -54,6 +75,16 @@ export class PresBackstage {
     }
     const sample = h('button.pl-template', { type: 'button', on: { click: () => { this.close(); this.app.loadNative(samplePresentation(), 'Présentation de démonstration'); } } }, h('div.thumb', { style: { aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center' } }, icon('Clapperboard', 40)), h('div.cap', 'Visite guidée (exemple)'));
     grid.appendChild(sample);
+    // Modèles avec contenu (projet, pitch, exposé)
+    for (const m of PRES_MODELES) {
+      const p = m.build();
+      const fr = h('div.pp-thumb-frame', { style: { width: '100%', aspectRatio: '16/9', position: 'relative', overflow: 'hidden' } });
+      const sl = renderSlide(p, p.slides[0], { mode: 'thumb', index: 0 });
+      sl.style.transform = 'scale(.14)'; sl.style.transformOrigin = '0 0';
+      fr.appendChild(sl);
+      grid.appendChild(h('button.pl-template', { type: 'button', on: { click: () => { this.close(); this.app.docId = null; this.app.loadNative(m.build(), m.name); } } }, fr, h('div.cap', m.name)));
+      requestAnimationFrame(() => { const w = fr.clientWidth || 180; sl.style.transform = `scale(${w / p.size.w})`; fitTexts(fr); });
+    }
     return grid;
   }
   async recent(limit = 30) {
@@ -89,6 +120,65 @@ export class PresBackstage {
 }
 
 // Présentation de démonstration (visite guidée)
+// ── Modèles de présentation (page Nouveau et accueil de l'application PC) ──
+// Chaque diapositive : [disposition, titre, contenu (texte ou liste à puces)].
+function construire(theme, diapos) {
+  const p = blankPresentation(theme);
+  p.slides = diapos.map(([disposition, titre, contenu]) => {
+    const s = newSlide(p, disposition);
+    s.elements[0].text = textDoc(disposition === 'title' ? [{ text: titre, align: 'center' }] : titre);
+    if (contenu != null && s.elements[1]) s.elements[1].text = textDoc(disposition === 'title' ? [{ text: contenu, align: 'center' }] : contenu);
+    return s;
+  });
+  p.footer = { slideNumber: true, date: false, text: '', showOnTitle: false };
+  return p;
+}
+const aujourdhui = () => new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+export const PRES_MODELES = [
+  { id: 'projet', name: 'Présentation de projet', theme: 'Ion', build: () => construire('Ion', [
+    ['title', 'Nom du projet', 'Équipe · ' + aujourdhui()],
+    ['content', 'Contexte', ['Situation actuelle', 'Problème à résoudre', 'Pourquoi maintenant']],
+    ['content', 'Objectifs', ['Objectif principal', 'Résultats attendus', 'Indicateurs de réussite']],
+    ['content', 'Planning', ['Phase 1 — Cadrage', 'Phase 2 — Réalisation', 'Phase 3 — Livraison', 'Jalons et dates clés']],
+    ['content', 'Ressources et budget', ['Équipe et rôles', 'Budget prévisionnel', 'Risques et parades']],
+    ['section', 'Questions ?', 'Merci de votre attention'],
+  ]) },
+  { id: 'pitch', name: 'Pitch', theme: 'Berlin', build: () => construire('Berlin', [
+    ['title', 'Nom de l’entreprise', 'Votre idée en une phrase'],
+    ['content', 'Le problème', ['Qui le rencontre', 'Ce que cela coûte', 'Pourquoi les solutions actuelles ne suffisent pas']],
+    ['content', 'Notre solution', ['Ce que nous proposons', 'Ce qui nous rend différents', 'Démonstration']],
+    ['content', 'Le marché', ['Taille du marché', 'Clients visés', 'Concurrence']],
+    ['content', 'Modèle économique', ['Comment nous gagnons de l’argent', 'Prix', 'Premiers résultats']],
+    ['content', 'L’équipe', ['Prénom Nom — rôle', 'Prénom Nom — rôle', 'Prénom Nom — rôle']],
+    ['section', 'Merci !', 'contact@exemple.fr'],
+  ]) },
+  { id: 'cours', name: 'Exposé / cours', theme: 'Rétrospective', build: () => construire('Rétrospective', [
+    ['title', 'Titre de l’exposé', 'Prénom Nom · ' + aujourdhui()],
+    ['content', 'Plan', ['Introduction', 'Première partie', 'Deuxième partie', 'Conclusion']],
+    ['section', 'Introduction', 'Le sujet et la problématique'],
+    ['content', 'Première partie', ['Idée principale', 'Exemple', 'À retenir']],
+    ['content', 'Deuxième partie', ['Idée principale', 'Exemple', 'À retenir']],
+    ['content', 'Conclusion', ['Réponse à la problématique', 'Ouverture']],
+    ['section', 'Merci !', 'Des questions ?'],
+  ]) },
+];
+// ?modele=… : « projet », « pitch », « cours », « demo » ou « theme:<nom du thème> »
+export function modelePresentation(id) {
+  if (id.startsWith('canva:')) { const k = comboDe(id); return k ? { pres: presentationCanva(k), titre: 'Présentation' } : null; }
+  const riche = modeleRiche(id);
+  if (riche) return { pres: construireModele(riche), titre: riche.nom };
+  if (id === 'demo') return { pres: samplePresentation(), titre: 'Présentation de démonstration' };
+  if (id.startsWith('theme:')) {
+    const nom = id.slice(6);
+    if (!PRES_THEMES[nom]) return null;
+    const n = prefs.get('pres.counter', 1);
+    prefs.set('pres.counter', n + 1);
+    return { pres: blankPresentation(nom), titre: 'Présentation' + n };
+  }
+  const m = PRES_MODELES.find((x) => x.id === id);
+  return m ? { pres: m.build(), titre: m.name } : null;
+}
+
 export function samplePresentation() {
   const p = blankPresentation('VEX');
   const W = p.size.w, H = p.size.h;

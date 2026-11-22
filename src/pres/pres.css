@@ -136,3 +136,21 @@
   .pp-handout-notes { width: 620px; font: 13px sans-serif; white-space: pre-wrap; }
 }
 @media (max-width: 700px) { .pp-thumbs { width: 120px; } .pp-thumbs .pp-thumb-frame { transform: scale(.6); transform-origin: 0 0; } }
+
+/* Concepteur : volet large, 180 designs */
+.pl-pane.pp-pane-large { width: min(580px, 52vw); }
+.pp-ds-tete { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.pp-ds-toutes { display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer; }
+.pp-ds-titre { font-size: 12px; font-weight: 600; color: var(--ui-muted); margin: 10px 0 5px; text-transform: uppercase; letter-spacing: .04em; }
+.pp-ds-puces { display: flex; flex-wrap: wrap; gap: 5px; }
+.pp-ds-puce { border: 1px solid var(--ui-border); background: var(--ui-panel); color: var(--ui-text); border-radius: 999px; padding: 3px 10px; font-size: 12.5px; cursor: pointer; }
+.pp-ds-puce:hover { background: var(--ui-hover); }
+.pp-ds-puce.on { background: var(--app); border-color: var(--app); color: #fff; }
+.pp-ds-pastille { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; box-shadow: 0 0 0 1px var(--ui-border); cursor: pointer; padding: 0; }
+.pp-ds-pastille.on { border-color: var(--ui-panel); box-shadow: 0 0 0 2px var(--ui-text); }
+.pp-ds-grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 14px 12px; justify-items: center; padding-bottom: 16px; }
+.pp-ds-carte { display: flex; flex-direction: column; align-items: center; gap: 5px; background: none; border: 0; padding: 4px; border-radius: 8px; cursor: pointer; color: var(--ui-text); }
+.pp-ds-carte .pp-thumb-frame { border-radius: 4px; transition: transform .12s, box-shadow .12s; }
+.pp-ds-carte:hover .pp-thumb-frame { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.15); }
+.pp-ds-carte.on .pp-thumb-frame { box-shadow: 0 0 0 3px var(--app); }
+.pp-ds-nom { font-size: 12px; color: var(--ui-muted); }

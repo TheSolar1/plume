@@ -287,6 +287,7 @@ export function buildRibbon(app) {
     id: 'design', label: 'Conception', groups: () => [
       { label: 'Mise en forme du document', items: [
         { type: 'menu', big: true, label: 'Thèmes', icon: 'Palette', menu: () => Object.keys(THEMES).map((k) => ({ label: k, checked: app.data.theme.name === k, action: () => setTheme(app, k) })).concat(['-', { label: 'Rétablir le thème du modèle', action: () => setTheme(app, 'Office') }]) },
+        big('Thèmes décorés', 'Sparkles', () => app.backstage.open('themes')),
         { type: 'gallery', width: 330, items: () => Object.keys(STYLE_SETS).map((k) => ({ label: k, key: k, preview: () => styleSetPreview(k), run: () => applyStyleSet(app, k) })), current: () => app.data.styleSet || 'Par défaut' },
         col(
           { type: 'menu', label: 'Couleurs', icon: 'SwatchBook', showLabel: true, menu: () => Object.entries(THEMES).map(([k, t]) => ({ label: k, icon: () => swatchStrip(t.colors.slice(4)), action: () => { app.data.theme = { ...app.data.theme, colors: t.colors }; app.applyStyles(); app.markDirty(); } })) },

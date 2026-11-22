@@ -29,8 +29,12 @@ import * as C from './commands.js';
 import { collabPlugins, renderPresence, collabDialog, joinCollab } from './collab.js';
 import { decryptNative, exportOdt, exportEpub, saveVersion, maybeAutoVersion, docxRoundTrip } from './niche.js';
 import { exportDocx } from './docx-export.js';
+import { importDoc } from './doc-import.js';
+import { importOdt } from './odt-import.js';
+import { hote, versHote, boutonRetourHote } from '../common/hote.js';
 import { importDocx } from './docx-import.js';
 import { htmlToDoc, textToDoc, markdownToDoc, docToHtml, docToText, docToMarkdown, docToRtf } from './formats.js';
+import { boutonClaude } from '../common/claude.js';
 import { buildRibbon, contextualTabs } from './ribbon-def.js';
 import { Ribbon } from '../common/ribbon.js';
 import { h, icon, toast, store, prefs, uid, download, pickFile, readAsArrayBuffer, readAsText, readAsDataURL, debounce, showMenu, confirmDlg } from '../common/ui.js';
@@ -124,7 +128,7 @@ export class WordApp {
     this.collabBox = h('div.pl-collab');
     const titlebar = h('div.pl-titlebar',
       h('div.pl-logo', icon('FileText', 18), h('span', 'Plume Texte')),
-      h('div.pl-qat', saveBtn, undoBtn, redoBtn),
+      h('div.pl-qat', boutonRetourHote(this), saveBtn, undoBtn, redoBtn, boutonClaude(this)),
       h('div.pl-doc-title', this.titleInput, ' ', this.saveState),
       h('div.pl-search-box', icon('Search', 15), this.cmdSearch),
       this.collabBox,
@@ -371,7 +375,7 @@ export class WordApp {
     this.zoomOuter.style.width = geo.pageW * this.zoom + 'px';
     this.zoomOuter.style.height = totalH * this.zoom + 60 + 'px';
     const s = this.data.settings;
-    const sig = JSON.stringify([n, geo.pageW, geo.pageH, s.watermark, s.pageColor, s.pageBorder, s.differentFirst, s.differentOddEven, this.data.headers, this.data.footers, res.pages.map((p) => p.footnotes), this.hfEditing && this.hfEditing.key, this.fnSig, this.data.props.title, this.data.settings.startPage, this.data.settings.pageNumberFormat]);
+    const sig = JSON.stringify([n, geo.pageW, geo.pageH, s.pageDecor && s.pageDecor.id, s.watermark, s.pageColor, s.pageBorder, s.differentFirst, s.differentOddEven, this.data.headers, this.data.footers, res.pages.map((p) => p.footnotes), this.hfEditing && this.hfEditing.key, this.fnSig, this.data.props.title, this.data.settings.startPage, this.data.settings.pageNumberFormat]);
     if (sig === this.sheetSig && pagesEl.childElementCount === n) return;
     this.sheetSig = sig;
     pagesEl.innerHTML = '';
@@ -379,6 +383,7 @@ export class WordApp {
     for (let i = 0; i < n; i++) {
       const sheet = h('div.pl-sheet', { style: { top: i * stride + 'px', width: geo.pageW + 'px', height: geo.pageH + 'px' }, 'data-page': i + 1 });
       if (s.pageColor) sheet.style.setProperty('--page-color', s.pageColor);
+      if (s.pageDecor && s.pageDecor.svg) { const d = h('div.pl-pagedecor'); d.innerHTML = s.pageDecor.svg; sheet.appendChild(d); }
       if (s.watermark && (s.watermark.text || s.watermark.image)) {
         const wm = s.watermark;
         const inner = wm.image ? h('img', { src: wm.image }) : h('span', { style: { color: wm.color || '#c0c0c0', transform: wm.layout === 'horizontal' ? 'none' : 'rotate(-45deg)', fontFamily: wm.font || null, fontSize: wm.size ? wm.size + 'px' : null, opacity: wm.semi === false ? 1 : 0.35 } }, wm.text);
@@ -1377,7 +1382,7 @@ export class WordApp {
   }
 
   async openFile(file) {
-    if (!file) file = await pickFile('.docx,.docm,.dotx,.plume,.txt,.md,.markdown,.html,.htm,.rtf,.json');
+    if (!file) file = await pickFile('.docx,.docm,.dotx,.dotm,.doc,.dot,.odt,.ott,.fodt,.plume,.txt,.md,.markdown,.html,.htm,.rtf,.json');
     if (!file) return;
     try {
       const data = await this.parseFile(file);
@@ -1397,7 +1402,8 @@ export class WordApp {
   async parseFile(file) {
     const name = file.name.toLowerCase();
     if (/\.(docx|docm|dotx|dotm)$/.test(name)) return importDocx(await readAsArrayBuffer(file));
-    if (name.endsWith('.doc')) { toast('Le format .doc (Word 97-2003) n’est pas pris en charge : enregistrez-le en .docx.', 'error', 6000); return null; }
+    if (/\.(doc|dot)$/.test(name)) { const buf = await readAsArrayBuffer(file); if (new Uint8Array(buf, 0, 2)[0] === 0x50) return importDocx(buf); /* en réalité un .docx */ const r = importDoc(buf); return { doc: htmlToDoc(r.html), warnings: r.avertissements }; }
+    if (/\.(odt|ott|fodt)$/.test(name)) { const r = await importOdt(await readAsArrayBuffer(file), name); return { doc: htmlToDoc(r.html), warnings: r.avertissements }; }
     const text = await readAsText(file);
     if (name.endsWith('.plume') || name.endsWith('.json')) {
       const j = JSON.parse(text);
@@ -1431,7 +1437,7 @@ export class WordApp {
       const base = this.fileBase();
       if (format === 'docx' || format === 'dotx') {
         const blob = await exportDocx(this.exportData());
-        download(blob, `${base}.${format}`);
+        if (!(format === 'docx' && await versHote(blob, `${base}.docx`))) download(blob, `${base}.${format}`);
       } else if (format === 'pdf') { this.print(); return; }
       else if (format === 'html') download(new Blob([docToHtml(this.view.state.doc, { title: base, css: this.styleTag.textContent.replace(/\.pl-doc/g, 'body'), fieldValue: (a) => this.fieldValue(a, 0) })], { type: 'text/html' }), base + '.html');
       else if (format === 'txt') download(new Blob([docToText(this.view.state.doc)], { type: 'text/plain;charset=utf-8' }), base + '.txt');
@@ -1443,7 +1449,7 @@ export class WordApp {
       this.dirty = false;
       this.saveState.textContent = 'Enregistré';
       await this.saveLocal();
-      saveVersion(this, 'Enregistrement (' + format + ')');
+      if (!hote()) saveVersion(this, 'Enregistrement (' + format + ')');
       toast('Document enregistré', 'success');
     } catch (e) {
       console.error(e);
@@ -1452,6 +1458,7 @@ export class WordApp {
   }
 
   async saveLocal() {
+    if (hote()) return; // intégré (VEX) : rien en clair dans le navigateur
     if (!this.docId) this.docId = uid('w');
     const native = this.toNative();
     native.props.modified = new Date().toISOString();

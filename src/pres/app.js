@@ -7,17 +7,20 @@
 // enregistrement automatique et fichiers (.pptx, .plume, PDF…).
 // ══════════════════════════════════════════════════════════════════
 import { EditorState, TextSelection, AllSelection } from 'prosemirror-state';
+import { boutonClaude } from '../common/claude.js';
 import { EditorView } from 'prosemirror-view';
 import { Node as PMNode } from 'prosemirror-model';
 import { history, undo as pmUndo, redo as pmRedo } from 'prosemirror-history';
 import { keymap } from 'prosemirror-keymap';
 import { baseKeymap, toggleMark } from 'prosemirror-commands';
-import { textSchema, blankPresentation, newSlide, cloneSlide, makeElement, textDoc, docText, LAYOUTS, PRES_THEMES, themeColor } from './model.js';
+import { placerTitres, textSchema, blankPresentation, newSlide, cloneSlide, makeElement, textDoc, docText, LAYOUTS, PRES_THEMES, themeColor } from './model.js';
 import { renderSlide, renderElement, fitTexts } from './render.js';
 import { buildRibbon, contextualTabs } from './ribbon-def.js';
 import { Ribbon } from '../common/ribbon.js';
 import { h, icon, toast, store, prefs, uid, download, pickFile, readAsArrayBuffer, readAsText, readAsDataURL, debounce, showMenu, confirmDlg, dialog } from '../common/ui.js';
 import { exportPptx } from './pptx-export.js';
+import { importPpt, importOdp } from './anciens-formats.js';
+import { hote, versHote, boutonRetourHote } from '../common/hote.js';
 import { importPptx } from './pptx-import.js';
 import { Slideshow } from './show.js';
 import * as PD from './dialogs.js';
@@ -65,7 +68,7 @@ export class PresApp {
     this.cmdSearch = h('input', { placeholder: 'Rechercher (Alt+Q)', on: { keydown: (e) => { e.stopPropagation(); if (e.key === 'Escape') this.cmdSearch.value = ''; if (e.key === 'Enter') { const f = document.querySelector('.pl-menu .pl-menu-item'); f && f.click(); } }, input: () => this.commandSearch() } });
     const titlebar = h('div.pl-titlebar',
       h('div.pl-logo', icon('Presentation', 18), h('span', 'Plume Présentation')),
-      h('div.pl-qat', h('button', { title: 'Enregistrer (Ctrl+S)', on: { click: () => this.save() } }, icon('Save', 17)), h('button', { title: 'Annuler (Ctrl+Z)', on: { click: () => this.undo() } }, icon('Undo2', 17)), h('button', { title: 'Rétablir (Ctrl+Y)', on: { click: () => this.redo() } }, icon('Redo2', 17)), h('button', { title: 'Diaporama depuis le début (F5)', on: { click: () => this.startShow(0) } }, icon('Play', 17))),
+      h('div.pl-qat', boutonRetourHote(this), h('button', { title: 'Enregistrer (Ctrl+S)', on: { click: () => this.save() } }, icon('Save', 17)), h('button', { title: 'Annuler (Ctrl+Z)', on: { click: () => this.undo() } }, icon('Undo2', 17)), h('button', { title: 'Rétablir (Ctrl+Y)', on: { click: () => this.redo() } }, icon('Redo2', 17)), h('button', { title: 'Diaporama depuis le début (F5)', on: { click: () => this.startShow(0) } }, icon('Play', 17)), boutonClaude(this)),
       h('div.pl-doc-title', this.titleInput, ' ', this.saveState),
       h('div.pl-search-box', icon('Search', 15), this.cmdSearch),
       h('div.pl-user', { title: this.user.name }, this.user.initials || 'U'),
@@ -963,7 +966,15 @@ export class PresApp {
     const t = PRES_THEMES[name];
     this.pres.theme = { name, ...JSON.parse(JSON.stringify(t)) };
     if (variantColors) this.pres.theme.colors = variantColors;
+    for (const s of this.pres.slides) placerTitres(this.pres, s);
     prefs.set('pres.theme', name);
+    this.applyThemeCss();
+    this.commit('Thème');
+    this.renderAll();
+  }
+  applyThemeObject(t) {
+    this.pres.theme = JSON.parse(JSON.stringify(t));
+    for (const s of this.pres.slides) placerTitres(this.pres, s);
     this.applyThemeCss();
     this.commit('Thème');
     this.renderAll();
@@ -1052,12 +1063,15 @@ export class PresApp {
     prefs.set('pres.counter', prefs.get('pres.counter', 1) + 1);
   }
   async openFile(file) {
-    if (!file) file = await pickFile('.pptx,.ppsx,.potx,.plume,.json,.txt,.md');
+    if (!file) file = await pickFile('.pptx,.ppsx,.potx,.pptm,.ppt,.pps,.pot,.odp,.otp,.fodp,.plume,.json,.txt,.md');
     if (!file) return;
     try {
       const name = file.name.toLowerCase();
       let p;
-      if (/\.(pptx|ppsx|potx)$/.test(name)) p = await importPptx(await readAsArrayBuffer(file));
+      if (/\.(pptx|ppsx|potx|pptm|ppsm|potm)$/.test(name)) p = await importPptx(await readAsArrayBuffer(file));
+      else if (/\.(ppt|pps|pot)$/.test(name) && new Uint8Array(await readAsArrayBuffer(file.slice(0, 2)))[0] === 0x50) p = await importPptx(await readAsArrayBuffer(file)); // en réalité un .pptx
+      else if (/\.(ppt|pps|pot)$/.test(name)) p = plansToPres(importPpt(await readAsArrayBuffer(file)), this.pres.theme.name, 'Présentation .ppt ouverte : le texte est repris, la mise en page et les images non.');
+      else if (/\.(odp|otp|fodp)$/.test(name)) p = plansToPres(await importOdp(await readAsArrayBuffer(file), name), this.pres.theme.name, 'Présentation OpenDocument ouverte : le texte est repris, la mise en page et les images non.');
       else if (/\.(plume|json)$/.test(name)) p = JSON.parse(await readAsText(file));
       else p = outlineToPres(await readAsText(file), this.pres.theme.name);
       this.docId = null;
@@ -1070,12 +1084,37 @@ export class PresApp {
       toast('Impossible d’ouvrir ce fichier : ' + e.message, 'error', 6000);
     }
   }
+  // ── Serveur MCP (assistants IA) ──
+  mcpLire() {
+    return this.pres.slides.map((s, i) => `${i + 1}. ` + s.elements.filter((e) => e.text).map((e) => docText(e.text)).join('\n   ')).join('\n\n') || '(présentation vide)';
+  }
+  mcpAjouterPlan(texte) {
+    const p = outlineToPres(texte, this.pres.theme.name);
+    this.exitEdit();
+    this.pres.slides.push(...p.slides);
+    this.commit('Diapositives ajoutées par l’assistant');
+    this.renderAll();
+    return `${p.slides.length} diapositive(s) ajoutée(s).`;
+  }
+  mcpRemplacer(chercher, remplacer) {
+    if (!chercher) throw new Error('Texte à chercher vide.');
+    let n = 0;
+    const parcourir = (x) => {
+      if (Array.isArray(x)) { x.forEach(parcourir); return; }
+      if (!x || typeof x !== 'object') return;
+      if (x.type === 'text' && typeof x.text === 'string' && x.text.includes(chercher)) { n += x.text.split(chercher).length - 1; x.text = x.text.split(chercher).join(remplacer); }
+      if (x.content) parcourir(x.content);
+    };
+    for (const s of this.pres.slides) for (const e of s.elements) if (e.text) parcourir(e.text);
+    if (n) { this.commit('Remplacement par l’assistant'); this.renderAll(); }
+    return n ? `${n} occurrence(s) remplacée(s).` : 'Aucune occurrence trouvée.';
+  }
   fileBase() { return (this.titleInput.value || 'Présentation').replace(/[\\/:*?"<>|]+/g, '_'); }
   async save(format = 'pptx') {
     this.exitEdit();
     try {
       const base = this.fileBase();
-      if (format === 'pptx' || format === 'ppsx' || format === 'potx') download(await exportPptx(this.pres, { title: this.titleInput.value, author: this.user.name, show: format === 'ppsx' }), `${base}.${format}`);
+      if (format === 'pptx' || format === 'ppsx' || format === 'potx') { const blob = await exportPptx(this.pres, { title: this.titleInput.value, author: this.user.name, show: format === 'ppsx' }); if (!(format === 'pptx' && await versHote(blob, `${base}.pptx`))) download(blob, `${base}.${format}`); }
       else if (format === 'pdf') return this.print();
       else if (format === 'plume') download(new Blob([JSON.stringify(this.toNative())], { type: 'application/json' }), base + '.plume');
       else if (format === 'png' || format === 'jpg') { const { slideToImage } = await import('./export-img.js'); const blob = await slideToImage(this, this.cur, format); download(blob, `${base}-${this.cur + 1}.${format}`); }
@@ -1092,6 +1131,7 @@ export class PresApp {
     }
   }
   async saveLocal() {
+    if (hote()) return; // intégré (VEX) : rien en clair dans le navigateur
     if (!this.docId) this.docId = uid('p');
     const firstTitle = this.pres.slides[0] && this.pres.slides[0].elements.find((e) => e.text) ? docText(this.pres.slides[0].elements.find((e) => e.text).text) : '';
     await store.put({ id: this.docId, app: 'pres', title: this.titleInput.value || 'Présentation', modified: Date.now(), data: this.toNative(), preview: firstTitle.slice(0, 120) });
@@ -1179,6 +1219,20 @@ function setParaAttr(state, dispatch, attrs) {
 export { setParaAttr };
 
 // Texte / Markdown → présentation (une diapositive par titre)
+// Diapositives lues dans un ancien format (.ppt, .odp) : [{ titre, lignes: [{ text, level }] }]
+function plansToPres(plans, theme, avertissement) {
+  const p = blankPresentation(theme);
+  p.slides = plans.map((d, i) => {
+    const s = newSlide(p, i ? 'content' : 'title');
+    s.elements[0].text = textDoc(d.titre || '');
+    if (s.elements[1]) s.elements[1].text = textDoc(d.lignes.length ? d.lignes.map((l) => ({ text: l.text, bullet: i ? 'disc' : null, level: Math.min(l.level || 0, 4) })) : ['']);
+    return s;
+  });
+  if (!p.slides.length) p.slides.push(newSlide(p, 'title'));
+  p.warnings = [avertissement];
+  return p;
+}
+
 function outlineToPres(text, theme) {
   const p = blankPresentation(theme);
   p.slides = [];

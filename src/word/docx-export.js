@@ -140,6 +140,7 @@ export async function exportDocx(data, { fileName = 'document' } = {}) {
       const node = src ? data.schema.nodeFromJSON(src) : null;
       let inner = node ? await ctx.blocks(node.content, kind) : '<w:p/>';
       const wm = data.settings.watermark;
+      if (kind === 'header' && data.settings.pageDecor && data.settings.pageDecor.svg) { ctx.part = kind; inner = (await ctx.pageDecorXml(data.settings.pageDecor.svg, data.page, !(wm && wm.image))) + inner; ctx.part = 'document'; }
       if (kind === 'header' && wm && wm.text) inner = watermarkXml(wm, color) + inner;
       else if (kind === 'header' && wm && wm.image) { ctx.part = kind; inner = (await ctx.imageWatermark(wm.image)) + inner; ctx.part = 'document'; }
       if (!inner) inner = '<w:p/>';
@@ -671,6 +672,15 @@ class ExportContext {
   }
 
   // Filigrane image : image estompée, centrée derrière le texte de chaque page
+  // Décor de page des thèmes : image de la taille de la page, derrière le texte
+  async pageDecorXml(svg, page, avecType) {
+    const m = await this.mediaFor('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
+    if (!m) return '';
+    const rId = this.addRel('http://schemas.openxmlformats.org/officeDocument/2006/relationships/image', 'media/' + m.name);
+    const type = avecType ? '<v:shapetype id="_x0000_t75" coordsize="21600,21600" o:spt="75" o:preferrelative="t" path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f"><v:stroke joinstyle="miter"/><v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect"/><o:lock v:ext="edit" aspectratio="t"/></v:shapetype>' : '';
+    return `<w:p><w:pPr><w:pStyle w:val="EnTete"/><w:spacing w:after="0" w:line="20" w:lineRule="exact"/></w:pPr><w:r><w:pict>${type}<v:shape id="PlumeDecor${rId}" o:spid="_x0000_s20${this.media.length}" type="#_x0000_t75" style="position:absolute;margin-left:0;margin-top:0;width:${page.width || 595.3}pt;height:${page.height || 841.9}pt;z-index:-251659264;mso-position-horizontal:left;mso-position-horizontal-relative:page;mso-position-vertical:top;mso-position-vertical-relative:page" o:allowincell="f"><v:imagedata r:id="${rId}" o:title="Décor"/></v:shape></w:pict></w:r></w:p>`;
+  }
+
   async imageWatermark(src) {
     const m = await this.mediaFor(src);
     if (!m) return '';

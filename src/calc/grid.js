@@ -242,6 +242,17 @@ export class Grid {
     }
     // bordures des cellules vides stylées
     // (déjà gérées : les cellules avec style existent dans la carte)
+    // Filets des styles de tableau clairs : haut du tableau, sous l'en-tête, bas du tableau
+    for (const t of s.tables) {
+      const ts = app.tableStyle(t);
+      if (!ts || !ts.line) continue;
+      ctx.strokeStyle = ts.line;
+      const trait = (rc, y, w) => { ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(rc.x, Math.round(y) - (w % 2 ? 0.5 : 0)); ctx.lineTo(rc.x + rc.w, Math.round(y) - (w % 2 ? 0.5 : 0)); ctx.stroke(); };
+      const tete = this.rangeRect({ r1: t.r1, r2: t.r1, c1: t.c1, c2: t.c2 });
+      if (tete && !tete.clipT) { trait(tete, tete.y + 1, 1); if (t.header !== false) trait(tete, tete.y + tete.h - 1, 2); }
+      const bas = this.rangeRect({ r1: t.r2, r2: t.r2, c1: t.c1, c2: t.c2 });
+      if (bas && !bas.clipB) { trait(bas, bas.y + bas.h, 1); if (t.total) trait(bas, bas.y + 1, 1); }
+    }
     // 4. Sparklines
     for (const sp of s.sparklines) { const rc = this.cellRect(sp.r, sp.c); if (rc) this.drawSparkline(ctx, sp, rc); }
     // 5. Indicateurs : commentaires, filtres, validation

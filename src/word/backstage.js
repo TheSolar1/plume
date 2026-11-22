@@ -11,6 +11,12 @@ import { listChanges } from './track.js';
 import { formatDate } from './fields.js';
 import { exportDocx } from './docx-export.js';
 import * as NI from './niche.js';
+import { templateThumb } from './miniatures.js';
+import { fenetreParente, fermerVersHote } from '../common/hote.js';
+import { galerieModeles } from '../common/galerie.js';
+import { catalogueTexte, CATEGORIES_TEXTE, donneesModele } from './catalogue.js';
+import { apercuTexte } from './apercus.js';
+import { themesGalerie, CATEGORIES_THEMES, apercuThemePage, appliquerThemeTexte, retirerDecorTexte } from './themes-canva.js';
 
 const N = schema.nodes, M = schema.marks;
 const P = (style, text, attrs = {}) => N.paragraph.create({ style, ...attrs }, text ? (Array.isArray(text) ? text : schema.text(text)) : null);
@@ -88,7 +94,7 @@ export class Backstage {
     const nav = h('div.pl-bs-nav');
     const main = h('div.pl-bs-main');
     const items = [
-      ['home', 'Accueil', 'House'], ['new', 'Nouveau', 'FilePlus2'], ['open', 'Ouvrir', 'FolderOpen'], '-',
+      ['home', 'Accueil', 'House'], ['new', 'Nouveau', 'FilePlus2'], ['themes', 'Thèmes', 'Palette'], ['open', 'Ouvrir', 'FolderOpen'], '-',
       ['info', 'Informations', 'Info'], ['save', 'Enregistrer', 'Save'], ['saveas', 'Enregistrer sous', 'SaveAll'], ['print', 'Imprimer', 'Printer'], ['share', 'Partager', 'Share2'], ['export', 'Exporter', 'FileOutput'], ['close', 'Fermer', 'X'], '-',
       ['options', 'Options', 'Settings'],
     ];
@@ -161,7 +167,19 @@ export class Backstage {
   async s_home(m) {
     m.append(h('h1', bonjour() + ', ' + this.app.user.name.split(' ')[0]), h('h2', 'Nouveau'), this.templateGrid(), h('h2', 'Récents'), await this.recentList(8));
   }
-  s_new(m) { m.append(h('h1', 'Nouveau'), this.templateGrid()); }
+  s_themes(m) {
+    const app = this.app, tous = themesGalerie().slice().sort((a, b) => a.rang - b.rang);
+    m.append(h('h1', 'Thèmes'), h('p.pl-hint', `${tous.length} thèmes décorés : cliquez sur un thème pour l’appliquer au document (décor de page, couleurs, polices et titres).`),
+      app.data.settings.pageDecor ? h('p', h('button.pl-btn', { type: 'button', on: { click: () => { this.close(); retirerDecorTexte(app); } } }, 'Retirer le décor de page')) : '',
+      galerieModeles({ type: 'word', modeles: tous, categories: CATEGORIES_THEMES, apercu: (x) => apercuThemePage(x), etat: this.etatThemes || (this.etatThemes = {}),
+        choisir: (x) => { this.close(); appliquerThemeTexte(app, x.combo); app.focus(); } }));
+  }
+  s_new(m) {
+    const app = this.app, tous = catalogueTexte();
+    m.append(h('h1', 'Nouveau'), this.templateGrid(), h('h2', `Tous les modèles (${tous.length})`),
+      galerieModeles({ type: 'word', modeles: tous, categories: CATEGORIES_TEXTE, apercu: (x) => apercuTexte(x), etat: this.etatGalerie || (this.etatGalerie = {}),
+        choisir: (x) => { this.close(); app.docId = null; app.loadData(donneesModele(x, app.blankData()), x.nom); app.focus(); } }));
+  }
   async s_open(m) {
     const app = this.app;
     m.append(h('h1', 'Ouvrir'),
@@ -249,28 +267,15 @@ export class Backstage {
   }
   async closeDoc() {
     const app = this.app;
+    // Dans VEX : on enregistre dans VEX puis on revient aux fichiers.
+    if (await fermerVersHote(app)) return;
     // Le document est déjà enregistré dans ce navigateur : on ferme sans question.
     await app.saveLocal();
+    // Dans l'application PC (onglets) : on ferme l'onglet du document.
+    const parent = fenetreParente();
+    if (parent) { parent.fermerFenetre(window); return; }
     app.newDocument();
   }
 }
 
 function bonjour() { const hr = new Date().getHours(); return hr < 5 || hr >= 18 ? 'Bonsoir' : 'Bonjour'; }
-
-function templateThumb(id) {
-  const line = (w, c = '#ccc', hh = 3) => h('div', { style: { height: hh + 'px', width: w + '%', background: c, borderRadius: '1px' } });
-  const acc = '#2b579a';
-  switch (id) {
-    case 'blank': return [];
-    case 'letter': return [line(40), line(30), h('div', { style: { height: '10px' } }), line(35, '#ccc', 3), h('div', { style: { height: '10px' } }), ...Array(8).fill(0).map(() => line(95))];
-    case 'cv': return [line(60, acc, 7), line(40, '#888', 3), line(100, acc, 2), line(30, acc, 4), line(90), line(85), line(30, acc, 4), line(90), line(70), line(30, acc, 4), line(60)];
-    case 'report': return [h('div', { style: { height: '30px' } }), line(80, acc, 8), line(50, '#888', 4), h('div', { style: { height: '20px' } }), line(60), line(55), line(58)];
-    case 'invoice': return [line(40, acc, 6), line(30), h('div', { style: { height: '10px', border: '1px solid #9ab', marginTop: '10px' } }), h('div', { style: { height: '30px', border: '1px solid #9ab', borderTop: 0 } })];
-    case 'meeting': return [line(80, acc, 7), line(50), line(40, acc, 4), line(70), line(65), line(40, acc, 4), line(80)];
-    case 'essay': return [h('div', { style: { height: '40px' } }), line(50, '#999', 3), line(30), line(40)];
-    case 'newsletter': return [h('div', { style: { height: '22px', background: acc } }), line(50), h('div', { style: { display: 'flex', gap: '4px' } }, h('div', { style: { flex: 1 } }, line(100), line(100), line(100)), h('div', { style: { flex: 1 } }, line(100), line(100), line(100)))];
-    case 'flyer': return [h('div', { style: { height: '40px', background: 'linear-gradient(90deg,#4472c4,#ed7d31)' } }), line(70, '#888', 6), line(50)];
-    case 'calendar': return [line(50, acc, 6), h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '1px', marginTop: '6px' } }, Array(35).fill(0).map(() => h('div', { style: { height: '9px', border: '1px solid #ccd' } })))];
-    default: return [line(80)];
-  }
-}

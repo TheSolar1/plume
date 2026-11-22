@@ -27,6 +27,31 @@ du réseau local (coédition à plusieurs). N'importe quel serveur de fichiers
 statiques convient aussi (nginx, Caddy, le serveur de VEX…), mais sans
 coédition hors VEX.
 
+## Application PC (Windows)
+
+`app-pc/` fait de Plume une application de bureau : `Plume.exe`, une fenêtre à
+part avec son icône (moteur WebView2 de Windows), les pages intégrées au
+programme, sans navigateur ni serveur à lancer, hors ligne.
+
+Disposition comme OnlyOffice Desktop (`bureau.html`) : un onglet **Accueil**
+(Créer : Document, Classeur, Présentation ; fichiers récents avec recherche ;
+ouvrir un fichier local, ou le glisser sur l'accueil) puis **un onglet par
+document ouvert** en haut de la fenêtre. Ctrl+Tab passe d'un onglet à l'autre,
+Ctrl+W ou × ferme l'onglet (le document est enregistré avant).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File app-pc\installer.ps1   # installer ou mettre à jour
+```
+
+- Installée dans `%LOCALAPPDATA%\Programs\Plume`, raccourcis dans le menu
+  Démarrer et sur le Bureau (pas besoin de droits administrateur).
+- Les documents restent enregistrés dans l'application
+  (`%LOCALAPPDATA%\Plume`) ; les fichiers enregistrés ou exportés (.docx,
+  .pdf…) vont dans `Documents\Plume`, sans jamais écraser un fichier existant.
+- Les liens vers Internet s'ouvrent dans le navigateur habituel.
+- Désinstaller : supprimer `%LOCALAPPDATA%\Programs\Plume` et les deux
+  raccourcis (et `%LOCALAPPDATA%\Plume` pour effacer les documents).
+
 ## Développer
 
 ```sh

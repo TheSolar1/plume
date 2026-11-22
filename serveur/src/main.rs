@@ -7,8 +7,7 @@
 //!              Plume, sinon le dépôt où le serveur a été compilé
 //!   --reseau   accepte aussi les autres appareils du réseau (sinon ce PC seul)
 
-mod collab;
-
+use plume_serveur::{collab, type_mime};
 use serde_json::Value;
 use std::io::{Cursor, Read};
 use std::path::{Path, PathBuf};
@@ -119,7 +118,7 @@ fn fichier(brut: &str, racine: &Path) -> Reponse {
     }
     match fs::read(&vrai) {
         Ok(contenu) => Response::from_data(contenu)
-            .with_header(entete("Content-Type", type_mime(&vrai)))
+            .with_header(entete("Content-Type", type_mime(vrai.extension().and_then(|e| e.to_str()).unwrap_or(""))))
             .with_header(entete("Cache-Control", "no-cache")),
         Err(_) => texte(404, "Introuvable"),
     }
@@ -141,29 +140,6 @@ fn decoder(brut: &str) -> Option<String> {
         }
     }
     String::from_utf8(sortie).ok()
-}
-
-fn type_mime(chemin: &Path) -> &'static str {
-    let extension = chemin.extension().and_then(|e| e.to_str()).map(str::to_ascii_lowercase);
-    match extension.as_deref() {
-        Some("html") => "text/html; charset=utf-8",
-        Some("js" | "mjs") => "text/javascript; charset=utf-8",
-        Some("css") => "text/css; charset=utf-8",
-        Some("json" | "map") => "application/json",
-        Some("webmanifest") => "application/manifest+json",
-        Some("svg") => "image/svg+xml",
-        Some("png") => "image/png",
-        Some("jpg" | "jpeg") => "image/jpeg",
-        Some("gif") => "image/gif",
-        Some("webp") => "image/webp",
-        Some("ico") => "image/x-icon",
-        Some("woff2") => "font/woff2",
-        Some("woff") => "font/woff",
-        Some("ttf") => "font/ttf",
-        Some("wasm") => "application/wasm",
-        Some("txt" | "md") => "text/plain; charset=utf-8",
-        _ => "application/octet-stream",
-    }
 }
 
 fn texte(code: u16, message: &str) -> Reponse {

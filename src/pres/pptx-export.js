@@ -10,6 +10,7 @@
 import JSZip from 'jszip';
 import { renderElement } from './render.js';
 import { themeColor, LAYOUTS, docText } from './model.js';
+import { fondSvg } from './decors.js';
 import { texToMathML } from '../word/math.js';
 import { mathmlToOmml, hashString } from '../word/docx-export.js';
 import { chartSvg, smartArtSvg, parseTable } from '../common/charts.js';
@@ -90,6 +91,7 @@ export async function exportPptx(pres, { title = '', author = '', show = false }
 
   // ── Diapositives ──
   const slideIds = [];
+  const fondsDecor = new Map();
   for (let si = 0; si < pres.slides.length; si++) {
     const s = pres.slides[si];
     const n = si + 1;
@@ -97,6 +99,14 @@ export async function exportPptx(pres, { title = '', author = '', show = false }
     let rid = 1;
     const addRel = (type, target, external) => { const id = 'rId' + ++rid; srels.push([id, type, target, external]); return id; };
     let id = 2;
+    // Décor du thème : PowerPoint n'a pas d'équivalent, le fond et ses formes partent en image.
+    let fondCsld = s.background ? bgXml(s.background) : '';
+    const bgT = s.background || t.bg || {};
+    if (t.decor && !bgT.hideGraphics && (!bgT.type || ['solid', 'gradient', 'radial'].includes(bgT.type))) {
+      const cle = JSON.stringify(s.background || null) + '|' + (s.layout === 'title' || s.layout === 'section' ? 'g' : 'p');
+      if (!fondsDecor.has(cle)) fondsDecor.set(cle, await addMedia('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(fondSvg(t, s.background, s.layout, W, H, (x) => themeColor(t, x)))));
+      fondCsld = `<p:bg><p:bgPr>${fillXml({ type: 'image', rid: addRel('image', '../media/' + fondsDecor.get(cle)) }, t)}<a:effectLst/></p:bgPr></p:bg>`;
+    }
     const shapeIds = new Map();
     const parts = [];
     const flat = [];
@@ -133,7 +143,7 @@ export async function exportPptx(pres, { title = '', author = '', show = false }
       ct.push(`<Override PartName="/ppt/notesSlides/notesSlide${n}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml"/>`);
     }
     // commentaires (format moderne simplifié : conservés dans la copie Plume)
-    files(`ppt/slides/slide${n}.xml`, `${XML}<p:sld ${NS} xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:a14="http://schemas.microsoft.com/office/drawing/2010/main"${show}><p:cSld>${s.background ? bgXml(s.background) : ''}<p:spTree>${spTreeHead}${parts.join('')}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>${trans}${timing}</p:sld>`);
+    files(`ppt/slides/slide${n}.xml`, `${XML}<p:sld ${NS} xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:a14="http://schemas.microsoft.com/office/drawing/2010/main"${show}><p:cSld>${fondCsld}<p:spTree>${spTreeHead}${parts.join('')}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>${trans}${timing}</p:sld>`);
     files(`ppt/slides/_rels/slide${n}.xml.rels`, rels(srels));
     ct.push(`<Override PartName="/ppt/slides/slide${n}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`);
     slideIds.push(n);

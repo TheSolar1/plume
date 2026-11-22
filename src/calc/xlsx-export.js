@@ -9,7 +9,7 @@
 import JSZip from 'jszip';
 import { MAX_COLS, MAX_ROWS } from './model.js';
 import { colName, addr, rangeStr, isErr, errEn, parseRange, parseNumberText, toCanonical } from './formula.js';
-import { chartData, CHART_PALETTES, ICON_SETS } from './features.js';
+import { chartData, CHART_PALETTES, ICON_SETS, TABLE_STYLES } from './features.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '');
 const XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
@@ -325,7 +325,7 @@ export async function exportXlsx(native, wb, { title = '', author = '' } = {}) {
         const names = [], seen = new Set();
         for (let c = t.c1; c <= t.c2; c++) { const d = wb.display(s, t.r1, c); let n = d ? d.text : 'Colonne' + (c - t.c1 + 1); let k = 2; const base = n; while (seen.has(n.toLowerCase())) n = base + k++; seen.add(n.toLowerCase()); names.push(n); }
         const ref = rangeStr(t.r1, t.c1, t.r2, t.c2), fref = rangeStr(t.r1, t.c1, t.total ? t.r2 - 1 : t.r2, t.c2);
-        file(`xl/tables/table${tableN}.xml`, `${XML}<table xmlns="${NS}" id="${tableN}" name="${esc(t.name)}" displayName="${esc(t.name)}" ref="${ref}"${t.header === false ? ' headerRowCount="0"' : ''}${t.total ? ' totalsRowCount="1"' : ' totalsRowShown="0"'}>${t.header === false ? '' : `<autoFilter ref="${fref}"/>`}<tableColumns count="${names.length}">${names.map((n, i) => `<tableColumn id="${i + 1}" name="${esc(n)}"${t.total && i === 0 ? ' totalsRowLabel="Total"' : ''}/>`).join('')}</tableColumns><tableStyleInfo name="${TABLE_STYLE_NAMES[t.style] || 'TableStyleMedium2'}" showFirstColumn="${t.firstCol ? 1 : 0}" showLastColumn="${t.lastCol ? 1 : 0}" showRowStripes="${t.banded === false ? 0 : 1}" showColumnStripes="${t.bandedCols ? 1 : 0}"/></table>`);
+        file(`xl/tables/table${tableN}.xml`, `${XML}<table xmlns="${NS}" id="${tableN}" name="${esc(t.name)}" displayName="${esc(t.name)}" ref="${ref}"${t.header === false ? ' headerRowCount="0"' : ''}${t.total ? ' totalsRowCount="1"' : ' totalsRowShown="0"'}>${t.header === false ? '' : `<autoFilter ref="${fref}"/>`}<tableColumns count="${names.length}">${names.map((n, i) => `<tableColumn id="${i + 1}" name="${esc(n)}"${t.total && i === 0 ? ' totalsRowLabel="Total"' : ''}/>`).join('')}</tableColumns><tableStyleInfo name="${(TABLE_STYLES[t.style] && TABLE_STYLES[t.style].xl) || TABLE_STYLE_NAMES[t.style] || 'TableStyleMedium2'}" showFirstColumn="${t.firstCol ? 1 : 0}" showLastColumn="${t.lastCol ? 1 : 0}" showRowStripes="${t.banded === false ? 0 : 1}" showColumnStripes="${t.bandedCols ? 1 : 0}"/></table>`);
         ct.push(`<Override PartName="/xl/tables/table${tableN}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>`);
         parts.push(`<tablePart r:id="${rid(REL + 'table', `../tables/table${tableN}.xml`)}"/>`);
       }

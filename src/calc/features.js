@@ -109,6 +109,21 @@ export const TABLE_STYLES = {
   blue: { label: 'Bleu', head: '#4472c4', band: '#d9e1f2' }, orange: { label: 'Orange', head: '#ed7d31', band: '#fce4d6' }, gray: { label: 'Gris', head: '#7b7b7b', band: '#ededed' },
   gold: { label: 'Or', head: '#bf8f00', band: '#fff2cc' }, lightBlue: { label: 'Bleu clair', head: '#5b9bd5', band: '#ddebf7' }, green: { label: 'Vert', head: '#70ad47', band: '#e2efda' },
   dark: { label: 'Foncé', head: '#262626', band: '#d9d9d9' }, purple: { label: 'Violet', head: '#7030a0', band: '#e4dfec' }, teal: { label: 'Turquoise', head: '#1a8f99', band: '#daeef3' }, plain: { label: 'Aucun', head: null, band: null },
+  // Couleurs vives (en-tête coloré, bandes teintées)
+  rose: { label: 'Rose', head: '#e84393', band: '#fde7f1', xl: 'TableStyleMedium3' }, indigo: { label: 'Indigo', head: '#4f46e5', band: '#e0e7ff', xl: 'TableStyleMedium2' },
+  corail: { label: 'Corail', head: '#ff6f59', band: '#ffe5df', xl: 'TableStyleMedium3' }, menthe: { label: 'Menthe', head: '#2a9d8f', band: '#dff3f0', xl: 'TableStyleMedium7' },
+  // Clairs : en-tête en gras souligné d'un filet, bandes légères, filets en haut et en bas
+  clairNoir: { label: 'Clair – Noir', head: null, headText: '#000000', band: '#ededed', line: '#000000', xl: 'TableStyleLight15' },
+  clairBleu: { label: 'Clair – Bleu', head: null, headText: '#2f5597', band: '#dae3f3', line: '#4472c4', xl: 'TableStyleLight2' },
+  clairOrange: { label: 'Clair – Orange', head: null, headText: '#c55a11', band: '#fbe5d6', line: '#ed7d31', xl: 'TableStyleLight3' },
+  clairOr: { label: 'Clair – Or', head: null, headText: '#7f6000', band: '#fff2cc', line: '#ffc000', xl: 'TableStyleLight5' },
+  clairVert: { label: 'Clair – Vert', head: null, headText: '#375623', band: '#e2efda', line: '#70ad47', xl: 'TableStyleLight7' },
+  // Foncés : corps foncé, texte blanc
+  fonceNoir: { label: 'Foncé – Noir', head: '#000000', band: '#404040', body: '#595959', bodyText: '#ffffff', xl: 'TableStyleDark1' },
+  fonceBleu: { label: 'Foncé – Bleu', head: '#1f3864', band: '#2f5597', body: '#4472c4', bodyText: '#ffffff', xl: 'TableStyleDark2' },
+  fonceOrange: { label: 'Foncé – Orange', head: '#843c0c', band: '#c55a11', body: '#ed7d31', bodyText: '#ffffff', xl: 'TableStyleDark3' },
+  fonceOr: { label: 'Foncé – Or', head: '#7f6000', band: '#bf8f00', body: '#d9a300', bodyText: '#ffffff', xl: 'TableStyleDark5' },
+  fonceVert: { label: 'Foncé – Vert', head: '#375623', band: '#548235', body: '#70ad47', bodyText: '#ffffff', xl: 'TableStyleDark7' },
 };
 export function tableAt(s, r, c) { for (const t of s.tables) if (inRg(t, r, c)) return t; return null; }
 export function tableFill(s, r, c) {
@@ -116,19 +131,19 @@ export function tableFill(s, r, c) {
   if (!t) return undefined;
   const st = TABLE_STYLES[t.style] || TABLE_STYLES.blue;
   if (t.header !== false && r === t.r1) return st.head || undefined;
-  if (t.total && r === t.r2) return undefined;
+  if (t.total && r === t.r2) return st.bodyText ? st.head : undefined;
   if (t.banded !== false && (r - t.r1 - (t.header !== false ? 1 : 0)) % 2 === 0) return st.band || undefined;
   if (t.bandedCols && (c - t.c1) % 2 === 0) return st.band || undefined;
-  return undefined;
+  return st.body || undefined;
 }
 export function tableText(s, r, c) {
   const t = tableAt(s, r, c);
   if (!t) return null;
   const st = TABLE_STYLES[t.style] || TABLE_STYLES.blue;
-  if (t.header !== false && r === t.r1) return st.head ? { color: '#ffffff', b: true } : { b: true };
-  if (t.total && r === t.r2) return { b: true };
-  if ((t.firstCol && c === t.c1) || (t.lastCol && c === t.c2)) return { b: true };
-  return null;
+  if (t.header !== false && r === t.r1) return st.head ? { color: '#ffffff', b: true } : { color: st.headText, b: true };
+  if (t.total && r === t.r2) return { b: true, color: st.bodyText };
+  if ((t.firstCol && c === t.c1) || (t.lastCol && c === t.c2)) return { b: true, color: st.bodyText };
+  return st.bodyText ? { color: st.bodyText } : null;
 }
 export function createTable(app, rg, style = 'blue', header = true) {
   const s = app.sheet;

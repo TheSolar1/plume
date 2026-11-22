@@ -7,6 +7,7 @@ import { LAYOUTS, PRES_THEMES, TRANSITIONS, ANIMATIONS, SLIDE_SIZES, makeElement
 import { SHAPES, TABLE_STYLES, shapeGeometry } from './render.js';
 import { WORDART_STYLES } from '../word/nodeviews.js';
 import * as PD from './dialogs.js';
+import { decorSvg } from './decors.js';
 import * as X from './extras.js';
 
 const btn = (label, ic, run, extra = {}) => ({ type: 'btn', label, icon: ic, run, ...extra });
@@ -142,7 +143,7 @@ export function buildRibbon(app) {
 
   const design = {
     id: 'design', label: 'Création', groups: () => [
-      { label: 'Thèmes', items: [{ type: 'gallery', width: 470, items: () => Object.entries(PRES_THEMES).map(([k, t]) => ({ label: k, key: k, title: k, preview: () => themePreview(t), run: () => app.applyTheme(k) })), current: () => app.pres.theme.name }] },
+      { label: 'Thèmes', items: [{ type: 'gallery', width: 470, items: () => Object.entries(PRES_THEMES).map(([k, t]) => ({ label: k, key: k, title: k, preview: () => themePreview(t), run: () => app.applyTheme(k) })), current: () => app.pres.theme.name }, big('Plus de thèmes', 'Palette', () => app.backstage.open('themes'))] },
       { label: 'Variantes', items: [{ type: 'gallery', width: 220, items: () => variants(app).map((v, i) => ({ label: 'Variante ' + (i + 1), key: 'v' + i, preview: () => h('span', { style: { display: 'flex', height: '24px' } }, v.slice(4, 8).map((c) => h('span', { style: { flex: 1, background: c } }))), run: () => { app.pres.theme.colors = v; app.applyThemeCss(); app.commit('Variante'); app.renderAll(); } })) }] },
       { label: 'Personnaliser', items: [
         { type: 'menu', big: true, label: 'Taille des diapositives', icon: 'Ratio', menu: () => [...Object.entries(SLIDE_SIZES).map(([k, [w, hh]]) => ({ label: k === '16:9' ? 'Standard (4:3)'.replace('Standard (4:3)', 'Grand écran (16:9)') : k === '4:3' ? 'Standard (4:3)' : k, checked: app.pres.size.name === k, action: () => app.setSlideSize(k, w, hh) })), '-', { label: 'Taille des diapositives personnalisée…', action: () => PD.slideSizeDialog(app) }] },
@@ -437,13 +438,16 @@ function numField(get, set, step, unit) {
   return { type: 'custom', render: () => h('span', { style: { display: 'flex', alignItems: 'center', gap: '3px', fontSize: '12px' } }, inp, unit), update: () => { if (document.activeElement !== inp) inp.value = get() ?? ''; } };
 }
 function themePreview(t) {
-  const bg = t.bg.type === 'gradient' ? `linear-gradient(${t.bg.angle}deg, ${t.bg.from}, ${t.bg.to})` : t.bg.color;
+  const bg = t.bg.type === 'gradient' ? `linear-gradient(${t.bg.angle}deg, ${t.bg.from}, ${t.bg.to})` : t.bg.type === 'radial' ? `radial-gradient(circle, ${t.bg.from}, ${t.bg.to})` : t.bg.color;
+  const decor = h('span', { style: { position: 'absolute', inset: '0', display: 'block' } });
+  decor.innerHTML = decorSvg(t, 'title', 1280, 720).replace('<svg ', '<svg style="width:100%;height:100%;display:block" ');
   return h('span', { style: { display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '30px', background: bg, borderRadius: '2px', padding: '0 4px', position: 'relative', overflow: 'hidden' } },
-    h('span', { style: { fontFamily: `"${t.major}"`, color: t.title, fontSize: '13px', lineHeight: '1' } }, 'Aa'),
+    decor,
+    h('span', { style: { fontFamily: `"${t.major}"`, color: t.title, fontSize: '13px', lineHeight: '1', position: 'relative' } }, 'Aa'),
     h('span', { style: { display: 'flex', gap: '1px', position: 'absolute', bottom: '2px', right: '3px' } }, t.colors.slice(4, 8).map((c) => h('span', { style: { width: '6px', height: '6px', background: c } }))));
 }
 function variants(app) {
-  const base = PRES_THEMES[app.pres.theme.name] || PRES_THEMES.Office;
+  const base = PRES_THEMES[app.pres.theme.name] || app.pres.theme;
   const c = base.colors;
   const rot = (k) => [...c.slice(0, 4), ...c.slice(4).slice(k), ...c.slice(4).slice(0, k)];
   return [c, rot(1), rot(2), [...c.slice(0, 4), ...c.slice(4).map((x) => mix(x, -0.25))]];

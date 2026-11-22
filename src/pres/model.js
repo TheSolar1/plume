@@ -69,16 +69,24 @@ export function docText(doc) {
 // ── Thèmes de présentation ──
 export const PRES_THEMES = {
   Office: { colors: ['#ffffff', '#000000', '#e7e6e6', '#44546a', '#4472c4', '#ed7d31', '#a5a5a5', '#ffc000', '#5b9bd5', '#70ad47'], major: 'Calibri Light', minor: 'Calibri', bg: { type: 'solid', color: '#ffffff' }, title: '#000000', text: '#000000' },
-  'Fond sombre': { colors: ['#1e1e1e', '#ffffff', '#2d2d2d', '#e6e6e6', '#4fc3f7', '#ff8a65', '#aed581', '#ffd54f', '#ba68c8', '#4db6ac'], major: 'Segoe UI Light', minor: 'Segoe UI', bg: { type: 'solid', color: '#1e1e1e' }, title: '#ffffff', text: '#e6e6e6' },
-  Facette: { colors: ['#ffffff', '#2c3c43', '#ebebeb', '#2c3c43', '#90c226', '#54a021', '#e6b91e', '#e76618', '#c42f1a', '#918655'], major: 'Trebuchet MS', minor: 'Trebuchet MS', bg: { type: 'gradient', from: '#ffffff', to: '#eef6e0', angle: 135 }, title: '#2c3c43', text: '#2c3c43', accentBar: '#90c226' },
-  Ion: { colors: ['#1e5155', '#ffffff', '#3e7a7f', '#c6e7fc', '#b01513', '#ea6312', '#e6b729', '#6aac90', '#5f9c9d', '#9e5e9b'], major: 'Century Gothic', minor: 'Century Gothic', bg: { type: 'solid', color: '#1e5155' }, title: '#ffffff', text: '#ffffff', accentBar: '#e6b729' },
-  Rétrospective: { colors: ['#ffffff', '#000000', '#e7e6e6', '#637052', '#e48312', '#bd582c', '#865640', '#9b8357', '#c2bc80', '#94a088'], major: 'Calibri Light', minor: 'Calibri', bg: { type: 'solid', color: '#ffffff' }, title: '#637052', text: '#3b3b3b', accentBar: '#e48312' },
-  Intégral: { colors: ['#ffffff', '#335b74', '#dfe3e5', '#335b74', '#1cade4', '#2683c6', '#27ced7', '#42ba97', '#3e8853', '#62a39f'], major: 'Tw Cen MT', minor: 'Tw Cen MT', bg: { type: 'solid', color: '#ffffff' }, title: '#335b74', text: '#335b74', accentBar: '#1cade4' },
-  Galerie: { colors: ['#ffffff', '#262626', '#f2f2f2', '#262626', '#a5300f', '#d55816', '#e19825', '#b19c7d', '#7f5f52', '#b27d49'], major: 'Gill Sans MT', minor: 'Gill Sans MT', bg: { type: 'solid', color: '#f7f3ec' }, title: '#a5300f', text: '#262626', accentBar: '#a5300f' },
-  Organique: { colors: ['#ffffff', '#212121', '#e3ded1', '#3b3b3b', '#83992a', '#3c9770', '#44709d', '#a23c33', '#d97828', '#deb340'], major: 'Garamond', minor: 'Garamond', bg: { type: 'gradient', from: '#fbf8f1', to: '#e9e2cf', angle: 180 }, title: '#3b3b3b', text: '#212121', accentBar: '#83992a' },
-  Berlin: { colors: ['#9d360e', '#ffffff', '#c0441a', '#f3ddd0', '#f09415', '#c1b56b', '#4baf73', '#5aa6c0', '#d17df9', '#fa7e5c'], major: 'Trebuchet MS', minor: 'Trebuchet MS', bg: { type: 'gradient', from: '#9d360e', to: '#5c1f07', angle: 160 }, title: '#ffffff', text: '#ffffff', accentBar: '#f09415' },
-  Néon: { colors: ['#0b0c2a', '#ffffff', '#1b1d4a', '#e0e0ff', '#00e5ff', '#ff4081', '#76ff03', '#ffea00', '#d500f9', '#ff9100'], major: 'Segoe UI', minor: 'Segoe UI', bg: { type: 'gradient', from: '#0b0c2a', to: '#2a0b3d', angle: 135 }, title: '#00e5ff', text: '#e0e0ff', accentBar: '#ff4081' },
-  VEX: { colors: ['#ffffff', '#1d2340', '#eef0f6', '#1d2340', '#6c5ce7', '#00b894', '#fdcb6e', '#e17055', '#0984e3', '#e84393'], major: 'Segoe UI', minor: 'Segoe UI', bg: { type: 'gradient', from: '#ffffff', to: '#eef0ff', angle: 135 }, title: '#1d2340', text: '#1d2340', accentBar: '#6c5ce7' },
+  'Fond sombre': { colors: ['#1e1e1e', '#ffffff', '#2d2d2d', '#e6e6e6', '#4fc3f7', '#ff8a65', '#aed581', '#ffd54f', '#ba68c8', '#4db6ac'], major: 'Segoe UI Light', minor: 'Segoe UI', bg: { type: 'solid', color: '#1e1e1e' }, title: '#ffffff', text: '#e6e6e6', decor: 'sombre' },
+  Facette: { colors: ['#ffffff', '#2c3c43', '#ebebeb', '#2c3c43', '#90c226', '#54a021', '#e6b91e', '#e76618', '#c42f1a', '#918655'], major: 'Trebuchet MS', minor: 'Trebuchet MS', bg: { type: 'gradient', from: '#ffffff', to: '#eef6e0', angle: 135 }, title: '#2c3c43', text: '#2c3c43', accentBar: '#90c226', decor: 'facette' },
+  Ion: { colors: ['#1e5155', '#ffffff', '#3e7a7f', '#c6e7fc', '#b01513', '#ea6312', '#e6b729', '#6aac90', '#5f9c9d', '#9e5e9b'], major: 'Century Gothic', minor: 'Century Gothic', bg: { type: 'solid', color: '#1e5155' }, title: '#ffffff', text: '#ffffff', accentBar: '#e6b729', decor: 'ion' },
+  Rétrospective: { colors: ['#ffffff', '#000000', '#e7e6e6', '#637052', '#e48312', '#bd582c', '#865640', '#9b8357', '#c2bc80', '#94a088'], major: 'Calibri Light', minor: 'Calibri', bg: { type: 'solid', color: '#ffffff' }, title: '#637052', text: '#3b3b3b', accentBar: '#e48312', decor: 'retro' },
+  Intégral: { colors: ['#ffffff', '#335b74', '#dfe3e5', '#335b74', '#1cade4', '#2683c6', '#27ced7', '#42ba97', '#3e8853', '#62a39f'], major: 'Tw Cen MT', minor: 'Tw Cen MT', bg: { type: 'solid', color: '#ffffff' }, title: '#335b74', text: '#335b74', accentBar: '#1cade4', decor: 'integral' },
+  Galerie: { colors: ['#ffffff', '#262626', '#f2f2f2', '#262626', '#a5300f', '#d55816', '#e19825', '#b19c7d', '#7f5f52', '#b27d49'], major: 'Gill Sans MT', minor: 'Gill Sans MT', bg: { type: 'solid', color: '#f7f3ec' }, title: '#a5300f', text: '#262626', accentBar: '#a5300f', decor: 'galerie' },
+  Organique: { colors: ['#ffffff', '#212121', '#e3ded1', '#3b3b3b', '#83992a', '#3c9770', '#44709d', '#a23c33', '#d97828', '#deb340'], major: 'Garamond', minor: 'Garamond', bg: { type: 'gradient', from: '#fbf8f1', to: '#e9e2cf', angle: 180 }, title: '#3b3b3b', text: '#212121', accentBar: '#83992a', decor: 'organique' },
+  Berlin: { colors: ['#9d360e', '#ffffff', '#c0441a', '#f3ddd0', '#f09415', '#c1b56b', '#4baf73', '#5aa6c0', '#d17df9', '#fa7e5c'], major: 'Trebuchet MS', minor: 'Trebuchet MS', bg: { type: 'gradient', from: '#9d360e', to: '#5c1f07', angle: 160 }, title: '#ffffff', text: '#ffffff', accentBar: '#f09415', decor: 'berlin' },
+  Néon: { colors: ['#0b0c2a', '#ffffff', '#1b1d4a', '#e0e0ff', '#00e5ff', '#ff4081', '#76ff03', '#ffea00', '#d500f9', '#ff9100'], major: 'Segoe UI', minor: 'Segoe UI', bg: { type: 'gradient', from: '#0b0c2a', to: '#2a0b3d', angle: 135 }, title: '#00e5ff', text: '#e0e0ff', accentBar: '#ff4081', decor: 'neon' },
+  VEX: { colors: ['#ffffff', '#1d2340', '#eef0f6', '#1d2340', '#6c5ce7', '#00b894', '#fdcb6e', '#e17055', '#0984e3', '#e84393'], major: 'Segoe UI', minor: 'Segoe UI', bg: { type: 'gradient', from: '#ffffff', to: '#eef0ff', angle: 135 }, title: '#1d2340', text: '#1d2340', accentBar: '#6c5ce7', decor: 'vex' },
+  Aurore: { colors: ['#0f1226', '#ffffff', '#1c2147', '#e8e6ff', '#22d3ee', '#a855f7', '#f472b6', '#34d399', '#fbbf24', '#60a5fa'], major: 'Segoe UI Light', minor: 'Segoe UI', bg: { type: 'gradient', from: '#0f1226', to: '#1d1145', angle: 160 }, title: '#ffffff', text: '#e8e6ff', decor: 'aurore' },
+  Bauhaus: { colors: ['#f4efe6', '#1d1d1b', '#e8e0d0', '#1d1d1b', '#e63946', '#f4b400', '#1d3557', '#2a9d8f', '#e76f51', '#457b9d'], major: 'Bahnschrift', minor: 'Bahnschrift', bg: { type: 'solid', color: '#f4efe6' }, title: '#1d1d1b', text: '#2b2b28', decor: 'bauhaus' },
+  'Papier kraft': { colors: ['#e3cfad', '#3e2a17', '#f6efe0', '#5b3a1e', '#a4471f', '#2f6f73', '#c08a2b', '#6b7f3a', '#7a4e8c', '#3c6e9e'], major: 'Georgia', minor: 'Georgia', bg: { type: 'gradient', from: '#e6d3b3', to: '#cfb48a', angle: 135 }, title: '#3e2a17', text: '#3e2a17', decor: 'papier' },
+  Minuit: { colors: ['#0b1a3a', '#ffffff', '#16264d', '#dbe4ff', '#f5d76e', '#7aa2ff', '#c3a6ff', '#6ee7b7', '#fca5a5', '#93c5fd'], major: 'Garamond', minor: 'Segoe UI', bg: { type: 'gradient', from: '#0b1a3a', to: '#040a1c', angle: 180 }, title: '#f5d76e', text: '#dbe4ff', decor: 'minuit' },
+  Corail: { colors: ['#fff7f2', '#3d2c2e', '#ffe8dc', '#3d2c2e', '#ff6f59', '#ffb38a', '#2ec4b6', '#5c80bc', '#f9c74f', '#90be6d'], major: 'Century Gothic', minor: 'Century Gothic', bg: { type: 'solid', color: '#fff7f2' }, title: '#3d2c2e', text: '#4a3a3c', decor: 'corail' },
+  Ardoise: { colors: ['#2f3b35', '#ffffff', '#3d4b44', '#f1f5f2', '#ffe066', '#8b5a2b', '#9be7c4', '#ff9f80', '#a0c4ff', '#ffadad'], major: 'Segoe Print', minor: 'Segoe UI', bg: { type: 'radial', from: '#3a4a42', to: '#26302b' }, title: '#ffffff', text: '#e6efe9', decor: 'ardoise' },
+  Vague: { colors: ['#f2f8ff', '#0b2545', '#dbeafe', '#0b2545', '#1d4ed8', '#38bdf8', '#0ea5e9', '#14b8a6', '#f59e0b', '#6366f1'], major: 'Segoe UI Semibold', minor: 'Segoe UI', bg: { type: 'gradient', from: '#f2f8ff', to: '#ffffff', angle: 180 }, title: '#0b2545', text: '#1e3a5f', decor: 'vague' },
+  Prisme: { colors: ['#ffffff', '#16161a', '#f2f2f7', '#16161a', '#7f5af0', '#2cb67d', '#ff8906', '#e53170', '#3da9fc', '#f25f4c'], major: 'Trebuchet MS', minor: 'Trebuchet MS', bg: { type: 'solid', color: '#ffffff' }, title: '#16161a', text: '#2e2e38', decor: 'prisme' },
 };
 
 export const SLIDE_SIZES = {
@@ -132,7 +140,27 @@ export function newSlide(pres, layout = 'content', opts = {}) {
     el.style.autofit = 'shrink';
     return el;
   });
-  return { id: uid('s'), layout, elements, background: null, transition: { type: 'none', duration: 0.7, advanceAfter: null, advanceOnClick: true }, notes: '', hidden: false, section: opts.section || null, comments: [] };
+  const sl = { id: uid('s'), layout, elements, background: null, transition: { type: 'none', duration: 0.7, advanceAfter: null, advanceOnClick: true }, notes: '', hidden: false, section: opts.section || null, comments: [] };
+  placerTitres(pres, sl);
+  return sl;
+}
+
+// Diapositives de titre et de section : le texte se place du côté libre du
+// décor du thème (thème.mise : 'gauche', 'droite' ou 'centre'). Un bloc
+// déplacé à la main n'est pas touché.
+export function placerTitres(pres, sl) {
+  if (!sl || !pres.size || (sl.layout !== 'title' && sl.layout !== 'section')) return;
+  const W = pres.size.w, mise = (pres.theme && pres.theme.mise) || 'centre', titre = sl.layout === 'title';
+  const connus = titre ? [0.125, 0.07, 0.41] : [0.07, 0.4];
+  for (const e of sl.elements) {
+    if (titre ? e.ph !== 'ctrTitle' && e.ph !== 'subTitle' : e.ph !== 'title' && e.ph !== 'body') continue;
+    if (!connus.some((k) => Math.abs(e.x - W * k) <= 2)) continue;
+    const [x, w, al] = titre
+      ? (mise === 'gauche' ? [0.07, 0.52, 'left'] : mise === 'droite' ? [0.41, 0.52, 'left'] : [0.125, 0.75, 'center'])
+      : (mise === 'droite' ? [0.4, 0.53, 'left'] : mise === 'gauche' ? [0.07, 0.55, 'left'] : [0.07, 0.86, null]);
+    e.x = Math.round(W * x); e.w = Math.round(W * w);
+    if (e.text && Array.isArray(e.text.content)) for (const p of e.text.content) p.attrs = { ...(p.attrs || {}), align: al };
+  }
 }
 
 export function blankPresentation(themeName = 'Office') {

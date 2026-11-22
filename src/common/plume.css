@@ -1,3 +1,4 @@
+@import './polices.css';
 /* ═══════════════════════════════════════════════════════════════
    plume.css — interface commune des applis Plume (ruban, menus,
    boîtes de dialogue, barre d'état, volets). Thème clair/sombre.
@@ -262,3 +263,53 @@ textarea.pl-input { width: 100%; resize: vertical; }
 @media print {
   body { overflow: visible; background: #fff; }
 }
+.pl-qat .pl-claude { background: #fff; border-radius: 50%; padding: 3px; margin-left: 4px; }
+.pl-qat .pl-claude:hover { background: #fde8df; }
+
+/* ── Galerie des modèles (accueil de Plume PC et Fichier > Nouveau) ── */
+.pl-galerie-boite { display: flex; flex-direction: column; gap: 8px; }
+.pl-galerie-recherche-box { display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border: 1px solid var(--ui-border); border-radius: 8px; color: var(--ui-muted); max-width: 460px; background: var(--ui-panel, #fff); }
+.pl-galerie-recherche { flex: 1; border: 0; outline: none; background: none; font: inherit; color: var(--ui-text); }
+.pl-galerie-filtres { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pl-galerie-titre { width: 82px; font-size: 11.5px; font-weight: 600; color: var(--ui-muted); text-transform: uppercase; letter-spacing: .04em; }
+.pl-galerie-puce { border: 1px solid var(--ui-border); background: var(--ui-panel, #fff); color: var(--ui-text); border-radius: 999px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+.pl-galerie-puce:hover { background: var(--ui-hover); }
+.pl-galerie-puce.on { background: var(--app); border-color: var(--app); color: #fff; }
+.pl-galerie-puce small { opacity: .7; margin-left: 5px; font-size: 11px; }
+.pl-galerie-pastille { width: 22px; height: 22px; border-radius: 50%; border: 2px solid transparent; box-shadow: 0 0 0 1px var(--ui-border); cursor: pointer; padding: 0; }
+.pl-galerie-pastille:hover { transform: scale(1.12); }
+.pl-galerie-pastille.on { border-color: var(--ui-panel, #fff); box-shadow: 0 0 0 2px var(--ui-text); }
+.pl-galerie-compte { color: var(--ui-muted); font-size: 12.5px; margin: 4px 0; }
+.pl-galerie { display: grid; gap: 22px 16px; margin: 4px 0 20px; }
+.pl-galerie.word { grid-template-columns: repeat(auto-fill, 170px); }
+.pl-galerie.calc { grid-template-columns: repeat(auto-fill, 230px); }
+.pl-galerie.pres { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.pl-galerie-carte { display: flex; flex-direction: column; gap: 6px; background: none; border: 0; padding: 0; cursor: pointer; text-align: left; color: var(--ui-text); min-width: 0; font: inherit; }
+.pl-galerie-carte > :first-child { border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.06); transition: transform .15s, box-shadow .15s; }
+.pl-galerie-carte:hover > :first-child { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,.2), 0 0 0 2px var(--app); }
+.pl-galerie-nom { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-galerie-detail { font-size: 11.5px; color: var(--ui-muted); margin-top: -4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-galerie-suite { height: 40px; }
+/* Vignettes réelles : page de texte, feuille de calcul, diapositive */
+.pl-mini-cadre { position: relative; overflow: hidden; background: #fff; flex: none; }
+.pl-mini { position: absolute; left: 0; top: 0; width: 794px; transform-origin: 0 0; pointer-events: none; box-sizing: border-box; }
+.pl-mini .ProseMirror { color: #000; white-space: pre-wrap; word-wrap: break-word; --font-fallback: Carlito, "Liberation Sans", Arial, sans-serif; text-align: left; line-height: normal; }
+.pl-mini .ProseMirror p { margin: 0; min-height: 1em; }
+.pl-mini .ProseMirror ul, .pl-mini .ProseMirror ol { margin: 0; padding-left: 36pt; }
+.pl-mini .ProseMirror li { position: relative; }
+.pl-mini .ProseMirror li > p { padding-top: 0; }
+.pl-mini .ProseMirror > ul, .pl-mini .ProseMirror > ol { padding-bottom: 8pt; }
+.pl-mini .ProseMirror ul[data-kind="check"] { list-style: none; }
+.pl-mini .ProseMirror ul[data-kind="check"] > li::before { content: "☐"; position: absolute; left: -22pt; top: 0; }
+.pl-mini .ProseMirror table { border-collapse: collapse; table-layout: fixed; width: 100%; }
+.pl-mini .ProseMirror td, .pl-mini .ProseMirror th { vertical-align: top; padding: 0 5.4pt; text-align: left; font-weight: inherit; }
+.pl-mini .ProseMirror th { font-weight: 700; }
+.pl-mini .ProseMirror hr { border: 0; border-top: 1px solid #000; }
+.pl-mini-calc { position: relative; overflow: hidden; background: #fff; flex: none; }
+.pl-mini-feuille { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
+.pl-mini-feuille table { border-collapse: collapse; table-layout: fixed; font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif; color: #000; }
+.pl-mini-feuille td { padding: 0 4px; white-space: nowrap; overflow: hidden; vertical-align: middle; line-height: 1.2; }
+.pl-mini-graph { position: absolute; background: #fff; border: 1px solid #d9d9d9; }
+.pl-mini-diapo { aspect-ratio: 16 / 9; background: #fff; }
+.pl-mini-diapo svg { display: block; width: 100%; height: 100%; }
+.pl-mini-image { position: absolute; display: block; }

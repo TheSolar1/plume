@@ -1,0 +1,45 @@
+/* Polices libres (licence SIL Open Font License, Google Fonts) intégrées à Plume — sous-ensemble latin */
+@font-face{font-family:"Playfair Display";font-style:italic;font-weight:400 900;font-display:swap;src:url(../polices/playfair-display-i400-900.woff2) format("woff2")}
+@font-face{font-family:"Playfair Display";font-style:normal;font-weight:400 900;font-display:swap;src:url(../polices/playfair-display-n400-900.woff2) format("woff2")}
+@font-face{font-family:"DM Serif Display";font-style:italic;font-weight:400;font-display:swap;src:url(../polices/dm-serif-display-i400.woff2) format("woff2")}
+@font-face{font-family:"DM Serif Display";font-style:normal;font-weight:400;font-display:swap;src:url(../polices/dm-serif-display-n400.woff2) format("woff2")}
+@font-face{font-family:"Abril Fatface";font-style:normal;font-weight:400;font-display:swap;src:url(../polices/abril-fatface-n400.woff2) format("woff2")}
+@font-face{font-family:"Bodoni Moda";font-style:italic;font-weight:400 900;font-display:swap;src:url(../polices/bodoni-moda-i400-900.woff2) format("woff2")}
+@font-face{font-family:"Bodoni Moda";font-style:normal;font-weight:400 900;font-display:swap;src:url(../polices/bodoni-moda-n400-900.woff2) format("woff2")}
+@font-face{font-family:"Cormorant Garamond";font-style:italic;font-weight:300 700;font-display:swap;src:url(../polices/cormorant-garamond-i300-700.woff2) format("woff2")}
+@font-face{font-family:"Cormorant Garamond";font-style:normal;font-weight:300 700;font-display:swap;src:url(../polices/cormorant-garamond-n300-700.woff2) format("woff2")}
+@font-face{font-family:"Fraunces";font-style:italic;font-weight:300 900;font-display:swap;src:url(../polices/fraunces-i300-900.woff2) format("woff2")}
+@font-face{font-family:"Fraunces";font-style:normal;font-weight:300 900;font-display:swap;src:url(../polices/fraunces-n300-900.woff2) format("woff2")}
+@font-face{font-family:"Libre Baskerville";font-style:italic;font-weight:400;font-display:swap;src:url(../polices/libre-baskerville-i400.woff2) format("woff2")}
+@font-face{font-family:"Libre Baskerville";font-style:normal;font-weight:400;font-display:swap;src:url(../polices/libre-baskerville-n400.woff2) format("woff2")}
+@font-face{font-family:"Libre Baskerville";font-style:normal;font-weight:700;font-display:swap;src:url(../polices/libre-baskerville-n700.woff2) format("woff2")}
+@font-face{font-family:"Prata";font-style:normal;font-weight:400;font-display:swap;src:url(../polices/prata-n400.woff2) format("woff2")}
+@font-face{font-family:"Bebas Neue";font-style:normal;font-weight:400;font-display:swap;src:url(../polices/bebas-neue-n400.woff2) format("woff2")}
+@font-face{font-family:"Anton";font-style:normal;font-weight:400;font-display:swap;src:url(../polices/anton-n400.woff2) format("woff2")}
+@font-face{font-family:"Archivo Black";font-style:normal;font-weight:400;font-display:swap;src:url(../polices/archivo-black-n400.woff2) format("woff2")}
+@font-face{font-family:"Oswald";font-style:normal;font-weight:300 700;font-display:swap;src:url(../polices/oswald-n300-700.woff2) format("woff2")}
+@font-face{font-family:"League Spartan";font-style:normal;font-weight:300 900;font-display:swap;src:url(../polices/league-spartan-n300-900.woff2) format("woff2")}
+@font-face{font-family:"Syne";font-style:normal;font-weight:400 800;font-display:swap;src:url(../polices/syne-n400-800.woff2) format("woff2")}
+@font-face{font-family:"Unbounded";font-style:normal;font-weight:300 900;font-display:swap;src:url(../polices/unbounded-n300-900.woff2) format("woff2")}
+@font-face{font-family:"Righteous";font-style:normal;font-weight:400;font-display:swap;src:url(../polices/righteous-n400.woff2) format("woff2")}
+@font-face{font-family:"Montserrat";font-style:italic;font-weight:300 900;font-display:swap;src:url(../polices/montserrat-i300-900.woff2) format("woff2")}
+@font-face{font-family:"Montserrat";font-style:normal;font-weight:300 900;font-display:swap;src:url(../polices/montserrat-n300-900.woff2) format("woff2")}
+@font-face{font-family:"Poppins";font-style:italic;font-weight:400;font-display:swap;src:url(../polices/poppins-i400.woff2) format("woff2")}
+@font-face{font-family:"Poppins";font-style:normal;font-weight:300;font-display:swap;src:url(../polices/poppins-n300.woff2) format("woff2")}
+@font-face{font-family:"Poppins";font-style:normal;font-weight:400;font-display:swap;src:url(../polices/poppins-n400.woff2) format("woff2")}
+@font-face{font-family:"Poppins";font-style:normal;font-weight:500;font-display:swap;src:url(../polices/poppins-n500.woff2) format("woff2")}
+@font-face{font-family:"Poppins";font-style:normal;font-weight:600;font-display:swap;src:url(../polices/poppins-n600.woff2) format("woff2")}
+@font-face{font-family:"Poppins";font-style:normal;font-weight:700;font-display:swap;src:url(../polices/poppins-n700.woff2) format("woff2")}
+@font-face{font-family:"Poppins";font-style:normal;font-weight:800;font-display:swap;src:url(../polices/poppins-n800.woff2) format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:300 800;font-display:swap;src:url(../polices/inter-n300-800.woff2) format("woff2")}
+@font-face{font-family:"Raleway";font-style:italic;font-weight:300 800;font-display:swap;src:url(../polices/raleway-i300-800.woff2) format("woff2")}
+@font-face{font-family:"Raleway";font-style:normal;font-weight:300 800;font-display:swap;src:url(../polices/raleway-n300-800.woff2) format("woff2")}
+@font-face{font-family:"Outfit";font-style:normal;font-weight:300 800;font-display:swap;src:url(../polices/outfit-n300-800.woff2) format("woff2")}
+@font-face{font-family:"Space Grotesk";font-style:normal;font-weight:300 700;font-display:swap;src:url(../polices/space-grotesk-n300-700.woff2) format("woff2")}
+@font-face{font-family:"Josefin Sans";font-style:normal;font-weight:300 700;font-display:swap;src:url(../polices/josefin-sans-n300-700.woff2) format("woff2")}
+@font-face{font-family:"DM Sans";font-style:italic;font-weight:300 800;font-display:swap;src:url(../polices/dm-sans-i300-800.woff2) format("woff2")}
+@font-face{font-family:"DM Sans";font-style:normal;font-weight:300 800;font-display:swap;src:url(../polices/dm-sans-n300-800.woff2) format("woff2")}
+@font-face{font-family:"Pacifico";font-style:normal;font-weight:400;font-display:swap;src:url(../polices/pacifico-n400.woff2) format("woff2")}
+@font-face{font-family:"Great Vibes";font-style:normal;font-weight:400;font-display:swap;src:url(../polices/great-vibes-n400.woff2) format("woff2")}
+@font-face{font-family:"Dancing Script";font-style:normal;font-weight:400 700;font-display:swap;src:url(../polices/dancing-script-n400-700.woff2) format("woff2")}
+@font-face{font-family:"Caveat";font-style:normal;font-weight:400 700;font-display:swap;src:url(../polices/caveat-n400-700.woff2) format("woff2")}

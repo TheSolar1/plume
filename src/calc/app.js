@@ -4,6 +4,8 @@
 // automatique des fonctions), clavier, presse-papiers, onglets de
 // feuilles, barre d'état, fichiers et enregistrement automatique.
 // ══════════════════════════════════════════════════════════════════
+import { hote, versHote, boutonRetourHote } from '../common/hote.js';
+import { boutonClaude } from '../common/claude.js';
 import { Workbook, MAX_ROWS, MAX_COLS, keyOf, unkey, parseCached, DEF_COL_W, DEF_ROW_H } from './model.js';
 import { colName, addr, rangeStr, parseRange, toLocal, toCanonical, isErr, ALL_FUNCTIONS, localName, FN_HELP, FR } from './formula.js';
 import { Grid, measureCellText } from './grid.js';
@@ -63,7 +65,7 @@ export class CalcApp {
     this.cmdSearch = h('input', { placeholder: 'Rechercher (Alt+Q)', on: { keydown: (e) => { e.stopPropagation(); if (e.key === 'Escape') { this.cmdSearch.value = ''; closeMenus(); this.grid.canvas.focus(); } if (e.key === 'Enter') { const f = document.querySelector('.pl-menu .pl-menu-item'); f && f.click(); } }, input: () => this.commandSearch() } });
     const titlebar = h('div.pl-titlebar',
       h('div.pl-logo', icon('Table2', 18), h('span', 'Plume Tableur')),
-      h('div.pl-qat', h('button', { title: 'Enregistrer (Ctrl+S)', on: { click: () => this.save() } }, icon('Save', 17)), h('button', { title: 'Annuler (Ctrl+Z)', on: { click: () => this.undo() } }, icon('Undo2', 17)), h('button', { title: 'Rétablir (Ctrl+Y)', on: { click: () => this.redo() } }, icon('Redo2', 17))),
+      h('div.pl-qat', boutonRetourHote(this), h('button', { title: 'Enregistrer (Ctrl+S)', on: { click: () => this.save() } }, icon('Save', 17)), h('button', { title: 'Annuler (Ctrl+Z)', on: { click: () => this.undo() } }, icon('Undo2', 17)), h('button', { title: 'Rétablir (Ctrl+Y)', on: { click: () => this.redo() } }, icon('Redo2', 17)), boutonClaude(this)),
       h('div.pl-doc-title', this.titleInput, ' ', this.saveState),
       h('div.pl-search-box', icon('Search', 15), this.cmdSearch),
       h('div.pl-user', { title: this.user.name }, this.user.initials || 'U'),
@@ -1141,6 +1143,7 @@ export class CalcApp {
   cfCache(s) { let m = this.cfMaps.get(s); if (!m) { m = F.computeCF(this, s); this.cfMaps.set(s, m); } return m; }
   tableFill(s, r, c) { return s.tables.length ? F.tableFill(s, r, c) : undefined; }
   tableText(s, r, c) { return F.tableText(s, r, c); }
+  tableStyle(t) { return F.TABLE_STYLES[t.style] || null; }
   validationAt(s, r, c) { return F.validationAt(s, r, c); }
   // différé : le clic qui ouvre le menu ne doit pas le refermer aussitôt
   openFilterMenu(btn) { setTimeout(() => F.filterMenu(this, btn), 0); }
@@ -1186,14 +1189,21 @@ export class CalcApp {
     prefs.set('calc.counter', n + 1);
   }
   async openFile(file) {
-    if (!file) file = await pickFile('.xlsx,.xlsm,.xltx,.csv,.tsv,.txt,.plume,.json,.ods');
+    if (!file) file = await pickFile('.xlsx,.xlsm,.xltx,.xls,.xlsb,.xlt,.ods,.ots,.fods,.numbers,.csv,.tsv,.txt,.dbf,.slk,.dif,.prn,.wk1,.wks,.qpw,.plume,.json');
     if (!file) return;
     try {
       const name = file.name.toLowerCase();
       let j;
       if (/\.(xlsx|xlsm|xltx)$/.test(name)) { const { importXlsx } = await import('./xlsx-import.js'); j = await importXlsx(await readAsArrayBuffer(file)); }
       else if (/\.(plume|json)$/.test(name)) j = JSON.parse(await readAsText(file));
-      else if (/\.ods$/.test(name)) throw new Error('le format .ods n’est pas pris en charge ; enregistrez le fichier en .xlsx');
+      else if (/\.(xls|xlsb|xlt|ods|ots|fods|numbers|dbf|slk|sylk|dif|prn|wk[1-4s]|wq[12]|qpw|123)$/.test(name)) {
+        // Anciens formats et autres tableurs : SheetJS les relit et les réécrit en .xlsx, que Plume ouvre ensuite.
+        const XLSX = await import('xlsx');
+        const wb = XLSX.read(new Uint8Array(await readAsArrayBuffer(file)), { type: 'array', cellFormula: true, cellStyles: true, cellNF: true });
+        const { importXlsx } = await import('./xlsx-import.js');
+        j = await importXlsx(XLSX.write(wb, { type: 'array', bookType: 'xlsx', cellStyles: true }));
+        (j.warnings = j.warnings || []).push('Fichier converti : la mise en forme (couleurs, bordures) peut être simplifiée.');
+      }
       else { const text = await readAsText(file); const sep = /\.tsv$/.test(name) ? '\t' : F.guessSeparator(text); j = F.csvToWorkbook(text, sep, file.name.replace(/\.[^.]+$/, '').slice(0, 31)); }
       if (j.app && j.app !== 'calc') throw new Error('ce fichier n’est pas un classeur Plume');
       this.docId = null;
@@ -1211,7 +1221,7 @@ export class CalcApp {
     if (this.edit && !this.commitEdit()) return;
     try {
       const base = this.fileBase();
-      if (format === 'xlsx' || format === 'xltx') { const { exportXlsx } = await import('./xlsx-export.js'); download(await exportXlsx(this.toNative(), this.wb, { title: this.titleInput.value, author: this.user.name }), `${base}.${format}`); }
+      if (format === 'xlsx' || format === 'xltx') { const { exportXlsx } = await import('./xlsx-export.js'); const blob = await exportXlsx(this.toNative(), this.wb, { title: this.titleInput.value, author: this.user.name }); if (!(format === 'xlsx' && await versHote(blob, `${base}.xlsx`))) download(blob, `${base}.${format}`); }
       else if (format === 'csv' || format === 'tsv' || format === 'txt') download(new Blob(['﻿' + F.toCsv(this, this.sheet, format === 'csv' ? ';' : '\t')], { type: 'text/csv;charset=utf-8' }), `${base}.${format}`);
       else if (format === 'csv-comma') download(new Blob(['﻿' + F.toCsv(this, this.sheet, ',', true)], { type: 'text/csv;charset=utf-8' }), `${base}.csv`);
       else if (format === 'pdf') return D.printDialog(this);
@@ -1229,6 +1239,7 @@ export class CalcApp {
     }
   }
   async saveLocal() {
+    if (hote()) return; // intégré (VEX) : rien en clair dans le navigateur
     if (!this.docId) this.docId = uid('c');
     const s = this.wb.sheets[0];
     const first = [];

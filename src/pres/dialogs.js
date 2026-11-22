@@ -8,6 +8,8 @@ import { Node as PMNode } from 'prosemirror-model';
 import { h, icon, dialog, field, select, checkbox, tabs, toast, prefs, pickFile, readAsDataURL, readAsArrayBuffer, readAsText, showMenu, closeMenus, promptDlg, confirmDlg, allIconNames, iconSvgString, uid, colorPickerContent, showPopup, closeDialogs } from '../common/ui.js';
 import { textSchema, textDoc, docText, makeElement, newSlide, cloneSlide, ANIMATIONS, animLabel, animKind, themeColor, LAYOUTS, SLIDE_SIZES } from './model.js';
 import { renderSlide, fitTexts } from './render.js';
+import { DESIGNS, STRUCTURES, appliquerDesign, retirerDesign } from './designs.js';
+import { PALETTES } from '../common/palettes.js';
 import { texToMathML, EQUATION_STRUCTURES, EQUATION_SYMBOLS, symbolOf } from '../word/math.js';
 import { smartArtSvg } from '../common/charts.js';
 import { FONTS } from '../word/styles.js';
@@ -703,6 +705,7 @@ export function canvasMenu(app, e, el) {
 export function renderPane(app, host, name) {
   const titles = { comments: 'Commentaires', selection: 'Sélection', animations: 'Volet Animation', format: 'Format', background: 'Mise en forme de l’arrière-plan', designer: 'Concepteur', accessibility: 'Accessibilité' };
   host.innerHTML = '';
+  host.classList.toggle('pp-pane-large', name === 'designer');
   const body = h('div.pl-pane-body');
   host.append(h('div.pl-pane-head', h('span', titles[name] || name), h('button.pl-pane-close', { type: 'button', on: { click: () => app.togglePane(name) } }, '×')), body);
   ({ comments: paneComments, selection: paneSelection, animations: paneAnimations, format: paneFormat, background: paneBackground, designer: paneDesigner, accessibility: paneAccessibility }[name] || (() => {}))(app, body);
@@ -790,34 +793,55 @@ function paneBackground(app, body) {
   body.append(field('Type :', type), field(bg.type === 'solid' ? 'Couleur :' : 'Couleur 1 :', c1), bg.type !== 'solid' && bg.type !== 'image' ? h('div', field('Couleur 2 :', c2), field('Angle :', angle)) : null, bg.type === 'image' ? h('button.pl-btn.small', { type: 'button', on: { click: pickImg } }, 'Choisir une image…') : null, hide,
     h('div', { style: { display: 'flex', gap: '6px', marginTop: '12px', flexWrap: 'wrap' } }, h('button.pl-btn.small', { type: 'button', on: { click: () => app.setBackground(s.background, true) } }, 'Appliquer partout'), h('button.pl-btn.small', { type: 'button', on: { click: () => { app.setBackground(null); renderPane(app, app.rightPane, 'background'); } } }, 'Rétablir l’arrière-plan')));
 }
-// Concepteur : propositions de mise en page automatiques
+// Concepteur : 180 designs (15 mises en page × 12 palettes), dans un volet large.
+// Cliquer applique le design à la diapositive (ou à toutes) ; changer de design
+// repart toujours de la diapositive d'origine, et « Sans design » la rétablit.
 function paneDesigner(app, body) {
-  const s = app.slide;
-  const title = s.elements.find((e) => /title/i.test(e.ph || ''));
-  const bodyEl = s.elements.find((e) => e.ph === 'body');
-  const imgs = s.elements.filter((e) => e.type === 'image');
+  const etat = app.designFiltre || (app.designFiltre = { style: '', couleur: '', toutes: false });
   const { w: W, h: H } = app.pres.size;
-  const pal = app.pres.theme.colors.slice(4);
-  const designs = [];
-  const mk = (name, fn) => designs.push({ name, fn });
-  mk('Bandeau coloré', (sl) => { sl.background = { type: 'solid', color: '#ffffff' }; sl.elements.unshift(makeElement('shape', { shape: 'rect', x: 0, y: 0, w: W, h: H * 0.26, style: { fill: pal[0], stroke: null, strokeWidth: 0 } })); const t = sl.elements.find((e) => /title/i.test(e.ph || '')); if (t) { t.y = H * 0.05; t.defaults = { ...t.defaults, color: '#ffffff' }; } });
-  mk('Fond dégradé', (sl) => { sl.background = { type: 'gradient', from: pal[0], to: pal[4], angle: 135 }; sl.elements.forEach((e) => { if (e.text) e.defaults = { ...e.defaults, color: '#ffffff' }; }); });
-  mk('Colonne latérale', (sl) => { sl.elements.unshift(makeElement('shape', { shape: 'rect', x: 0, y: 0, w: W * 0.32, h: H, style: { fill: pal[1], stroke: null, strokeWidth: 0 } })); const t = sl.elements.find((e) => /title/i.test(e.ph || '')); if (t) { Object.assign(t, { x: W * 0.03, y: H * 0.1, w: W * 0.26, h: H * 0.6 }); t.defaults = { ...t.defaults, color: '#ffffff' }; t.style.anchor = 'middle'; } const b = sl.elements.find((e) => e.ph === 'body'); if (b) Object.assign(b, { x: W * 0.37, y: H * 0.1, w: W * 0.58, h: H * 0.8 }); });
-  mk('Cadre élégant', (sl) => { sl.elements.unshift(makeElement('shape', { shape: 'frame', x: W * 0.02, y: H * 0.035, w: W * 0.96, h: H * 0.93, style: { fill: pal[2], stroke: null, strokeWidth: 0 } })); });
-  if (imgs.length) mk('Image pleine page', (sl) => { const im = sl.elements.find((e) => e.type === 'image'); Object.assign(im, { x: 0, y: 0, w: W, h: H, fit: 'cover' }); sl.elements = [im, ...sl.elements.filter((e) => e !== im)]; sl.elements.splice(1, 0, makeElement('shape', { shape: 'rect', x: 0, y: H * 0.68, w: W, h: H * 0.32, style: { fill: '#000000', opacity: 0.55, stroke: null, strokeWidth: 0 } })); const t = sl.elements.find((e) => /title/i.test(e.ph || '')); if (t) { Object.assign(t, { x: W * 0.06, y: H * 0.72, w: W * 0.88, h: H * 0.22 }); t.defaults = { ...t.defaults, color: '#ffffff' }; } });
-  if (imgs.length) mk('Image à droite', (sl) => { const im = sl.elements.find((e) => e.type === 'image'); Object.assign(im, { x: W * 0.52, y: 0, w: W * 0.48, h: H, fit: 'cover' }); for (const e of sl.elements) if (e !== im && e.text) { e.w = Math.min(e.w, W * 0.44); e.x = W * 0.04; } });
-  void title; void bodyEl;
-  body.appendChild(h('p.pl-hint', 'Idées de conception pour cette diapositive :'));
-  for (const d of designs) {
-    const copy = JSON.parse(JSON.stringify(s));
-    d.fn(copy);
-    const frame = h('div.pp-thumb-frame', { style: { width: '250px', height: (250 * H) / W + 'px', cursor: 'pointer', margin: '0 auto 10px', outline: '1px solid var(--ui-border)' }, title: d.name });
-    const sl = renderSlide(app.pres, copy, { mode: 'thumb', index: app.cur });
-    sl.style.transform = `scale(${250 / W})`; sl.style.transformOrigin = '0 0';
-    frame.appendChild(sl);
-    frame.addEventListener('click', () => { app.pres.slides[app.cur] = { ...copy, id: s.id }; app.commit('Concepteur'); app.renderAll(); });
-    body.append(frame);
-    requestAnimationFrame(() => fitTexts(frame));
+  const s = app.slide;
+  const largeur = 248;
+  const liste = DESIGNS.filter((d) => (!etat.style || d.s.id === etat.style) && (!etat.couleur || d.p.id === etat.couleur));
+  const appliquer = (d) => {
+    const haut = body.scrollTop;
+    if (etat.toutes) app.pres.slides = app.pres.slides.map((x) => (d ? appliquerDesign(x, d, app.pres.size) : retirerDesign(x)));
+    else app.pres.slides[app.cur] = d ? appliquerDesign(app.slide, d, app.pres.size) : retirerDesign(app.slide);
+    app.commit(d ? 'Concepteur : ' + d.nom : 'Retirer le design');
+    app.renderAll();
+    if (app.paneName === 'designer') { app.renderPane('designer'); const nb = app.rightPane.querySelector('.pl-pane-body'); if (nb) nb.scrollTop = haut; }
+  };
+  const puce = (actif, label, action, style) => h('button.pp-ds-puce' + (actif ? '.on' : ''), { type: 'button', style, on: { click: action } }, label);
+  const refaire = () => app.renderPane('designer');
+  const styles = h('div.pp-ds-puces', puce(!etat.style, 'Tous', () => { etat.style = ''; refaire(); }), ...STRUCTURES.map((x) => puce(etat.style === x.id, x.nom, () => { etat.style = x.id; refaire(); })));
+  const couleurs = h('div.pp-ds-puces', puce(!etat.couleur, 'Toutes', () => { etat.couleur = ''; refaire(); }),
+    ...PALETTES.map((p) => h('button.pp-ds-pastille' + (etat.couleur === p.id ? '.on' : ''), { type: 'button', title: p.nom, style: { background: `linear-gradient(135deg, ${p.p1} 0 50%, ${p.p2} 50% 80%, ${p.p3} 80%)` }, on: { click: () => { etat.couleur = etat.couleur === p.id ? '' : p.id; refaire(); } } })));
+  body.append(
+    h('div.pp-ds-tete',
+      h('label.pp-ds-toutes', h('input', { type: 'checkbox', checked: etat.toutes, on: { change: (e) => { etat.toutes = e.target.checked; } } }), ' Appliquer à toutes les diapositives'),
+      h('button.pl-btn', { type: 'button', disabled: !s.design && !etat.toutes, on: { click: () => appliquer(null) } }, icon('RotateCcw', 14), ' Sans design')),
+    h('div.pp-ds-titre', 'Style'), styles,
+    h('div.pp-ds-titre', 'Couleurs'), couleurs,
+    h('p.pl-hint', `${liste.length} design${liste.length > 1 ? 's' : ''}`));
+  const grille = h('div.pp-ds-grille');
+  body.append(grille);
+  // Aperçus dessinés seulement quand ils deviennent visibles (180 diapositives à rendre)
+  const voir = new IntersectionObserver((entrees) => {
+    for (const en of entrees) {
+      if (!en.isIntersecting) continue;
+      const cadre = en.target;
+      voir.unobserve(cadre);
+      const d = DESIGNS.find((x) => x.id === cadre.dataset.id);
+      const sl = renderSlide(app.pres, appliquerDesign(s, d, app.pres.size), { mode: 'thumb', index: app.cur });
+      sl.style.transform = `scale(${largeur / W})`; sl.style.transformOrigin = '0 0';
+      cadre.appendChild(sl);
+      requestAnimationFrame(() => fitTexts(cadre));
+    }
+  }, { root: body, rootMargin: '300px' });
+  for (const d of liste) {
+    const cadre = h('div.pp-thumb-frame', { 'data-id': d.id, style: { width: largeur + 'px', height: (largeur * H) / W + 'px' } });
+    const carte = h('button.pp-ds-carte' + (s.design === d.id ? '.on' : ''), { type: 'button', title: d.nom, on: { click: () => appliquer(d) } }, cadre, h('span.pp-ds-nom', d.nom));
+    grille.appendChild(carte);
+    voir.observe(cadre);
   }
 }
 function paneAccessibility(app, body) {

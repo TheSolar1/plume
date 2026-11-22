@@ -8,6 +8,7 @@ import { textSchema, themeColor, placeholderPrompt, mix } from './model.js';
 import { texToMathML } from '../word/math.js';
 import { chartSvg, smartArtSvg, parseTable } from '../common/charts.js';
 import { formatDate } from '../word/fields.js';
+import { decorSvg } from './decors.js';
 import { icon, iconSvgString } from '../common/ui.js';
 
 const ser = DOMSerializer.fromSchema(textSchema);
@@ -171,6 +172,7 @@ function renderText(el, pres, opts) {
   tx.style.fontFamily = fontFamily(theme, df.font || (isTitle ? '+major' : '+minor'));
   tx.style.fontSize = (df.size || 18) + 'pt';
   tx.style.color = themeColor(theme, df.color) || (el.type === 'shape' ? '#ffffff' : isTitle ? theme.title : theme.text);
+  if (isTitle && theme.titre) { const T = theme.titre; if (T.maj) tx.style.textTransform = 'uppercase'; if (T.esp) tx.style.letterSpacing = T.esp + 'em'; if (T.gras) tx.style.fontWeight = '700'; if (T.ital) tx.style.fontStyle = 'italic'; }
   if (df.bold) tx.style.fontWeight = '700';
   if (df.italic) tx.style.fontStyle = 'italic';
   if (df.align) tx.style.textAlign = df.align;
@@ -243,7 +245,14 @@ export function renderSlide(pres, slide, opts = {}) {
   root.style.width = W + 'px';
   root.style.height = H + 'px';
   root.style.background = backgroundCss(slide.background, theme);
-  if (theme.accentBar && !(slide.background && slide.background.hideGraphics)) {
+  const decor = !(slide.background && slide.background.hideGraphics) && theme.decor ? decorSvg(theme, slide.layout, W, H) : '';
+  if (decor) {
+    const d = document.createElement('div');
+    d.className = 'pp-decor';
+    d.style.cssText = 'position:absolute;inset:0;pointer-events:none;overflow:hidden;';
+    d.innerHTML = decor;
+    root.appendChild(d);
+  } else if (theme.accentBar && !(slide.background && slide.background.hideGraphics)) {
     const bar = document.createElement('div');
     bar.className = 'pp-accent';
     bar.style.background = theme.accentBar;
