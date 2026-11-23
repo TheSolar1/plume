@@ -1,9 +1,9 @@
-#![windows_subsystem = "windows"]
-//! Plume pour Windows : une application de bureau. Une fenêtre (moteur WebView2
-//! de Windows) affiche Plume, dont les pages sont intégrées au programme : pas de
+#![cfg_attr(windows, windows_subsystem = "windows")]
+//! Plume pour Windows, Mac et Linux : une application de bureau. Une fenêtre
+//! (WebView2 sur Windows, WebKit sur Mac et Linux) affiche Plume, dont les pages sont intégrées au programme : pas de
 //! navigateur ni de serveur à lancer, et tout marche hors ligne.
-//! - les documents restent enregistrés dans l'application (dossier %LOCALAPPDATA%\Plume) ;
-//! - les fichiers enregistrés ou exportés (.docx, .pdf…) vont dans Documents\Plume ;
+//! - les documents restent enregistrés dans l'application (voir dossier_donnees) ;
+//! - les fichiers enregistrés ou exportés (.docx, .pdf…) vont dans Documents/Plume ;
 //! - les liens vers Internet s'ouvrent dans le navigateur habituel ;
 //! - Clouds : un cloud (VEX, Nextcloud…) s'ouvre dans sa propre fenêtre, connexion gardée ;
 //! - serveur MCP facultatif (Réglages) pour les assistants IA : voir mcp.rs.
@@ -23,17 +23,23 @@ use std::{env, fs, thread};
 use tao::dpi::LogicalSize;
 use tao::event::{Event, WindowEvent};
 use tao::event_loop::{ControlFlow, EventLoopBuilder};
-use tao::platform::windows::{IconExtWindows, WindowBuilderExtWindows};
 use tao::window::{Icon, Window, WindowBuilder, WindowId};
 use wry::http::{header::CONTENT_TYPE, Method, Request, Response, StatusCode};
-use wry::{NewWindowResponse, WebContext, WebView, WebViewBuilder, WebViewBuilderExtWindows};
+use wry::{NewWindowResponse, WebContext, WebView, WebViewBuilder};
 
 include!(concat!(env!("OUT_DIR"), "/fichiers.rs"));
 
 /// Adresse interne fixe : les documents enregistrés dans l'application y restent attachés.
+/// (Windows : https://plume.localhost/ ; Mac et Linux : plume://localhost/)
+#[cfg(windows)]
 const ADRESSE: &str = "https://plume.localhost/";
+#[cfg(not(windows))]
+const ADRESSE: &str = "plume://localhost/";
 /// Page de départ : accueil et onglets de documents, comme OnlyOffice Desktop.
+#[cfg(windows)]
 const DEPART: &str = "https://plume.localhost/bureau.html";
+#[cfg(not(windows))]
+const DEPART: &str = "plume://localhost/bureau.html";
 /// Avant de fermer : enregistre les documents de tous les onglets.
 const ENREGISTRER: &str = "try { if (window.plumeBureau) window.plumeBureau.toutEnregistrer(); else for (const a of [window.plume, window.plumePres, window.plumeCalc]) if (a && a.dirty && a.saveLocal) a.saveLocal(); } catch (e) {}";
 
@@ -46,29 +52,35 @@ enum Evenement {
     Mcp(bool, u16),
     /// Outil demandé par l'assistant IA, à exécuter dans la page : (numéro, nom, arguments JSON)
     McpAppel(u64, String, String),
+    /// Fermer Plume proprement (menu Quitter du Mac)
+    #[allow(dead_code)]
+    Fermer,
 }
 
 fn main() {
+    // Linux : évite la fenêtre blanche avec certaines cartes graphiques (NVIDIA)
+    #[cfg(target_os = "linux")]
+    if env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() { env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1"); }
     let boucle = EventLoopBuilder::<Evenement>::with_user_event().build();
     let proxy = boucle.create_proxy();
-    let fenetre = WindowBuilder::new()
-        .with_title("Plume")
+    #[cfg(target_os = "macos")]
+    let _menu = menu_mac(proxy.clone());
+    let fenetre = constructeur("Plume")
         .with_inner_size(LogicalSize::new(1360.0, 860.0))
         .with_min_inner_size(LogicalSize::new(640.0, 420.0))
         .with_maximized(true)
-        .with_window_icon(Icon::from_resource(1, None).ok())
-        .with_taskbar_icon(Icon::from_resource(1, None).ok())
         .build(&boucle)
         .expect("création de la fenêtre");
 
-    let donnees = env::var_os("LOCALAPPDATA").map(PathBuf::from).unwrap_or_else(env::temp_dir).join("Plume");
-    let mut contexte = WebContext::new(Some(donnees.join("WebView2")));
+    let mut contexte = WebContext::new(Some(dossier_donnees().join(if cfg!(windows) { "WebView2" } else { "moteur" })));
     let salles = Arc::new(Mutex::new(Salles::default()));
     let titre = proxy.clone();
     let attentes: mcp::Attentes = Arc::new(Mutex::new(HashMap::new()));
     let (p_ipc, a_ipc) = (proxy.clone(), attentes.clone());
-    let vue = WebViewBuilder::new_with_web_context(&mut contexte)
-        .with_https_scheme(true)
+    let vue = WebViewBuilder::new_with_web_context(&mut contexte);
+    #[cfg(windows)]
+    let vue = { use wry::WebViewBuilderExtWindows; vue.with_https_scheme(true) };
+    let vue = vue
         .with_custom_protocol("plume".into(), move |_id, requete| repondre(&salles, requete))
         .with_url(DEPART)
         .with_ipc_handler(move |m| message_page(m.body(), &p_ipc, &a_ipc))
@@ -82,9 +94,8 @@ fn main() {
             if !url.is_empty() && !url.starts_with("about:") { ouvrir_dehors(&url); }
             NewWindowResponse::Deny
         })
-        .with_download_started_handler(telechargement)
-        .build(&fenetre)
-        .expect("WebView2 (moteur d'affichage de Windows)");
+        .with_download_started_handler(telechargement);
+    let vue = construire(vue, &fenetre).expect("moteur d'affichage (WebView2 sur Windows, WebKitGTK sur Linux)");
 
     let principale = fenetre.id();
     let mut clouds: HashMap<WindowId, (Window, WebView)> = HashMap::new();
@@ -127,7 +138,7 @@ fn main() {
             Event::WindowEvent { window_id, event: WindowEvent::CloseRequested, .. } if window_id != principale => {
                 clouds.remove(&window_id);
             }
-            Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
+            Event::WindowEvent { event: WindowEvent::CloseRequested, .. } | Event::UserEvent(Evenement::Fermer) => {
                 // On laisse le temps d'enregistrer le document, puis on ferme.
                 let _ = vue.evaluate_script(ENREGISTRER);
                 let p = proxy.clone();
@@ -169,12 +180,9 @@ fn message_page(texte: &str, proxy: &tao::event_loop::EventLoopProxy<Evenement>,
 /// Fenêtre d'un cloud : le site s'y affiche tel quel (connexion gardée dans le
 /// dossier de l'application) ; fichiers téléchargés dans Documents\Plume.
 fn fenetre_cloud(cible: &tao::event_loop::EventLoopWindowTarget<Evenement>, contexte: &mut WebContext, nom: &str, url: &str) -> Option<(Window, WebView)> {
-    let f = WindowBuilder::new()
-        .with_title(format!("{nom} – Plume"))
+    let f = constructeur(&format!("{nom} – Plume"))
         .with_inner_size(LogicalSize::new(1280.0, 840.0))
         .with_min_inner_size(LogicalSize::new(480.0, 360.0))
-        .with_window_icon(Icon::from_resource(1, None).ok())
-        .with_taskbar_icon(Icon::from_resource(1, None).ok())
         .build(cible)
         .ok()?;
     let v = WebViewBuilder::new_with_web_context(contexte)
@@ -183,9 +191,8 @@ fn fenetre_cloud(cible: &tao::event_loop::EventLoopWindowTarget<Evenement>, cont
             if !url.is_empty() && !url.starts_with("about:") { ouvrir_dehors(&url); }
             NewWindowResponse::Deny
         })
-        .with_download_started_handler(telechargement)
-        .build(&f)
-        .ok()?;
+        .with_download_started_handler(telechargement);
+    let v = construire(v, &f).ok()?;
     Some((f, v))
 }
 
@@ -230,10 +237,104 @@ fn repondre(salles: &Mutex<Salles>, requete: Request<Vec<u8>>) -> Response<Cow<'
     }
 }
 
+/// Dossier personnel de l'utilisateur.
+fn dossier_perso() -> PathBuf {
+    env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from).unwrap_or_else(env::temp_dir)
+}
+
+/// Données de l'application (documents enregistrés, préférences) :
+/// Windows %LOCALAPPDATA%\Plume, Mac ~/Library/Application Support/Plume, Linux ~/.local/share/plume.
+fn dossier_donnees() -> PathBuf {
+    if cfg!(windows) {
+        env::var_os("LOCALAPPDATA").map(PathBuf::from).unwrap_or_else(env::temp_dir).join("Plume")
+    } else if cfg!(target_os = "macos") {
+        dossier_perso().join("Library/Application Support/Plume")
+    } else {
+        env::var_os("XDG_DATA_HOME").map(PathBuf::from).unwrap_or_else(|| dossier_perso().join(".local/share")).join("plume")
+    }
+}
+
 fn dossier_documents() -> PathBuf {
-    let profil = env::var_os("USERPROFILE").map(PathBuf::from).unwrap_or_else(env::temp_dir);
+    let profil = dossier_perso();
+    // Linux : dossier Documents dans la langue du système (xdg-user-dir), sinon ~/Documents
+    #[cfg(target_os = "linux")]
+    if let Ok(s) = Command::new("xdg-user-dir").arg("DOCUMENTS").output() {
+        let d = PathBuf::from(String::from_utf8_lossy(&s.stdout).trim());
+        if d.is_dir() && d != profil { return d; }
+    }
     let documents = profil.join("Documents");
     if documents.is_dir() { documents } else { profil }
+}
+
+/// Fenêtre avec l'icône de Plume (barre des tâches de Windows, fenêtre sous Linux ;
+/// sur Mac, l'icône vient du paquet Plume.app).
+fn constructeur(titre: &str) -> WindowBuilder {
+    let b = WindowBuilder::new().with_title(titre).with_window_icon(icone());
+    #[cfg(windows)]
+    let b = { use tao::platform::windows::WindowBuilderExtWindows; b.with_taskbar_icon(icone()) };
+    b
+}
+
+#[cfg(windows)]
+fn icone() -> Option<Icon> {
+    use tao::platform::windows::IconExtWindows;
+    Icon::from_resource(1, None).ok()
+}
+
+#[cfg(not(windows))]
+fn icone() -> Option<Icon> {
+    let mut lecteur = png::Decoder::new(std::io::Cursor::new(&include_bytes!("../icone/plume-256.png")[..])).read_info().ok()?;
+    let mut rgba = vec![0; lecteur.output_buffer_size()?];
+    let info = lecteur.next_frame(&mut rgba).ok()?;
+    rgba.truncate(info.buffer_size());
+    Icon::from_rgba(rgba, info.width, info.height).ok()
+}
+
+/// Affichage de la page dans la fenêtre (Linux : dans le conteneur GTK, pour X11 et Wayland).
+fn construire(b: WebViewBuilder, f: &Window) -> wry::Result<WebView> {
+    #[cfg(target_os = "linux")]
+    {
+        use tao::platform::unix::WindowExtUnix;
+        use wry::WebViewBuilderExtUnix;
+        b.build_gtk(f.default_vbox().expect("conteneur GTK"))
+    }
+    #[cfg(not(target_os = "linux"))]
+    b.build(f)
+}
+
+/// Menu du Mac : sans menu Édition, Cmd+C / Cmd+V ne marchent pas dans la page.
+#[cfg(target_os = "macos")]
+fn menu_mac(proxy: tao::event_loop::EventLoopProxy<Evenement>) -> muda::Menu {
+    use muda::{accelerator::Accelerator, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
+    let quitter = MenuItem::new("Quitter Plume", true, "CmdOrCtrl+Q".parse::<Accelerator>().ok());
+    let id = quitter.id().clone();
+    let appli = Submenu::with_items("Plume", true, &[
+        &PredefinedMenuItem::about(Some("À propos de Plume"), None),
+        &PredefinedMenuItem::separator(),
+        &PredefinedMenuItem::hide(Some("Masquer Plume")),
+        &PredefinedMenuItem::hide_others(Some("Masquer les autres")),
+        &PredefinedMenuItem::separator(),
+        &quitter,
+    ]).expect("menu");
+    let edition = Submenu::with_items("Édition", true, &[
+        &PredefinedMenuItem::undo(Some("Annuler")),
+        &PredefinedMenuItem::redo(Some("Rétablir")),
+        &PredefinedMenuItem::separator(),
+        &PredefinedMenuItem::cut(Some("Couper")),
+        &PredefinedMenuItem::copy(Some("Copier")),
+        &PredefinedMenuItem::paste(Some("Coller")),
+        &PredefinedMenuItem::select_all(Some("Tout sélectionner")),
+    ]).expect("menu");
+    let fenetre = Submenu::with_items("Fenêtre", true, &[
+        &PredefinedMenuItem::minimize(Some("Réduire")),
+        &PredefinedMenuItem::fullscreen(Some("Plein écran")),
+    ]).expect("menu");
+    let menu = Menu::with_items(&[&appli, &edition, &fenetre]).expect("menu");
+    menu.init_for_nsapp();
+    MenuEvent::set_event_handler(Some(move |e: MenuEvent| {
+        if e.id == id { let _ = proxy.send_event(Evenement::Fermer); }
+    }));
+    menu
 }
 
 /// Ne remplace jamais un fichier existant : « Rapport (2).docx », « Rapport (3).docx »…
@@ -252,6 +353,7 @@ fn nom_libre(dossier: &Path, nom: &str) -> PathBuf {
 /// Liens vers Internet, adresses e-mail : navigateur ou messagerie habituels.
 fn ouvrir_dehors(url: &str) {
     if url.starts_with("http://") || url.starts_with("https://") || url.starts_with("mailto:") {
-        let _ = Command::new("explorer").arg(url).spawn();
+        let programme = if cfg!(windows) { "explorer" } else if cfg!(target_os = "macos") { "open" } else { "xdg-open" };
+        let _ = Command::new(programme).arg(url).spawn();
     }
 }

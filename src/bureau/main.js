@@ -46,7 +46,7 @@ const CATEGORIES = [['pres', 'Présentations'], ['word', 'Documents'], ['calc', 
 const versHex = (c) => { const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c || ''); return m ? '#' + [m[1], m[2], m[3]].map((v) => (+v).toString(16).padStart(2, '0')).join('') : null; };
 const A_LA_UNE = [['word', 'cv.colonne.dev'], ['word', 'lettre.motivation.centre.0'], ['word', 'doc.rapport-activite.1'], ['calc', 'budget-mensuel'], ['calc', 'planning-hebdo'], ['pres', 'lancement-produit'], ['pres', 'pitch-investisseurs']];
 const EXTENSIONS = '.docx,.dotx,.docm,.dotm,.doc,.dot,.odt,.ott,.fodt,.rtf,.txt,.md,.html,.htm,.xlsx,.xlsm,.xltx,.xls,.xlsb,.xlt,.ods,.ots,.fods,.numbers,.csv,.tsv,.dbf,.slk,.dif,.pptx,.ppsx,.potx,.pptm,.ppt,.pps,.pot,.odp,.otp,.fodp,.plume';
-const DANS_APPLI = location.hostname === 'plume.localhost';
+const DANS_APPLI = (location.hostname === 'plume.localhost' || location.protocol === 'plume:');
 const LANGUES = [['fr-FR', 'Français (France)'], ['fr-BE', 'Français (Belgique)'], ['fr-CA', 'Français (Canada)'], ['fr-CH', 'Français (Suisse)'], ['en-US', 'Anglais (États-Unis)'], ['en-GB', 'Anglais (Royaume-Uni)'], ['es-ES', 'Espagnol'], ['de-DE', 'Allemand'], ['it-IT', 'Italien']];
 
 // Thème et couleurs : la page d'accueil, puis chaque onglet ouvert

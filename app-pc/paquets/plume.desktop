@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Plume
+GenericName=Texte, tableur et présentations
+Comment=Ouvre et enregistre les fichiers Word, Excel et PowerPoint
+Exec=plume
+Icon=plume
+Terminal=false
+Categories=Office;WordProcessor;Spreadsheet;Presentation;
+Keywords=docx;xlsx;pptx;word;excel;powerpoint;texte;tableur;présentation;
+StartupWMClass=plume

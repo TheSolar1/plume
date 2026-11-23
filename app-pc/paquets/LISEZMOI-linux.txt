@@ -1,0 +1,23 @@
+PLUME POUR LINUX
+================
+
+Lancer : ./plume
+
+Il faut WebKitGTK 4.1, présent sur la plupart des bureaux Linux. S'il manque :
+    Debian, Ubuntu, Mint :  sudo apt install libwebkit2gtk-4.1-0
+    Fedora :                sudo dnf install webkit2gtk4.1
+    Arch :                  sudo pacman -S webkit2gtk-4.1
+
+Ajouter Plume au menu des applications :
+    mkdir -p ~/.local/bin ~/.local/share/applications ~/.local/share/icons/hicolor/256x256/apps
+    cp plume ~/.local/bin/
+    cp plume.png ~/.local/share/icons/hicolor/256x256/apps/
+    cp plume.desktop ~/.local/share/applications/
+
+Sur Debian, Ubuntu et Mint, le paquet .deb fait tout cela automatiquement :
+    sudo apt install ./plume_*.deb
+
+Documents enregistrés dans l'application : ~/.local/share/plume
+Fichiers exportés (.docx, .pdf…) : Documents/Plume
+
+Site : https://plume.vexs.me/

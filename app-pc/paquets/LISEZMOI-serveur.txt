@@ -1,0 +1,79 @@
+PLUME — VERSION WEB À HÉBERGER
+==============================
+
+Ce dossier contient Plume (Texte, Tableur, Présentation) pour un navigateur,
+et plume-serveur, un petit serveur qui le met en ligne avec la coédition en
+temps réel (plusieurs personnes sur le même document).
+
+Les documents restent dans le navigateur de chaque personne : le serveur ne
+stocke aucun fichier.
+
+
+1. LANCER (le plus simple)
+--------------------------
+Dans ce dossier :
+
+    ./plume-serveur                  (Linux, Mac)
+    plume-serveur.exe                (Windows)
+
+Puis ouvrir http://localhost:8080/
+
+Options : plume-serveur [port] [dossier] [--reseau]
+    port       8080 par défaut
+    dossier    dossier des pages (par défaut, le dossier courant)
+    --reseau   accepte les autres appareils du réseau (sinon cet ordinateur seul)
+
+Exemple, pour tout le réseau sur le port 3000 :
+
+    ./plume-serveur 3000 . --reseau
+
+Mac : si le Mac bloque plume-serveur, lancer une fois
+    xattr -dr com.apple.quarantine .
+
+
+2. COMME SERVICE (Linux, démarre avec la machine)
+-------------------------------------------------
+    sudo mkdir -p /opt/plume && sudo cp -r ./* /opt/plume/
+    sudo cp plume.service /etc/systemd/system/
+    sudo systemctl enable --now plume
+
+Le fichier plume.service est à adapter (dossier, utilisateur, port).
+
+
+3. DERRIÈRE APACHE OU NGINX (avec un nom de domaine et HTTPS)
+-------------------------------------------------------------
+Lancer plume-serveur sur la machine (sans --reseau), puis :
+
+Apache (modules proxy et proxy_http activés) :
+
+    <VirtualHost *:443>
+        ServerName plume.exemple.fr
+        ProxyPass        / http://127.0.0.1:8080/
+        ProxyPassReverse / http://127.0.0.1:8080/
+    </VirtualHost>
+
+nginx :
+
+    server {
+        listen 443 ssl;
+        server_name plume.exemple.fr;
+        location / { proxy_pass http://127.0.0.1:8080; }
+    }
+
+
+4. SANS plume-serveur (fichiers seuls)
+--------------------------------------
+Les pages marchent aussi avec n'importe quel serveur de fichiers (Apache,
+nginx, Caddy, GitHub Pages…), sans la coédition : copier index.html,
+bureau.html, texte.html, tableur.html, presentation.html et dist/ à la
+racine du site.
+
+    nginx :   root /var/www/plume;  index index.html;
+    Caddy :   file_server  (dans le bloc du site, root * /var/www/plume)
+
+Plume s'utilise de préférence en HTTPS (ou sur localhost) : certaines
+fonctions du navigateur, comme le presse-papiers, l'exigent.
+
+
+Site : https://plume.vexs.me/
+Licence : MIT

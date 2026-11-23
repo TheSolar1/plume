@@ -1,0 +1,19 @@
+PLUME POUR MAC
+==============
+
+1. Glisser Plume dans le dossier Applications.
+2. Premier lancement : Plume n'est pas encore signé par Apple, le Mac affiche
+   « Plume ne peut pas être ouvert ».
+   - macOS 15 et plus : Réglages Système > Confidentialité et sécurité,
+     tout en bas, « Ouvrir quand même », puis confirmer.
+   - macOS 14 et avant : clic droit (ou Ctrl+clic) sur Plume > Ouvrir > Ouvrir.
+   Ou, dans le Terminal :
+       xattr -dr com.apple.quarantine /Applications/Plume.app
+
+Ensuite, Plume s'ouvre normalement.
+
+Mac Apple Silicon (M1, M2, M3, M4…) et Mac Intel, macOS 10.15 ou plus récent.
+Documents enregistrés dans l'application : ~/Library/Application Support/Plume
+Fichiers exportés (.docx, .pdf…) : Documents/Plume
+
+Site : https://plume.vexs.me/

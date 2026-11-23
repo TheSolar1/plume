@@ -13,7 +13,7 @@ $faces = @(
   @('4a86ec', @($A, $C, $D)), @('4a86ec', @($B, $E, $F, $C)),
   @('1f4fa8', @($A, $B, $C)), @('1f4fa8', @($G, $F, $H))
 )
-foreach ($s in $tailles) {
+foreach ($s in $tailles + 1024) {
   $bmp = New-Object System.Drawing.Bitmap $s, $s, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
   $g = [System.Drawing.Graphics]::FromImage($bmp)
   $g.SmoothingMode = 'AntiAlias'
@@ -28,9 +28,9 @@ foreach ($s in $tailles) {
   $g.Dispose()
   $ms = New-Object System.IO.MemoryStream
   $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
-  if ($s -eq 256) { $bmp.Save((Join-Path $ici 'plume-256.png'), [System.Drawing.Imaging.ImageFormat]::Png) }
+  if ($s -in 256, 1024) { $bmp.Save((Join-Path $ici "plume-$s.png"), [System.Drawing.Imaging.ImageFormat]::Png) }
   $bmp.Dispose()
-  $images += , $ms.ToArray()
+  if ($s -le 256) { $images += , $ms.ToArray() }
 }
 # Fichier .ico : en-tête, une entrée par taille, puis les images PNG
 $out = New-Object System.IO.MemoryStream

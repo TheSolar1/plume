@@ -12,7 +12,7 @@ export function boutonClaude(app) {
   bouton.innerHTML = LOGO;
   const maj = () => {
     const r = prefs.get('mcp', null);
-    bouton.style.display = r && r.actif && location.hostname === 'plume.localhost' ? '' : 'none';
+    bouton.style.display = r && r.actif && (location.hostname === 'plume.localhost' || location.protocol === 'plume:') ? '' : 'none';
   };
   maj();
   window.addEventListener('storage', (e) => { if (!e.key || e.key === 'plume.mcp') maj(); });

@@ -1,0 +1,15 @@
+# Plume comme service (Linux, systemd). À adapter : dossier et utilisateur.
+#   sudo cp plume.service /etc/systemd/system/
+#   sudo systemctl enable --now plume
+[Unit]
+Description=Plume (texte, tableur et présentations dans le navigateur)
+After=network.target
+
+[Service]
+User=www-data
+WorkingDirectory=/opt/plume
+ExecStart=/opt/plume/plume-serveur 8080 /opt/plume --reseau
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
