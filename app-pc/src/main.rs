@@ -284,7 +284,7 @@ fn icone() -> Option<Icon> {
 #[cfg(not(windows))]
 fn icone() -> Option<Icon> {
     let mut lecteur = png::Decoder::new(std::io::Cursor::new(&include_bytes!("../icone/plume-256.png")[..])).read_info().ok()?;
-    let mut rgba = vec![0; lecteur.output_buffer_size()?];
+    let mut rgba = vec![0; lecteur.output_buffer_size()];
     let info = lecteur.next_frame(&mut rgba).ok()?;
     rgba.truncate(info.buffer_size());
     Icon::from_rgba(rgba, info.width, info.height).ok()
@@ -331,8 +331,9 @@ fn menu_mac(proxy: tao::event_loop::EventLoopProxy<Evenement>) -> muda::Menu {
     ]).expect("menu");
     let menu = Menu::with_items(&[&appli, &edition, &fenetre]).expect("menu");
     menu.init_for_nsapp();
+    let proxy = Mutex::new(proxy);
     MenuEvent::set_event_handler(Some(move |e: MenuEvent| {
-        if e.id == id { let _ = proxy.send_event(Evenement::Fermer); }
+        if e.id == id { let _ = proxy.lock().unwrap_or_else(|e| e.into_inner()).send_event(Evenement::Fermer); }
     }));
     menu
 }
