@@ -39,7 +39,7 @@
   header nav a { color: var(--doux); text-decoration: none; white-space: nowrap; }
   header nav a:hover { color: var(--texte); }
 
-  .entete { padding: 60px 16px 36px; text-align: center; }
+  .entete { padding: 60px 16px 44px; text-align: center; }
   h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.12; font-weight: 650; margin: 0 0 14px; letter-spacing: -0.01em; }
   .chapo { font-size: 18px; color: var(--doux); max-width: 680px; margin: 0 auto 28px; }
   .boutons { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
@@ -51,11 +51,19 @@
   .creux { background: var(--carte); color: var(--texte); border-color: var(--bord); }
   .creux:hover { border-color: var(--bleu); }
   .note { margin-top: 14px; font-size: 14px; color: var(--doux); }
-  .systemes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin-top: 18px; font-size: 14px; }
-  .systemes > span { color: var(--doux); margin-right: 2px; }
-  .systemes a { display: inline-flex; align-items: center; gap: 7px; color: var(--texte); text-decoration: none; background: var(--carte); border: 1px solid var(--bord); border-radius: 999px; padding: 6px 14px; font-weight: 600; }
-  .systemes a:hover { border-color: var(--bleu); }
-  .systemes a svg.i { width: 16px; height: 16px; color: var(--bleu); }
+  .partout { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; max-width: 920px; margin: 36px auto 0; }
+  .tuile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 18px 8px 16px; background: var(--carte); border: 1px solid var(--bord); border-radius: 12px; color: var(--texte); text-decoration: none; transition: transform .15s, border-color .15s, box-shadow .15s; }
+  .tuile:hover { transform: translateY(-2px); border-color: var(--c); box-shadow: 0 8px 20px rgba(15, 23, 42, .08); }
+  .tuile .rond { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 8px; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); }
+  .tuile .rond svg.i { width: 26px; height: 26px; }
+  .tuile b { font-size: 15px; }
+  .tuile span { font-size: 12.5px; color: var(--doux); line-height: 1.3; }
+  .tuile.ici { border-color: var(--c); box-shadow: 0 0 0 1px var(--c); }
+  .tuile.ici::after { content: "Ton ordinateur"; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 600; color: #fff; background: var(--c); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+  .t-win { --c: #0078d4; } .t-mac { --c: #6e6e73; } .t-linux { --c: #d98a00; } .t-bsd { --c: #c4161c; } .t-srv { --c: #2d6cdf; } .t-web { --c: #0e9f6e; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .t-mac { --c: #b0b0b8; } :root:not([data-theme="light"]) .t-bsd { --c: #ef5350; } }
+  :root[data-theme="dark"] .t-mac { --c: #b0b0b8; } :root[data-theme="dark"] .t-bsd { --c: #ef5350; }
+  @media (max-width: 860px) { .partout { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
   .capture { margin: 0 auto; border-radius: 10px; overflow: hidden; border: 1px solid var(--bord); box-shadow: 0 12px 32px rgba(15, 23, 42, .12); background: var(--carte); }
   .capture img { display: block; width: 100%; height: auto; }
@@ -130,6 +138,7 @@
     header nav a.option { display: none; }
     .entete { padding-top: 36px; }
     .boutons .bouton { width: 100%; justify-content: center; }
+    .partout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .fichier { grid-template-columns: minmax(0, 1fr); }
     .fichier .bouton { grid-row: auto; justify-content: center; }
   }
@@ -155,6 +164,9 @@
   <symbol id="i-win" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="8"/><rect x="3" y="13" width="8" height="8"/><rect x="13" y="13" width="8" height="8"/></symbol>
   <symbol id="i-pc" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></symbol>
   <symbol id="i-term" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></symbol>
+  <symbol id="i-apple" viewBox="0 0 24 24"><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"/><path d="M10 2c1 .5 2 2 2 5"/></symbol>
+  <symbol id="i-tux" viewBox="0 0 24 24"><path d="M12 2C9.5 2 8 4 8 6.5c0 1.5-.5 2.5-1.5 4S4 14 4 16.5C4 19.5 7.5 22 12 22s8-2.5 8-5.5c0-2.5-1.5-4.5-2.5-6S16 8 16 6.5C16 4 14.5 2 12 2Z"/><path d="M9.5 13.5c0 3 1 4.5 2.5 4.5s2.5-1.5 2.5-4.5"/><path d="m11 8.5 1 1 1-1"/><path d="M10.5 6.2h.01"/><path d="M13.5 6.2h.01"/></symbol>
+  <symbol id="i-bsd" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M6.2 8.6C5 7 4.6 5 5 3c1.6.8 3 1.8 3.9 3.2"/><path d="M17.8 8.6C19 7 19.4 5 19 3c-1.6.8-3 1.8-3.9 3.2"/></symbol>
 </svg>
 
 <header>
@@ -187,16 +199,15 @@
         Ouvrir la version web
       </a>
     </div>
-    <div class="systemes">
-      <span>Toutes les versions :</span>
-      <a href="#os-windows"><svg class="i"><use href="#i-win"/></svg>Windows</a>
-      <a href="#os-mac"><svg class="i"><use href="#i-pc"/></svg>Mac</a>
-      <a href="#os-linux"><svg class="i"><use href="#i-term"/></svg>Linux</a>
-      <a href="#os-freebsd"><svg class="i"><use href="#i-term"/></svg>FreeBSD</a>
-      <a href="#heberger"><svg class="i"><use href="#i-server"/></svg>Serveur web</a>
-      <a href="/web/"><svg class="i"><use href="#i-web"/></svg>Navigateur</a>
-    </div>
-    <p class="note">Version du 23 novembre 2026</p>
+    <p class="note">Version du 23 novembre 2026 · gratuit · sans compte</p>
+    <nav class="partout" aria-label="Toutes les versions">
+      <a class="tuile t-win" data-os="windows" href="#os-windows"><span class="rond"><svg class="i"><use href="#i-win"/></svg></span><b>Windows</b><span>10 et 11</span></a>
+      <a class="tuile t-mac" data-os="mac" href="#os-mac"><span class="rond"><svg class="i"><use href="#i-apple"/></svg></span><b>Mac</b><span>Apple Silicon et Intel</span></a>
+      <a class="tuile t-linux" data-os="linux" href="#os-linux"><span class="rond"><svg class="i"><use href="#i-tux"/></svg></span><b>Linux</b><span>PC et Raspberry Pi</span></a>
+      <a class="tuile t-bsd" data-os="freebsd" href="#os-freebsd"><span class="rond"><svg class="i"><use href="#i-bsd"/></svg></span><b>FreeBSD</b><span>amd64</span></a>
+      <a class="tuile t-srv" href="#heberger"><span class="rond"><svg class="i"><use href="#i-server"/></svg></span><b>Serveur web</b><span>À héberger chez toi</span></a>
+      <a class="tuile t-web" href="/web/"><span class="rond"><svg class="i"><use href="#i-web"/></svg></span><b>Navigateur</b><span>Sans rien installer</span></a>
+    </nav>
   </div>
 
   <div class="large">
@@ -308,7 +319,7 @@
     </div>
 
     <div class="panneau" id="os-mac" data-os="mac">
-      <h3><svg class="i"><use href="#i-pc"/></svg>Plume pour Mac<span class="badge">Ton ordinateur</span></h3>
+      <h3><svg class="i"><use href="#i-apple"/></svg>Plume pour Mac<span class="badge">Ton ordinateur</span></h3>
       <p>Mac Apple Silicon (M1 à M4) et Mac Intel, macOS 10.15 ou plus récent. Ouvre le fichier .dmg et glisse Plume dans Applications.</p>
       <div class="fichiers">
         <div class="fichier"><div><b>Plume.dmg</b><div class="detail">Application universelle, Apple Silicon et Intel · Plume.dmg · 8,8 Mo</div></div><a class="bouton plein" href="/telecharger/Plume.dmg" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : fda9cdd8ffe7498a6791f39431cbcb120fee7cd1d7b10a54055d750aa9522777</div></div>
@@ -317,7 +328,7 @@
     </div>
 
     <div class="panneau" id="os-linux" data-os="linux">
-      <h3><svg class="i"><use href="#i-term"/></svg>Plume pour Linux<span class="badge">Ton ordinateur</span></h3>
+      <h3><svg class="i"><use href="#i-tux"/></svg>Plume pour Linux<span class="badge">Ton ordinateur</span></h3>
       <p>PC (x86_64) et ARM 64 bits, Raspberry Pi compris. Il faut WebKitGTK 4.1, présent sur la plupart des bureaux : Ubuntu 22.04, Debian 12, Mint 21, Fedora 39 ou plus récents.</p>
       <div class="fichiers">
         <div class="fichier"><div><b>Paquet .deb, PC (x86_64)</b><div class="detail">Debian, Ubuntu, Mint, Pop!_OS, Zorin… · plume_2026.11.23.2_amd64.deb · 2,8 Mo</div></div><a class="bouton plein" href="/telecharger/plume_2026.11.23.2_amd64.deb" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : 58941a3a45076adf74252a5144a52aa845a40157232ff6817824f2ce41a20058</div></div>
@@ -330,7 +341,7 @@
     </div>
 
     <div class="panneau" id="os-freebsd" data-os="freebsd">
-      <h3><svg class="i"><use href="#i-term"/></svg>Plume pour FreeBSD<span class="badge">Ton ordinateur</span></h3>
+      <h3><svg class="i"><use href="#i-bsd"/></svg>Plume pour FreeBSD<span class="badge">Ton ordinateur</span></h3>
       <p>FreeBSD 14 (amd64), avec un bureau graphique (X11 ou Wayland).</p>
       <div class="fichiers">
         <div class="fichier"><div><b>Archive .tar.gz, amd64</b><div class="detail">Application FreeBSD · plume-freebsd-amd64.tar.gz · 3,7 Mo</div></div><a class="bouton plein" href="/telecharger/plume-freebsd-amd64.tar.gz" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : 479304f6712ed75254b42bff3b648e32938ac12284dca07d11fc7b0d0c6ddb19</div></div>
@@ -411,6 +422,8 @@ tar xzf plume-freebsd-amd64.tar.gz && ./plume-freebsd-amd64/plume</pre>
     function montrer(os) {
       var p = document.getElementById('os-' + os);
       if (p) p.classList.add('ici');
+      var t = document.querySelector('.tuile[data-os="' + os + '"]');
+      if (t) t.classList.add('ici');
     }
     var ua = navigator.userAgent, os = null;
     if (/Android|iPhone|iPad/i.test(ua)) os = 'mobile';
