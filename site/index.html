@@ -51,20 +51,6 @@
   .creux { background: var(--carte); color: var(--texte); border-color: var(--bord); }
   .creux:hover { border-color: var(--bleu); }
   .note { margin-top: 14px; font-size: 14px; color: var(--doux); }
-  .partout { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; max-width: 920px; margin: 36px auto 0; }
-  .tuile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 18px 8px 16px; background: var(--carte); border: 1px solid var(--bord); border-radius: 12px; color: var(--texte); text-decoration: none; transition: transform .15s, border-color .15s, box-shadow .15s; }
-  .tuile:hover { transform: translateY(-2px); border-color: var(--c); box-shadow: 0 8px 20px rgba(15, 23, 42, .08); }
-  .tuile .rond { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; margin-bottom: 8px; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); }
-  .tuile .rond svg.i { width: 26px; height: 26px; }
-  .tuile b { font-size: 15px; }
-  .tuile span { font-size: 12.5px; color: var(--doux); line-height: 1.3; }
-  .tuile.ici { border-color: var(--c); box-shadow: 0 0 0 1px var(--c); }
-  .tuile.ici::after { content: "Ton ordinateur"; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 600; color: #fff; background: var(--c); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
-  .t-win { --c: #0078d4; } .t-mac { --c: #6e6e73; } .t-linux { --c: #d98a00; } .t-bsd { --c: #c4161c; } .t-srv { --c: #2d6cdf; } .t-web { --c: #0e9f6e; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .t-mac { --c: #b0b0b8; } :root:not([data-theme="light"]) .t-bsd { --c: #ef5350; } }
-  :root[data-theme="dark"] .t-mac { --c: #b0b0b8; } :root[data-theme="dark"] .t-bsd { --c: #ef5350; }
-  @media (max-width: 860px) { .partout { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-
   .capture { margin: 0 auto; border-radius: 10px; overflow: hidden; border: 1px solid var(--bord); box-shadow: 0 12px 32px rgba(15, 23, 42, .12); background: var(--carte); }
   .capture img { display: block; width: 100%; height: auto; }
 
@@ -97,22 +83,41 @@
   .chiffres b { display: block; font-size: 26px; font-weight: 650; color: var(--bleu); }
   .chiffres span { color: var(--doux); font-size: 14px; }
 
-  .versions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 18px; align-items: start; }
-  .panneau { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 24px; scroll-margin-top: 72px; min-width: 0; }
-  .panneau.ici { border-color: var(--bleu); box-shadow: 0 0 0 1px var(--bleu); }
-  .panneau h3 { margin: 0 0 4px; font-size: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .panneau h3 svg.i { color: var(--bleu); width: 22px; height: 22px; }
-  .badge { display: none; font-size: 12px; font-weight: 600; color: #fff; background: var(--bleu); border-radius: 999px; padding: 2px 10px; }
-  .panneau.ici .badge { display: inline-block; }
-  .panneau > p { margin: 0 0 16px; color: var(--doux); }
-  .fichiers { display: grid; gap: 10px; }
-  .fichier { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; border: 1px solid var(--bord); border-radius: 8px; padding: 12px 14px; }
-  .fichier b { font-size: 15px; }
-  .fichier .detail { color: var(--doux); font-size: 13px; }
-  .fichier .bouton { padding: 9px 16px; font-size: 15px; grid-row: span 2; }
-  .empreinte { font: 11px/1.4 Consolas, "Cascadia Mono", monospace; color: var(--doux); word-break: break-all; grid-column: 1 / -1; }
-  .aide { font-size: 14px; color: var(--texte); background: var(--bleu-pale); border-radius: 8px; padding: 12px 14px; margin-top: 14px; }
-  .aide b { font-weight: 600; }
+  .bouton.grand { padding: 14px 26px; font-size: 17px; }
+  .partie { background: var(--carte); border: 1px solid var(--bord); border-radius: 12px; padding: 24px; margin-bottom: 20px; scroll-margin-top: 72px; }
+  .partie-tete { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .partie-ico { flex: none; width: 48px; height: 48px; border-radius: 12px; background: var(--bleu-pale); color: var(--bleu); display: grid; place-items: center; }
+  .partie-ico svg.i { width: 26px; height: 26px; }
+  .partie h3 { margin: 0 0 4px; font-size: 22px; }
+  .partie h3 small { font-size: 15px; font-weight: 500; color: var(--doux); margin-left: 6px; }
+  .partie-tete p { margin: 0; color: var(--doux); max-width: 760px; }
+  .tableau { overflow-x: auto; border: 1px solid var(--bord); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th { text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--doux); background: var(--fond); padding: 10px 14px; border-bottom: 1px solid var(--bord); white-space: nowrap; }
+  td { padding: 11px 14px; border-bottom: 1px solid var(--bord); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover td { background: color-mix(in srgb, var(--bleu) 4%, transparent); }
+  td.systeme { font-weight: 600; }
+  td.fichier-nom { white-space: nowrap; }
+  td.fichier-nom code { font: 13px Consolas, "Cascadia Mono", monospace; }
+  td.taille { color: var(--doux); white-space: nowrap; }
+  td.action { text-align: right; white-space: nowrap; }
+  td .bouton { padding: 7px 14px; font-size: 14px; }
+  tr.ici td { background: var(--bleu-pale); }
+  .ici-badge { display: none; margin-left: 8px; font-size: 11px; font-weight: 600; color: #fff; background: var(--bleu); border-radius: 999px; padding: 1px 8px; vertical-align: 1px; }
+  tr.ici .ici-badge { display: inline-block; }
+  .aide-details { margin-top: 14px; border: 0; padding: 0; background: none; }
+  .aide-details summary { font-size: 15px; color: var(--bleu); padding: 6px 0; }
+  .aide-details dl { margin: 6px 0 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; font-size: 14px; }
+  .aide-details dt { font-weight: 600; }
+  .aide-details dd { margin: 0; color: var(--doux); }
+  .aide-details code, .partie code, .demarrer code { font: 13px Consolas, "Cascadia Mono", monospace; background: var(--code); border: 1px solid var(--bord); border-radius: 4px; padding: 1px 4px; }
+  .empreintes { margin: 8px 0 0; font: 12px/1.6 Consolas, "Cascadia Mono", monospace; color: var(--doux); overflow-x: auto; }
+  .empreintes div { white-space: nowrap; }
+  .empreintes b { color: var(--texte); font-weight: 600; }
+  .demarrer { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; margin-top: 18px; }
+  .demarrer b { font-size: 15px; }
+  .demarrer p { margin: 8px 0 0; font-size: 14px; color: var(--doux); }
   pre { margin: 10px 0 0; background: var(--code); border: 1px solid var(--bord); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font: 13px/1.5 Consolas, "Cascadia Mono", monospace; color: var(--texte); }
 
   .heberger { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
@@ -131,14 +136,15 @@
   footer a { color: var(--doux); }
 
   @media (max-width: 860px) {
-    .appli-bloc, .appli-bloc.inverse, .heberger { grid-template-columns: minmax(0, 1fr); }
+    .appli-bloc, .appli-bloc.inverse, .demarrer { grid-template-columns: minmax(0, 1fr); }
+    .aide-details dl { grid-template-columns: minmax(0, 1fr); }
     .appli-bloc.inverse .texte-bloc { order: 0; }
   }
   @media (max-width: 600px) {
     header nav a.option { display: none; }
     .entete { padding-top: 36px; }
     .boutons .bouton { width: 100%; justify-content: center; }
-    .partout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .partie { padding: 18px 14px; }
     .fichier { grid-template-columns: minmax(0, 1fr); }
     .fichier .bouton { grid-row: auto; justify-content: center; }
   }
@@ -178,7 +184,7 @@
     <nav>
       <a class="option" href="#applis">Fonctions</a>
       <a href="#telecharger">Télécharger</a>
-      <a class="option" href="#heberger">Héberger</a>
+      <a class="option" href="#heberger">Serveur</a>
       <a class="option" href="#questions">Questions</a>
       <a href="/web/">Version web</a>
     </nav>
@@ -190,24 +196,14 @@
     <h1>Texte, tableur et présentations,<br>compatibles Word, Excel et PowerPoint</h1>
     <p class="chapo">Plume ouvre et enregistre les fichiers Office sans rien perdre, avec plus de 10 000 modèles prêts à remplir. Gratuit, sans compte et sans publicité, sur ton ordinateur, dans le navigateur ou sur ton propre serveur.</p>
     <div class="boutons">
-      <a class="bouton plein" id="principal" href="#telecharger">
-        <svg class="i"><use href="#i-dl"/></svg>
-        <span id="principal-texte">Télécharger Plume</span> <small id="principal-taille"></small>
+      <a class="bouton plein grand" href="#telecharger">
+        <svg class="i"><use href="#i-dl"/></svg>Télécharger
       </a>
-      <a class="bouton creux" href="/web/">
-        <svg class="i"><use href="#i-web"/></svg>
-        Ouvrir la version web
+      <a class="bouton creux grand" href="/web/">
+        <svg class="i"><use href="#i-web"/></svg>Ouvrir la version web
       </a>
     </div>
-    <p class="note">Version du 23 novembre 2026 · gratuit · sans compte</p>
-    <nav class="partout" aria-label="Toutes les versions">
-      <a class="tuile t-win" data-os="windows" href="#os-windows"><span class="rond"><svg class="i"><use href="#i-win"/></svg></span><b>Windows</b><span>10 et 11</span></a>
-      <a class="tuile t-mac" data-os="mac" href="#os-mac"><span class="rond"><svg class="i"><use href="#i-apple"/></svg></span><b>Mac</b><span>Apple Silicon et Intel</span></a>
-      <a class="tuile t-linux" data-os="linux" href="#os-linux"><span class="rond"><svg class="i"><use href="#i-tux"/></svg></span><b>Linux</b><span>PC et Raspberry Pi</span></a>
-      <a class="tuile t-bsd" data-os="freebsd" href="#os-freebsd"><span class="rond"><svg class="i"><use href="#i-bsd"/></svg></span><b>FreeBSD</b><span>amd64</span></a>
-      <a class="tuile t-srv" href="#heberger"><span class="rond"><svg class="i"><use href="#i-server"/></svg></span><b>Serveur web</b><span>À héberger chez toi</span></a>
-      <a class="tuile t-web" href="/web/"><span class="rond"><svg class="i"><use href="#i-web"/></svg></span><b>Navigateur</b><span>Sans rien installer</span></a>
-    </nav>
+    <p class="note">Client pour Windows, macOS, Linux et FreeBSD · Serveur pour héberger Plume · Version du 23 novembre 2026</p>
   </div>
 
   <div class="large">
@@ -305,91 +301,85 @@
   </section>
 
   <section id="telecharger" class="large">
-    <h2>Télécharger Plume</h2>
-    <p class="sous">L’application pour ordinateur : une fenêtre à part avec un onglet par document, qui marche sans connexion. Les mêmes applis que la version web. Pour mettre Plume sur un serveur, voir <a href="#heberger">Héberger Plume</a>.</p>
-    <div class="versions">
+    <h2>Télécharger</h2>
+    <p class="sous">Plume existe en deux versions : le <b>client</b>, l’application à installer sur ton ordinateur, et le <b>serveur</b>, pour mettre la version web de Plume en ligne sur ta propre machine.</p>
 
-    <div class="panneau" id="os-windows" data-os="windows">
-      <h3><svg class="i"><use href="#i-win"/></svg>Plume pour Windows<span class="badge">Ton ordinateur</span></h3>
-      <p>Windows 10 et 11 (64 bits). Un seul fichier, rien à installer.</p>
-      <div class="fichiers">
-        <div class="fichier"><div><b>Plume.exe</b><div class="detail">Application Windows · Plume.exe · 8,5 Mo</div></div><a class="bouton plein" href="/telecharger/Plume.exe" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : 6f2ff88b21e31534cc244c329e6c3d0c055be0a5ad10e0281463533f32a46cd8</div></div>
+    <div class="partie">
+      <div class="partie-tete">
+        <span class="partie-ico"><svg class="i"><use href="#i-pc"/></svg></span>
+        <div>
+          <h3>Client <small>Plume pour ordinateur</small></h3>
+          <p>Une fenêtre à part avec un onglet par document. Marche sans connexion, documents enregistrés sur l’ordinateur.</p>
+        </div>
       </div>
-      <p class="aide">Au premier lancement, Windows peut afficher « Windows a protégé votre ordinateur » : clique sur <b>Informations complémentaires</b>, puis <b>Exécuter quand même</b>.</p>
+      <div class="tableau">
+        <table>
+          <thead><tr><th>Système</th><th>Architecture</th><th>Fichier</th><th>Taille</th><th></th></tr></thead>
+          <tbody>
+            <tr data-os="windows"><td class="systeme">Windows 10 et 11<span class="ici-badge">Ton ordinateur</span></td><td>x64 (64 bits)</td><td class="fichier-nom"><code>Plume.exe</code></td><td class="taille">8,5 Mo</td><td class="action"><a class="bouton plein" href="/telecharger/Plume.exe" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a></td></tr>
+            <tr data-os="mac"><td class="systeme">macOS 10.15 ou plus récent<span class="ici-badge">Ton ordinateur</span></td><td>Universel : Apple Silicon et Intel</td><td class="fichier-nom"><code>Plume.dmg</code></td><td class="taille">8,8 Mo</td><td class="action"><a class="bouton plein" href="/telecharger/Plume.dmg" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a></td></tr>
+            <tr data-os="linux"><td class="systeme">Linux : Debian, Ubuntu, Mint<span class="ici-badge">Ton ordinateur</span></td><td>x86_64 (amd64)</td><td class="fichier-nom"><code>plume_2026.11.23.2_amd64.deb</code></td><td class="taille">2,8 Mo</td><td class="action"><a class="bouton plein" href="/telecharger/plume_2026.11.23.2_amd64.deb" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a></td></tr>
+            <tr data-os="linux"><td class="systeme">Linux : Debian, Ubuntu, Raspberry Pi OS<span class="ici-badge">Ton ordinateur</span></td><td>ARM64 (aarch64)</td><td class="fichier-nom"><code>plume_2026.11.23.2_arm64.deb</code></td><td class="taille">2,8 Mo</td><td class="action"><a class="bouton plein" href="/telecharger/plume_2026.11.23.2_arm64.deb" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a></td></tr>
+            <tr data-os="linux"><td class="systeme">Linux : toutes distributions<span class="ici-badge">Ton ordinateur</span></td><td>x86_64 (amd64)</td><td class="fichier-nom"><code>plume-linux-x86_64.tar.gz</code></td><td class="taille">3,7 Mo</td><td class="action"><a class="bouton plein" href="/telecharger/plume-linux-x86_64.tar.gz" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a></td></tr>
+            <tr data-os="linux"><td class="systeme">Linux : toutes distributions<span class="ici-badge">Ton ordinateur</span></td><td>ARM64 (aarch64)</td><td class="fichier-nom"><code>plume-linux-aarch64.tar.gz</code></td><td class="taille">3,7 Mo</td><td class="action"><a class="bouton plein" href="/telecharger/plume-linux-aarch64.tar.gz" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a></td></tr>
+            <tr data-os="freebsd"><td class="systeme">FreeBSD 14<span class="ici-badge">Ton ordinateur</span></td><td>amd64</td><td class="fichier-nom"><code>plume-freebsd-amd64.tar.gz</code></td><td class="taille">3,7 Mo</td><td class="action"><a class="bouton plein" href="/telecharger/plume-freebsd-amd64.tar.gz" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <details class="aide-details">
+        <summary>Premier lancement : Windows, macOS, Linux, FreeBSD</summary>
+        <dl>
+          <dt>Windows</dt><dd>Si Windows affiche « Windows a protégé votre ordinateur » : <b>Informations complémentaires</b>, puis <b>Exécuter quand même</b>.</dd>
+          <dt>macOS</dt><dd>Ouvre Plume.dmg et glisse Plume dans Applications. Si le Mac affiche « Plume ne peut pas être ouvert » : <b>Réglages Système › Confidentialité et sécurité › Ouvrir quand même</b> (macOS 14 et avant : clic droit sur Plume › <b>Ouvrir</b>).</dd>
+          <dt>Linux</dt><dd>Paquet .deb : <code>sudo apt install ./plume_2026.11.23.2_amd64.deb</code>. Archive .tar.gz : décompresse-la et lance <code>./plume</code>. Il faut WebKitGTK 4.1 (Ubuntu 22.04, Debian 12, Fedora 39 ou plus récents) : <code>sudo dnf install webkit2gtk4.1</code> sur Fedora, <code>sudo pacman -S webkit2gtk-4.1</code> sur Arch.</dd>
+          <dt>FreeBSD</dt><dd><code>sudo pkg install webkit2-gtk_41</code>, puis décompresse l’archive et lance <code>./plume</code>.</dd>
+        </dl>
+      </details>
     </div>
 
-    <div class="panneau" id="os-mac" data-os="mac">
-      <h3><svg class="i"><use href="#i-apple"/></svg>Plume pour Mac<span class="badge">Ton ordinateur</span></h3>
-      <p>Mac Apple Silicon (M1 à M4) et Mac Intel, macOS 10.15 ou plus récent. Ouvre le fichier .dmg et glisse Plume dans Applications.</p>
-      <div class="fichiers">
-        <div class="fichier"><div><b>Plume.dmg</b><div class="detail">Application universelle, Apple Silicon et Intel · Plume.dmg · 8,8 Mo</div></div><a class="bouton plein" href="/telecharger/Plume.dmg" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : fda9cdd8ffe7498a6791f39431cbcb120fee7cd1d7b10a54055d750aa9522777</div></div>
+    <div class="partie" id="heberger">
+      <div class="partie-tete">
+        <span class="partie-ico"><svg class="i"><use href="#i-server"/></svg></span>
+        <div>
+          <h3>Serveur <small>Plume Serveur</small></h3>
+          <p>Met la version web de Plume en ligne sur ta machine, pour ta famille, ton association, ton école ou ton entreprise. Coédition en temps réel ; le serveur ne stocke aucun document. Chaque paquet contient le programme <code>plume-serveur</code> et les pages de Plume.</p>
+        </div>
       </div>
-      <p class="aide">Plume n’est pas encore signé par Apple. Au premier lancement, si le Mac affiche « Plume ne peut pas être ouvert » : ouvre <b>Réglages Système › Confidentialité et sécurité</b>, puis <b>Ouvrir quand même</b>. Sur macOS 14 et avant : clic droit sur Plume › <b>Ouvrir</b>.</p>
-    </div>
-
-    <div class="panneau" id="os-linux" data-os="linux">
-      <h3><svg class="i"><use href="#i-tux"/></svg>Plume pour Linux<span class="badge">Ton ordinateur</span></h3>
-      <p>PC (x86_64) et ARM 64 bits, Raspberry Pi compris. Il faut WebKitGTK 4.1, présent sur la plupart des bureaux : Ubuntu 22.04, Debian 12, Mint 21, Fedora 39 ou plus récents.</p>
-      <div class="fichiers">
-        <div class="fichier"><div><b>Paquet .deb, PC (x86_64)</b><div class="detail">Debian, Ubuntu, Mint, Pop!_OS, Zorin… · plume_2026.11.23.2_amd64.deb · 2,8 Mo</div></div><a class="bouton plein" href="/telecharger/plume_2026.11.23.2_amd64.deb" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : 58941a3a45076adf74252a5144a52aa845a40157232ff6817824f2ce41a20058</div></div>
-        <div class="fichier"><div><b>Paquet .deb, ARM 64 bits</b><div class="detail">Raspberry Pi OS 64 bits, Ubuntu ARM… · plume_2026.11.23.2_arm64.deb · 2,8 Mo</div></div><a class="bouton plein" href="/telecharger/plume_2026.11.23.2_arm64.deb" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : f776d735267135bca49b6620856766f6b1c83529d756e354e44e4f20ebaf7338</div></div>
-        <div class="fichier"><div><b>Archive .tar.gz, PC (x86_64)</b><div class="detail">Toutes les distributions : Fedora, Arch, openSUSE… · plume-linux-x86_64.tar.gz · 3,7 Mo</div></div><a class="bouton plein" href="/telecharger/plume-linux-x86_64.tar.gz" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : 187e9d64d5fd8ce46c748ecb0599da4e5e8c416cca72d1c15e7fa114f7f2dd82</div></div>
-        <div class="fichier"><div><b>Archive .tar.gz, ARM 64 bits</b><div class="detail">Toutes les distributions ARM 64 bits · plume-linux-aarch64.tar.gz · 3,7 Mo</div></div><a class="bouton plein" href="/telecharger/plume-linux-aarch64.tar.gz" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : 50568139fc427222ec51a3af08660fd07db1a35a520db5cef5c9aa9b0b026bac</div></div>
+      <div class="tableau">
+        <table>
+          <thead><tr><th>Système</th><th>Architecture</th><th>Fichier</th><th>Taille</th><th></th></tr></thead>
+          <tbody>
+            <tr data-os="srv"><td class="systeme">Linux<span class="ici-badge">Ton ordinateur</span></td><td>x86_64 (amd64)</td><td class="fichier-nom"><code>plume-serveur-linux-x86_64.tar.gz</code></td><td class="taille">3,3 Mo</td><td class="action"><a class="bouton plein" href="/telecharger/plume-serveur-linux-x86_64.tar.gz" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a></td></tr>
+            <tr data-os="srv"><td class="systeme">Linux, dont Raspberry Pi<span class="ici-badge">Ton ordinateur</span></td><td>ARM64 (aarch64)</td><td class="fichier-nom"><code>plume-serveur-linux-aarch64.tar.gz</code></td><td class="taille">3,3 Mo</td><td class="action"><a class="bouton plein" href="/telecharger/plume-serveur-linux-aarch64.tar.gz" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a></td></tr>
+            <tr data-os="srv"><td class="systeme">Windows 10, 11 et Server<span class="ici-badge">Ton ordinateur</span></td><td>x64 (64 bits)</td><td class="fichier-nom"><code>plume-serveur-windows.zip</code></td><td class="taille">3,2 Mo</td><td class="action"><a class="bouton plein" href="/telecharger/plume-serveur-windows.zip" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a></td></tr>
+            <tr data-os="srv"><td class="systeme">macOS 10.15 ou plus récent<span class="ici-badge">Ton ordinateur</span></td><td>Universel : Apple Silicon et Intel</td><td class="fichier-nom"><code>plume-serveur-mac.tar.gz</code></td><td class="taille">3,7 Mo</td><td class="action"><a class="bouton plein" href="/telecharger/plume-serveur-mac.tar.gz" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a></td></tr>
+            <tr data-os="srv"><td class="systeme">FreeBSD 14<span class="ici-badge">Ton ordinateur</span></td><td>amd64</td><td class="fichier-nom"><code>plume-serveur-freebsd-amd64.tar.gz</code></td><td class="taille">3,3 Mo</td><td class="action"><a class="bouton plein" href="/telecharger/plume-serveur-freebsd-amd64.tar.gz" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a></td></tr>
+            <tr data-os="srv"><td class="systeme">Pages web seules, sans coédition (Apache, nginx, Caddy)<span class="ici-badge">Ton ordinateur</span></td><td>Toutes</td><td class="fichier-nom"><code>plume-web.zip</code></td><td class="taille">2,9 Mo</td><td class="action"><a class="bouton plein" href="/telecharger/plume-web.zip" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a></td></tr>
+          </tbody>
+        </table>
       </div>
-      <pre>sudo apt install ./plume_2026.11.23.2_amd64.deb</pre>
-      <p class="aide">Pour l’archive : décompresse-la et lance <b>./plume</b>. Si WebKitGTK manque : <b>sudo dnf install webkit2gtk4.1</b> (Fedora) ou <b>sudo pacman -S webkit2gtk-4.1</b> (Arch).</p>
-    </div>
-
-    <div class="panneau" id="os-freebsd" data-os="freebsd">
-      <h3><svg class="i"><use href="#i-bsd"/></svg>Plume pour FreeBSD<span class="badge">Ton ordinateur</span></h3>
-      <p>FreeBSD 14 (amd64), avec un bureau graphique (X11 ou Wayland).</p>
-      <div class="fichiers">
-        <div class="fichier"><div><b>Archive .tar.gz, amd64</b><div class="detail">Application FreeBSD · plume-freebsd-amd64.tar.gz · 3,7 Mo</div></div><a class="bouton plein" href="/telecharger/plume-freebsd-amd64.tar.gz" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : 479304f6712ed75254b42bff3b648e32938ac12284dca07d11fc7b0d0c6ddb19</div></div>
-      </div>
-      <pre>sudo pkg install webkit2-gtk_41
-tar xzf plume-freebsd-amd64.tar.gz && ./plume-freebsd-amd64/plume</pre>
-    </div>
-    </div>
-  </section>
-
-  <section id="heberger" class="large">
-    <h2>Héberger Plume sur ton serveur</h2>
-    <p class="sous">Mets la version web de Plume en ligne chez toi : pour ta famille, ton association, ton école ou ton entreprise. Les documents restent dans le navigateur de chacun, le serveur ne stocke aucun fichier.</p>
-    <div class="heberger">
-      <div class="boite">
-        <h3><svg class="i"><use href="#i-server"/></svg>Avec plume-serveur</h3>
-        <p>Un petit serveur d’un seul fichier, sans dépendance, qui sert Plume et la coédition en temps réel.</p>
-        <ul class="liste">
-          <li>Plusieurs personnes sur le même document, en direct</li>
-          <li>Moins de 1 Mo, démarre en un instant, tourne sur un Raspberry Pi</li>
-          <li>Pages de Plume incluses dans le paquet</li>
-        </ul>
-        <pre>./plume-serveur 8080 . --reseau</pre>
-        <p style="margin-top:10px">Puis ouvre <b>http://adresse-du-serveur:8080/</b>. Le paquet contient aussi un service systemd et des exemples pour Apache et nginx (HTTPS).</p>
-      </div>
-      <div class="boite">
-        <h3><svg class="i"><use href="#i-files"/></svg>Avec ton serveur web</h3>
-        <p>Plume est fait de pages statiques : Apache, nginx, Caddy ou n’importe quel hébergement de fichiers suffit (sans la coédition).</p>
-        <pre>server {
+      <div class="demarrer">
+        <div>
+          <b>Démarrer</b>
+          <pre>./plume-serveur 8080 . --reseau</pre>
+          <p>Puis ouvre <code>http://adresse-du-serveur:8080/</code>. Sous Windows : <code>plume-serveur.exe 8080 . --reseau</code>.</p>
+        </div>
+        <div>
+          <b>Avec nginx (pages seules)</b>
+          <pre>server {
     server_name plume.exemple.fr;
     root /var/www/plume;
     index index.html;
 }</pre>
-        <p style="margin-top:10px">Décompresse <b>plume-web.zip</b> dans le dossier du site, c’est tout.</p>
+        </div>
       </div>
+      <p class="formats">Le fichier LISEZMOI de chaque paquet explique le service systemd (démarrage avec la machine) et la configuration Apache ou nginx avec HTTPS.</p>
     </div>
-    <div class="panneau" style="margin-top:18px">
-      <h3>Télécharger la version serveur</h3>
-      <p>Chaque paquet contient plume-serveur et les pages de Plume.</p>
-      <div class="fichiers">
-        <div class="fichier"><div><b>Linux, PC (x86_64)</b><div class="detail">plume-serveur + pages + service systemd · plume-serveur-linux-x86_64.tar.gz · 3,3 Mo</div></div><a class="bouton plein" href="/telecharger/plume-serveur-linux-x86_64.tar.gz" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : 9b3e3ee2d7db0204060c8c4f4216ff6bedab36f0ce7f533e7525a07cf283b919</div></div>
-        <div class="fichier"><div><b>Linux, ARM 64 bits (Raspberry Pi)</b><div class="detail">plume-serveur + pages + service systemd · plume-serveur-linux-aarch64.tar.gz · 3,3 Mo</div></div><a class="bouton plein" href="/telecharger/plume-serveur-linux-aarch64.tar.gz" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : c982843e7b354ab02cac854ff4edded50fdd5fb5c1f61f1af67801f0e63d9227</div></div>
-        <div class="fichier"><div><b>Windows</b><div class="detail">plume-serveur.exe + pages · plume-serveur-windows.zip · 3,2 Mo</div></div><a class="bouton plein" href="/telecharger/plume-serveur-windows.zip" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : e6c570eb24d68337df9936dfb8dc59791ef714e40536d48e8a2f3ddd6aa22430</div></div>
-        <div class="fichier"><div><b>Mac</b><div class="detail">Apple Silicon et Intel · plume-serveur-mac.tar.gz · 3,7 Mo</div></div><a class="bouton plein" href="/telecharger/plume-serveur-mac.tar.gz" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : d665e137baca305cf922f23d16a984599168b6735acf20bc82eb2f9bebdf3cbf</div></div>
-        <div class="fichier"><div><b>FreeBSD (amd64)</b><div class="detail">plume-serveur + pages · plume-serveur-freebsd-amd64.tar.gz · 3,3 Mo</div></div><a class="bouton plein" href="/telecharger/plume-serveur-freebsd-amd64.tar.gz" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : c7c7701faacdee5c6af4c3c1de48853c44febaa2aa1c68249e5250b77d3066e3</div></div>
-        <div class="fichier"><div><b>Pages seules</b><div class="detail">Pour Apache, nginx, Caddy… · plume-web.zip · 2,9 Mo</div></div><a class="bouton plein" href="/telecharger/plume-web.zip" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : 22e51a93284c880831459278baf3c454060f1046e75d008c88cc90b8125fc71f</div></div>
-      </div>
-    </div>
+
+    <details class="aide-details">
+      <summary>Empreintes SHA-256 des fichiers</summary>
+      <div class="empreintes"><div><b>Plume.exe</b>  6f2ff88b21e31534cc244c329e6c3d0c055be0a5ad10e0281463533f32a46cd8</div><div><b>Plume.dmg</b>  fda9cdd8ffe7498a6791f39431cbcb120fee7cd1d7b10a54055d750aa9522777</div><div><b>plume_2026.11.23.2_amd64.deb</b>  58941a3a45076adf74252a5144a52aa845a40157232ff6817824f2ce41a20058</div><div><b>plume_2026.11.23.2_arm64.deb</b>  f776d735267135bca49b6620856766f6b1c83529d756e354e44e4f20ebaf7338</div><div><b>plume-linux-x86_64.tar.gz</b>  187e9d64d5fd8ce46c748ecb0599da4e5e8c416cca72d1c15e7fa114f7f2dd82</div><div><b>plume-linux-aarch64.tar.gz</b>  50568139fc427222ec51a3af08660fd07db1a35a520db5cef5c9aa9b0b026bac</div><div><b>plume-freebsd-amd64.tar.gz</b>  479304f6712ed75254b42bff3b648e32938ac12284dca07d11fc7b0d0c6ddb19</div><div><b>plume-serveur-linux-x86_64.tar.gz</b>  9b3e3ee2d7db0204060c8c4f4216ff6bedab36f0ce7f533e7525a07cf283b919</div><div><b>plume-serveur-linux-aarch64.tar.gz</b>  c982843e7b354ab02cac854ff4edded50fdd5fb5c1f61f1af67801f0e63d9227</div><div><b>plume-serveur-windows.zip</b>  e6c570eb24d68337df9936dfb8dc59791ef714e40536d48e8a2f3ddd6aa22430</div><div><b>plume-serveur-mac.tar.gz</b>  d665e137baca305cf922f23d16a984599168b6735acf20bc82eb2f9bebdf3cbf</div><div><b>plume-serveur-freebsd-amd64.tar.gz</b>  c7c7701faacdee5c6af4c3c1de48853c44febaa2aa1c68249e5250b77d3066e3</div><div><b>plume-web.zip</b>  22e51a93284c880831459278baf3c454060f1046e75d008c88cc90b8125fc71f</div></div>
+    </details>
   </section>
 
   <section id="questions" class="large">
@@ -400,7 +390,7 @@ tar xzf plume-freebsd-amd64.tar.gz && ./plume-freebsd-amd64/plume</pre>
     <details><summary>Où sont enregistrés mes documents ?</summary><p>Sur ton appareil. L’application les garde dans son dossier (sous Windows : %LOCALAPPDATA%\Plume) et enregistre les fichiers exportés (.docx, .pdf…) dans Documents/Plume, sans jamais écraser un fichier existant. La version web les garde dans le navigateur.</p></details>
     <details><summary>Mes fichiers Word, Excel et PowerPoint restent-ils intacts ?</summary><p>Oui : Plume garde la mise en forme, les styles, les commentaires, les révisions, les graphiques et les propriétés des fichiers Office. Un fichier ouvert et enregistré dans Plume se rouvre à l’identique dans Office.</p></details>
     <details><summary>Quelle différence entre l’application et la version web ?</summary><p>Les applis sont les mêmes. L’application s’ouvre dans sa propre fenêtre avec un onglet par document, marche sans connexion et range les fichiers exportés dans Documents/Plume. La version web ne demande rien à installer et marche aussi sur tablette.</p></details>
-    <details><summary>Pourquoi Windows ou le Mac affichent-ils un avertissement ?</summary><p>Plume n’est pas encore signé par Microsoft ni par Apple, qui demandent un certificat payant. Le programme est le même que celui publié ici : tu peux vérifier son empreinte SHA-256, affichée sous chaque fichier.</p></details>
+    <details><summary>Pourquoi Windows ou le Mac affichent-ils un avertissement ?</summary><p>Plume n’est pas encore signé par Microsoft ni par Apple, qui demandent un certificat payant. Le programme est le même que celui publié ici : tu peux vérifier son empreinte SHA-256, listée sous les tableaux de téléchargement.</p></details>
     <details><summary>Comment désinstaller Plume ?</summary><p>Windows : supprime Plume.exe (et le dossier %LOCALAPPDATA%\Plume pour effacer les documents). Mac : mets Plume dans la corbeille. Linux : <b>sudo apt remove plume</b>, ou supprime le dossier de l’archive.</p></details>
     <details><summary>Qu’est-ce que VEX ?</summary><p><a href="https://vexs.me">VEX</a> est un espace de stockage de fichiers chiffrés, avec mail et messagerie. Plume en est l’éditeur de documents.</p></details>
   </section>
@@ -417,26 +407,15 @@ tar xzf plume-freebsd-amd64.tar.gz && ./plume-freebsd-amd64/plume</pre>
 </footer>
 
 <script>
-  // Onglets de téléchargement et bouton principal selon le système de l'ordinateur
+  // Met en avant, dans la partie Client, les fichiers du système de l'ordinateur
   (function () {
-    function montrer(os) {
-      var p = document.getElementById('os-' + os);
-      if (p) p.classList.add('ici');
-      var t = document.querySelector('.tuile[data-os="' + os + '"]');
-      if (t) t.classList.add('ici');
-    }
     var ua = navigator.userAgent, os = null;
-    if (/Android|iPhone|iPad/i.test(ua)) os = 'mobile';
+    if (/Android|iPhone|iPad/i.test(ua)) os = null;
     else if (/Windows/i.test(ua)) os = 'windows';
     else if (/Macintosh|Mac OS X/i.test(ua)) os = 'mac';
     else if (/FreeBSD/i.test(ua)) os = 'freebsd';
     else if (/Linux|X11/i.test(ua)) os = 'linux';
-    var p = document.getElementById('principal'), t = document.getElementById('principal-texte'), s = document.getElementById('principal-taille');
-    var direct = { windows: ['/telecharger/Plume.exe', 'Télécharger pour Windows', '8,5 Mo'], mac: ['/telecharger/Plume.dmg', 'Télécharger pour Mac', '8,8 Mo'] };
-    if (os === 'mobile') { p.href = '/web/'; t.textContent = 'Ouvrir Plume'; }
-    else if (os === 'linux' || os === 'freebsd') { p.href = '#os-' + os; }
-    else if (direct[os]) { p.href = direct[os][0]; p.setAttribute('download', ''); t.textContent = direct[os][1]; s.textContent = direct[os][2]; montrer(os); }
-    if (os === 'linux' || os === 'freebsd') { t.textContent = os === 'linux' ? 'Télécharger pour Linux' : 'Télécharger pour FreeBSD'; montrer(os); }
+    if (os) document.querySelectorAll('tr[data-os="' + os + '"]').forEach(function (t) { t.classList.add('ici'); });
   })();
 </script>
 </body>
