@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plume : texte, tableur et présentations</title>
+<meta name="description" content="Plume : traitement de texte, tableur et présentations compatibles Word, Excel et PowerPoint. Gratuit, sans compte, pour Windows, Mac, Linux, FreeBSD, dans le navigateur ou sur ton propre serveur.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Cpath%20fill%3D%22%232d6cdf%22%20d%3D%22M2.5%202%2030.7%202%2047.6%2024.6%2061.5%2062%2025%2047%202.5%2030z%22%2F%3E%3Cpath%20fill%3D%22%234a86ec%22%20d%3D%22M2.5%202%2019.4%2018.8%202.5%2030zM30.7%202%2047.6%2024.6%2039.2%2038.5%2019.4%2018.8z%22%2F%3E%3Cpath%20fill%3D%22%231f4fa8%22%20d%3D%22M2.5%202%2030.7%202%2019.4%2018.8zM25%2047%2039.2%2038.5%2061.5%2062z%22%2F%3E%3C%2Fsvg%3E">
+<style>
+  :root {
+    --fond: #f4f5f7; --carte: #ffffff; --texte: #1f2328; --doux: #5f6670; --bord: #e1e4e8;
+    --bleu: #2d6cdf; --bleu-fonce: #1f4fa8; --bleu-pale: #e8f0fd; --code: #f0f2f5;
+    --doc: #2f5aa8; --calc: #1e7145; --pres: #c43e1c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --fond: #16181c; --carte: #202328; --texte: #eceef1; --doux: #a0a7b1; --bord: #33373d;
+      --bleu: #5b8ef0; --bleu-fonce: #8fb2f5; --bleu-pale: #1d2a42; --code: #181a1e;
+      --doc: #6f95d8; --calc: #4fae7c; --pres: #e2714f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --fond: #16181c; --carte: #202328; --texte: #eceef1; --doux: #a0a7b1; --bord: #33373d;
+    --bleu: #5b8ef0; --bleu-fonce: #8fb2f5; --bleu-pale: #1d2a42; --code: #181a1e;
+    --doc: #6f95d8; --calc: #4fae7c; --pres: #e2714f;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body { margin: 0; background: var(--fond); color: var(--texte); font: 16px/1.55 "Segoe UI", system-ui, -apple-system, Ubuntu, Roboto, Arial, sans-serif; }
+  a { color: var(--bleu); }
+  .large { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+  svg.i { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  header { border-bottom: 1px solid var(--bord); background: var(--carte); position: sticky; top: 0; z-index: 5; }
+  header .large { display: flex; align-items: center; gap: 16px; height: 56px; }
+  .marque { display: flex; align-items: center; gap: 9px; font-weight: 600; font-size: 18px; color: var(--texte); text-decoration: none; }
+  .marque svg { width: 24px; height: 24px; }
+  header nav { margin-left: auto; display: flex; gap: 18px; font-size: 14px; }
+  header nav a { color: var(--doux); text-decoration: none; white-space: nowrap; }
+  header nav a:hover { color: var(--texte); }
+
+  .entete { padding: 60px 16px 36px; text-align: center; }
+  h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.12; font-weight: 650; margin: 0 0 14px; letter-spacing: -0.01em; }
+  .chapo { font-size: 18px; color: var(--doux); max-width: 680px; margin: 0 auto 28px; }
+  .boutons { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .bouton { display: inline-flex; align-items: center; gap: 10px; padding: 12px 20px; border-radius: 8px; font-weight: 600; font-size: 16px; text-decoration: none; border: 1px solid transparent; cursor: pointer; }
+  .bouton small { font-weight: 400; opacity: .8; font-size: 13px; }
+  .plein { background: var(--bleu); color: #fff; }
+  .plein:hover { background: var(--bleu-fonce); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .plein:hover { background: #3f79e6; } }
+  .creux { background: var(--carte); color: var(--texte); border-color: var(--bord); }
+  .creux:hover { border-color: var(--bleu); }
+  .note { margin-top: 14px; font-size: 14px; color: var(--doux); }
+  .systemes { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; margin-top: 10px; font-size: 14px; }
+  .systemes a { color: var(--doux); text-decoration: none; border-bottom: 1px dotted var(--doux); }
+  .systemes a:hover { color: var(--texte); }
+
+  .capture { margin: 0 auto; border-radius: 10px; overflow: hidden; border: 1px solid var(--bord); box-shadow: 0 12px 32px rgba(15, 23, 42, .12); background: var(--carte); }
+  .capture img { display: block; width: 100%; height: auto; }
+
+  section.large { padding: 72px 16px 8px; scroll-margin-top: 56px; }
+  h2 { font-size: 28px; font-weight: 650; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .sous { color: var(--doux); margin: 0 0 26px; max-width: 760px; }
+
+  .atouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .atout { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 20px; }
+  .atout svg.i { width: 24px; height: 24px; color: var(--bleu); }
+  .atout h3 { margin: 10px 0 4px; font-size: 17px; }
+  .atout p { margin: 0; color: var(--doux); font-size: 15px; }
+
+  .appli-bloc { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; align-items: center; margin-top: 44px; }
+  .appli-bloc.inverse { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+  .appli-bloc.inverse .texte-bloc { order: 2; }
+  .pastille { display: inline-flex; align-items: center; gap: 8px; font-weight: 650; color: var(--teinte); font-size: 15px; }
+  .pastille span { width: 30px; height: 30px; border-radius: 8px; background: var(--teinte); display: grid; place-items: center; }
+  .pastille svg.i { width: 18px; height: 18px; color: #fff; }
+  .texte-bloc h3 { font-size: 24px; margin: 10px 0 8px; line-height: 1.2; }
+  .texte-bloc > p { color: var(--doux); margin: 0 0 14px; }
+  .liste { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 7px; }
+  .liste li { display: flex; gap: 9px; align-items: flex-start; font-size: 15px; }
+  .liste li::before { content: ""; flex: none; width: 16px; height: 16px; margin-top: 3px; border-radius: 50%; background: var(--teinte, var(--bleu)) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 10px no-repeat; }
+  .formats { font-size: 13px; color: var(--doux); }
+  .formats code { font: 12px Consolas, "Cascadia Mono", monospace; background: var(--code); border: 1px solid var(--bord); border-radius: 4px; padding: 1px 4px; }
+
+  .chiffres { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px; margin-top: 18px; }
+  .chiffres div { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 16px 18px; }
+  .chiffres b { display: block; font-size: 26px; font-weight: 650; color: var(--bleu); }
+  .chiffres span { color: var(--doux); font-size: 14px; }
+
+  .onglets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .onglet { font: inherit; font-size: 15px; font-weight: 600; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--bord); background: var(--carte); color: var(--texte); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+  .onglet[aria-selected="true"] { background: var(--bleu); border-color: var(--bleu); color: #fff; }
+  .panneau { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 24px; }
+  .panneau[hidden] { display: none; }
+  .panneau h3 { margin: 0 0 4px; font-size: 20px; }
+  .panneau > p { margin: 0 0 16px; color: var(--doux); }
+  .fichiers { display: grid; gap: 10px; }
+  .fichier { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; border: 1px solid var(--bord); border-radius: 8px; padding: 12px 14px; }
+  .fichier b { font-size: 15px; }
+  .fichier .detail { color: var(--doux); font-size: 13px; }
+  .fichier .bouton { padding: 9px 16px; font-size: 15px; grid-row: span 2; }
+  .empreinte { font: 11px/1.4 Consolas, "Cascadia Mono", monospace; color: var(--doux); word-break: break-all; grid-column: 1 / -1; }
+  .aide { font-size: 14px; color: var(--texte); background: var(--bleu-pale); border-radius: 8px; padding: 12px 14px; margin-top: 14px; }
+  .aide b { font-weight: 600; }
+  pre { margin: 10px 0 0; background: var(--code); border: 1px solid var(--bord); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font: 13px/1.5 Consolas, "Cascadia Mono", monospace; color: var(--texte); }
+
+  .heberger { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+  .boite { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 22px; min-width: 0; }
+  .boite h3 { margin: 0 0 8px; font-size: 18px; display: flex; align-items: center; gap: 9px; }
+  .boite h3 svg.i { color: var(--bleu); }
+  .boite p { margin: 0 0 8px; color: var(--doux); font-size: 15px; }
+  .boite .liste { margin-bottom: 0; }
+
+  details { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 0 18px; margin-bottom: 10px; }
+  summary { cursor: pointer; font-weight: 600; padding: 14px 0; list-style-position: outside; }
+  details p { margin: 0 0 14px; color: var(--doux); }
+
+  footer { margin-top: 72px; border-top: 1px solid var(--bord); padding: 24px 0 40px; color: var(--doux); font-size: 14px; background: var(--carte); }
+  footer .large { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+  footer a { color: var(--doux); }
+
+  @media (max-width: 860px) {
+    .appli-bloc, .appli-bloc.inverse, .heberger { grid-template-columns: minmax(0, 1fr); }
+    .appli-bloc.inverse .texte-bloc { order: 0; }
+  }
+  @media (max-width: 600px) {
+    header nav a.option { display: none; }
+    .entete { padding-top: 36px; }
+    .boutons .bouton { width: 100%; justify-content: center; }
+    .fichier { grid-template-columns: minmax(0, 1fr); }
+    .fichier .bouton { grid-row: auto; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="m7 10 5 5 5-5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></symbol>
+  <symbol id="i-web" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
+  <symbol id="i-calc" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></symbol>
+  <symbol id="i-pres" viewBox="0 0 24 24"><path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-off" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M8.5 16.4a5 5 0 0 1 7 0"/><path d="M2 8.8a15 15 0 0 1 4.2-2.6"/><path d="M5 12.9a10 10 0 0 1 5.2-2.7"/><path d="M22 8.8a15 15 0 0 0-11.3-3.8"/><path d="M19 12.9a10 10 0 0 0-2.4-1.6"/><path d="m2 2 20 20"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/></symbol>
+  <symbol id="i-bot" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01"/><path d="M6 18h.01"/></symbol>
+  <symbol id="i-files" viewBox="0 0 24 24"><path d="M20 7h-3a2 2 0 0 1-2-2V2"/><path d="M9 18a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2Z"/><path d="M3 7.6v12.8A1.6 1.6 0 0 0 4.6 22h9.8"/></symbol>
+  <symbol id="i-win" viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="8"/><rect x="3" y="13" width="8" height="8"/><rect x="13" y="13" width="8" height="8"/></symbol>
+  <symbol id="i-pc" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></symbol>
+  <symbol id="i-term" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></symbol>
+</svg>
+
+<header>
+  <div class="large">
+    <a class="marque" href="/">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><path fill="#2d6cdf" d="M2.5 2 30.7 2 47.6 24.6 61.5 62 25 47 2.5 30z"/><path fill="#4a86ec" d="M2.5 2 19.4 18.8 2.5 30zM30.7 2 47.6 24.6 39.2 38.5 19.4 18.8z"/><path fill="#1f4fa8" d="M2.5 2 30.7 2 19.4 18.8zM25 47 39.2 38.5 61.5 62z"/></svg>
+      Plume
+    </a>
+    <nav>
+      <a class="option" href="#applis">Fonctions</a>
+      <a href="#telecharger">Télécharger</a>
+      <a class="option" href="#heberger">Héberger</a>
+      <a class="option" href="#questions">Questions</a>
+      <a href="/web/">Version web</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="entete large">
+    <h1>Texte, tableur et présentations,<br>compatibles Word, Excel et PowerPoint</h1>
+    <p class="chapo">Plume ouvre et enregistre les fichiers Office sans rien perdre, avec plus de 10 000 modèles prêts à remplir. Gratuit, sans compte et sans publicité, sur ton ordinateur, dans le navigateur ou sur ton propre serveur.</p>
+    <div class="boutons">
+      <a class="bouton plein" id="principal" href="#telecharger">
+        <svg class="i"><use href="#i-dl"/></svg>
+        <span id="principal-texte">Télécharger Plume</span> <small id="principal-taille"></small>
+      </a>
+      <a class="bouton creux" href="/web/">
+        <svg class="i"><use href="#i-web"/></svg>
+        Ouvrir la version web
+      </a>
+    </div>
+    <div class="systemes">
+      <a href="#telecharger" data-os="windows">Windows</a>
+      <a href="#telecharger" data-os="mac">Mac</a>
+      <a href="#telecharger" data-os="linux">Linux</a>
+      <a href="#telecharger" data-os="freebsd">FreeBSD</a>
+      <a href="#heberger">Serveur web</a>
+    </div>
+    <p class="note">Version du {{date}}</p>
+  </div>
+
+  <div class="large">
+    <div class="capture"><img src="img/concepteur.png" width="1440" height="900" alt="Plume Présentation : le Concepteur propose 180 designs pour la diapositive « L’année en chiffres »"></div>
+  </div>
+
+  <section class="large">
+    <h2>Pourquoi Plume</h2>
+    <p class="sous">Une suite bureautique complète, qui respecte tes fichiers et ta vie privée.</p>
+    <div class="atouts">
+      <div class="atout"><svg class="i"><use href="#i-swap"/></svg><h3>Vraiment compatible Office</h3><p>Un .docx, un .xlsx ou un .pptx ouvert puis enregistré dans Plume s’ouvre à l’identique dans Word, Excel et PowerPoint.</p></div>
+      <div class="atout"><svg class="i"><use href="#i-grid"/></svg><h3>Plus de 10 000 modèles</h3><p>CV, lettres, rapports, budgets, factures, plannings, pitchs, exposés : tout est prêt, il ne reste qu’à remplir.</p></div>
+      <div class="atout"><svg class="i"><use href="#i-lock"/></svg><h3>Tes fichiers restent chez toi</h3><p>Les documents sont enregistrés sur ton appareil. Pas de compte, pas de cloud imposé, pas de publicité.</p></div>
+      <div class="atout"><svg class="i"><use href="#i-off"/></svg><h3>Sans connexion</h3><p>L’application pour ordinateur marche entièrement hors ligne : tout est dans le programme.</p></div>
+      <div class="atout"><svg class="i"><use href="#i-users"/></svg><h3>Coédition en temps réel</h3><p>Héberge Plume sur ton serveur et modifiez à plusieurs le même document, en direct.</p></div>
+      <div class="atout"><svg class="i"><use href="#i-bot"/></svg><h3>Assistant IA, si tu veux</h3><p>Un serveur MCP facultatif permet à Claude ou à un autre assistant de lire et rédiger tes documents.</p></div>
+      <div class="atout"><svg class="i"><use href="#i-moon"/></svg><h3>À ton goût</h3><p>Mode clair, sombre ou comme le système, et la couleur de chaque appli au choix.</p></div>
+      <div class="atout"><svg class="i"><use href="#i-gift"/></svg><h3>Gratuit et libre</h3><p>Plume est gratuit, sous licence MIT, et son code est public.</p></div>
+    </div>
+  </section>
+
+  <section id="applis" class="large">
+    <h2>Trois applis, une seule Plume</h2>
+    <p class="sous">Les mêmes outils que dans Word, Excel et PowerPoint, aux mêmes endroits : rubans, raccourcis clavier, volets.</p>
+
+    <div class="appli-bloc" style="--teinte: var(--doc)">
+      <div class="texte-bloc">
+        <div class="pastille"><span><svg class="i"><use href="#i-doc"/></svg></span>Plume Texte</div>
+        <h3>Lettres, CV, rapports, mémoires</h3>
+        <p>Un traitement de texte complet, de la lettre d’une page au mémoire de cent pages.</p>
+        <ul class="liste">
+          <li>Styles, titres, table des matières et notes de bas de page automatiques</li>
+          <li>En-têtes et pieds de page, sections, colonnes, mise en page précise</li>
+          <li>Suivi des modifications et commentaires, comme dans Word</li>
+          <li>Équations tapées dans le texte ou écrites à la main</li>
+          <li>Tableaux, images, formes, SmartArt, dessin à l’encre</li>
+          <li>Publipostage, vérification de l’orthographe, dictée</li>
+        </ul>
+        <p class="formats">Ouvre <code>.docx</code> <code>.dotx</code> <code>.docm</code> <code>.rtf</code> <code>.html</code> <code>.md</code> <code>.txt</code> · enregistre aussi en <code>.pdf</code></p>
+        <a href="/web/texte.html">Essayer Plume Texte en ligne →</a>
+      </div>
+      <div class="capture"><img src="img/texte.png" width="1440" height="900" loading="lazy" alt="Plume Texte : un CV moderne ouvert dans le traitement de texte"></div>
+    </div>
+
+    <div class="appli-bloc inverse" style="--teinte: var(--calc)">
+      <div class="texte-bloc">
+        <div class="pastille"><span><svg class="i"><use href="#i-calc"/></svg></span>Plume Tableur</div>
+        <h3>Budgets, plannings, factures, analyses</h3>
+        <p>Un vrai tableur, avec les formules en français et les fonctions d’Excel.</p>
+        <ul class="liste">
+          <li>Formules en français, dont RECHERCHEX et les formules matricielles dynamiques</li>
+          <li>Graphiques, graphiques sparkline et tableaux croisés dynamiques</li>
+          <li>Mise en forme conditionnelle, barres de données, jeux d’icônes</li>
+          <li>Filtres, tris, validation des données, valeur cible</li>
+          <li>Plan (lignes et colonnes groupées), commentaires, feuilles protégées</li>
+          <li>Plusieurs feuilles, figer les volets, mise en page pour l’impression</li>
+        </ul>
+        <p class="formats">Ouvre <code>.xlsx</code> <code>.xlsm</code> <code>.xltx</code> <code>.csv</code> <code>.tsv</code> · enregistre aussi en <code>.pdf</code> <code>.html</code> <code>.json</code></p>
+        <a href="/web/tableur.html">Essayer Plume Tableur en ligne →</a>
+      </div>
+      <div class="capture"><img src="img/tableur.png" width="1440" height="900" loading="lazy" alt="Plume Tableur : un budget mensuel avec son graphique prévu / réel"></div>
+    </div>
+
+    <div class="appli-bloc" style="--teinte: var(--pres)">
+      <div class="texte-bloc">
+        <div class="pastille"><span><svg class="i"><use href="#i-pres"/></svg></span>Plume Présentation</div>
+        <h3>Exposés, pitchs, rapports, événements</h3>
+        <p>Des présentations soignées en quelques minutes, du modèle au diaporama.</p>
+        <ul class="liste">
+          <li>Concepteur : 180 designs à appliquer en un clic, à une diapositive ou à toutes</li>
+          <li>Présentations complètes prêtes à remplir : rapport annuel, pitch, exposé, mariage…</li>
+          <li>Transitions et animations, mode Présentateur avec notes et minuteur</li>
+          <li>Vrais graphiques PowerPoint, tableaux, SmartArt, formes, images</li>
+          <li>Masques et dispositions, thèmes et couleurs du thème</li>
+          <li>Export en PDF, en images ou en page web</li>
+        </ul>
+        <p class="formats">Ouvre <code>.pptx</code> <code>.ppsx</code> <code>.potx</code> <code>.md</code> · enregistre aussi en <code>.pdf</code> <code>.png</code> <code>.jpg</code> <code>.html</code></p>
+        <a href="/web/presentation.html">Essayer Plume Présentation en ligne →</a>
+      </div>
+      <div class="capture"><img src="img/presentation.png" width="1440" height="900" loading="lazy" alt="Plume Présentation : un rapport annuel de 8 diapositives créé à partir d’un modèle"></div>
+    </div>
+
+    <div class="chiffres">
+      <div><b>10 339</b><span>modèles de documents, classeurs et présentations</span></div>
+      <div><b>2 296</b><span>thèmes décorés dans chaque appli</span></div>
+      <div><b>180</b><span>designs dans le Concepteur</span></div>
+      <div><b>28</b><span>polices intégrées, sans connexion</span></div>
+    </div>
+  </section>
+
+  <section class="large">
+    <h2>Des modèles pour tout</h2>
+    <p class="sous">L’accueil de Plume range les modèles par thème et par couleur, comme une galerie. Survole une présentation pour voir défiler ses diapositives.</p>
+    <div class="capture"><img src="img/modeles.png" width="1440" height="900" loading="lazy" alt="La galerie des modèles de Plume : présentations classées par catégorie et par couleur"></div>
+  </section>
+
+  <section id="telecharger" class="large">
+    <h2>Télécharger Plume</h2>
+    <p class="sous">L’application pour ordinateur : une fenêtre à part avec un onglet par document, qui marche sans connexion. Les mêmes applis que la version web.</p>
+    <div class="onglets" role="tablist">
+      <button class="onglet" role="tab" aria-selected="true" data-os="windows"><svg class="i"><use href="#i-win"/></svg>Windows</button>
+      <button class="onglet" role="tab" aria-selected="false" data-os="mac"><svg class="i"><use href="#i-pc"/></svg>Mac</button>
+      <button class="onglet" role="tab" aria-selected="false" data-os="linux"><svg class="i"><use href="#i-term"/></svg>Linux</button>
+      <button class="onglet" role="tab" aria-selected="false" data-os="freebsd"><svg class="i"><use href="#i-term"/></svg>FreeBSD</button>
+    </div>
+
+    <div class="panneau" data-os="windows">
+      <h3>Plume pour Windows</h3>
+      <p>Windows 10 et 11 (64 bits). Un seul fichier, rien à installer.</p>
+      <div class="fichiers">
+        {{fichier:Plume.exe|Plume.exe|Application Windows}}
+      </div>
+      <p class="aide">Au premier lancement, Windows peut afficher « Windows a protégé votre ordinateur » : clique sur <b>Informations complémentaires</b>, puis <b>Exécuter quand même</b>.</p>
+    </div>
+
+    <div class="panneau" data-os="mac" hidden>
+      <h3>Plume pour Mac</h3>
+      <p>Mac Apple Silicon (M1 à M4) et Mac Intel, macOS 10.15 ou plus récent. Ouvre le fichier .dmg et glisse Plume dans Applications.</p>
+      <div class="fichiers">
+        {{fichier:Plume.dmg|Plume.dmg|Application universelle, Apple Silicon et Intel}}
+      </div>
+      <p class="aide">Plume n’est pas encore signé par Apple. Au premier lancement, si le Mac affiche « Plume ne peut pas être ouvert » : ouvre <b>Réglages Système › Confidentialité et sécurité</b>, puis <b>Ouvrir quand même</b>. Sur macOS 14 et avant : clic droit sur Plume › <b>Ouvrir</b>.</p>
+    </div>
+
+    <div class="panneau" data-os="linux" hidden>
+      <h3>Plume pour Linux</h3>
+      <p>PC (x86_64) et ARM 64 bits, Raspberry Pi compris. Il faut WebKitGTK 4.1, présent sur la plupart des bureaux : Ubuntu 22.04, Debian 12, Mint 21, Fedora 39 ou plus récents.</p>
+      <div class="fichiers">
+        {{fichier:plume_{{version}}_amd64.deb|Paquet .deb, PC (x86_64)|Debian, Ubuntu, Mint, Pop!_OS, Zorin…}}
+        {{fichier:plume_{{version}}_arm64.deb|Paquet .deb, ARM 64 bits|Raspberry Pi OS 64 bits, Ubuntu ARM…}}
+        {{fichier:plume-linux-x86_64.tar.gz|Archive .tar.gz, PC (x86_64)|Toutes les distributions : Fedora, Arch, openSUSE…}}
+        {{fichier:plume-linux-aarch64.tar.gz|Archive .tar.gz, ARM 64 bits|Toutes les distributions ARM 64 bits}}
+      </div>
+      <pre>sudo apt install ./plume_{{version}}_amd64.deb</pre>
+      <p class="aide">Pour l’archive : décompresse-la et lance <b>./plume</b>. Si WebKitGTK manque : <b>sudo dnf install webkit2gtk4.1</b> (Fedora) ou <b>sudo pacman -S webkit2gtk-4.1</b> (Arch).</p>
+    </div>
+
+    <div class="panneau" data-os="freebsd" hidden>
+      <h3>Plume pour FreeBSD</h3>
+      <p>FreeBSD 14 (amd64), avec un bureau graphique (X11 ou Wayland).</p>
+      <div class="fichiers">
+        {{fichier:plume-freebsd-amd64.tar.gz|Archive .tar.gz, amd64|Application FreeBSD}}
+      </div>
+      <pre>sudo pkg install webkit2-gtk_41
+tar xzf plume-freebsd-amd64.tar.gz && ./plume-freebsd-amd64/plume</pre>
+    </div>
+  </section>
+
+  <section id="heberger" class="large">
+    <h2>Héberger Plume sur ton serveur</h2>
+    <p class="sous">Mets la version web de Plume en ligne chez toi : pour ta famille, ton association, ton école ou ton entreprise. Les documents restent dans le navigateur de chacun, le serveur ne stocke aucun fichier.</p>
+    <div class="heberger">
+      <div class="boite">
+        <h3><svg class="i"><use href="#i-server"/></svg>Avec plume-serveur</h3>
+        <p>Un petit serveur d’un seul fichier, sans dépendance, qui sert Plume et la coédition en temps réel.</p>
+        <ul class="liste">
+          <li>Plusieurs personnes sur le même document, en direct</li>
+          <li>Moins de 1 Mo, démarre en un instant, tourne sur un Raspberry Pi</li>
+          <li>Pages de Plume incluses dans le paquet</li>
+        </ul>
+        <pre>./plume-serveur 8080 . --reseau</pre>
+        <p style="margin-top:10px">Puis ouvre <b>http://adresse-du-serveur:8080/</b>. Le paquet contient aussi un service systemd et des exemples pour Apache et nginx (HTTPS).</p>
+      </div>
+      <div class="boite">
+        <h3><svg class="i"><use href="#i-files"/></svg>Avec ton serveur web</h3>
+        <p>Plume est fait de pages statiques : Apache, nginx, Caddy ou n’importe quel hébergement de fichiers suffit (sans la coédition).</p>
+        <pre>server {
+    server_name plume.exemple.fr;
+    root /var/www/plume;
+    index index.html;
+}</pre>
+        <p style="margin-top:10px">Décompresse <b>plume-web.zip</b> dans le dossier du site, c’est tout.</p>
+      </div>
+    </div>
+    <div class="panneau" style="margin-top:18px">
+      <h3>Télécharger la version serveur</h3>
+      <p>Chaque paquet contient plume-serveur et les pages de Plume.</p>
+      <div class="fichiers">
+        {{fichier:plume-serveur-linux-x86_64.tar.gz|Linux, PC (x86_64)|plume-serveur + pages + service systemd}}
+        {{fichier:plume-serveur-linux-aarch64.tar.gz|Linux, ARM 64 bits (Raspberry Pi)|plume-serveur + pages + service systemd}}
+        {{fichier:plume-serveur-windows.zip|Windows|plume-serveur.exe + pages}}
+        {{fichier:plume-serveur-mac.tar.gz|Mac|Apple Silicon et Intel}}
+        {{fichier:plume-serveur-freebsd-amd64.tar.gz|FreeBSD (amd64)|plume-serveur + pages}}
+        {{fichier:plume-web.zip|Pages seules|Pour Apache, nginx, Caddy…}}
+      </div>
+    </div>
+  </section>
+
+  <section id="questions" class="large">
+    <h2>Questions fréquentes</h2>
+    <p class="sous">Et si ta question n’y est pas, ouvre la version web : c’est le plus rapide pour essayer.</p>
+    <details><summary>Plume est-il vraiment gratuit ?</summary><p>Oui : pas d’abonnement, pas de publicité, pas de version payante. Plume est sous licence MIT.</p></details>
+    <details><summary>Faut-il créer un compte ?</summary><p>Non. Plume marche sans compte, dans l’application comme dans le navigateur. Un compte <a href="https://vexs.me">VEX</a> sert seulement à modifier les fichiers rangés dans VEX.</p></details>
+    <details><summary>Où sont enregistrés mes documents ?</summary><p>Sur ton appareil. L’application les garde dans son dossier (sous Windows : %LOCALAPPDATA%\Plume) et enregistre les fichiers exportés (.docx, .pdf…) dans Documents/Plume, sans jamais écraser un fichier existant. La version web les garde dans le navigateur.</p></details>
+    <details><summary>Mes fichiers Word, Excel et PowerPoint restent-ils intacts ?</summary><p>Oui : Plume garde la mise en forme, les styles, les commentaires, les révisions, les graphiques et les propriétés des fichiers Office. Un fichier ouvert et enregistré dans Plume se rouvre à l’identique dans Office.</p></details>
+    <details><summary>Quelle différence entre l’application et la version web ?</summary><p>Les applis sont les mêmes. L’application s’ouvre dans sa propre fenêtre avec un onglet par document, marche sans connexion et range les fichiers exportés dans Documents/Plume. La version web ne demande rien à installer et marche aussi sur tablette.</p></details>
+    <details><summary>Pourquoi Windows ou le Mac affichent-ils un avertissement ?</summary><p>Plume n’est pas encore signé par Microsoft ni par Apple, qui demandent un certificat payant. Le programme est le même que celui publié ici : tu peux vérifier son empreinte SHA-256, affichée sous chaque fichier.</p></details>
+    <details><summary>Comment désinstaller Plume ?</summary><p>Windows : supprime Plume.exe (et le dossier %LOCALAPPDATA%\Plume pour effacer les documents). Mac : mets Plume dans la corbeille. Linux : <b>sudo apt remove plume</b>, ou supprime le dossier de l’archive.</p></details>
+    <details><summary>Qu’est-ce que VEX ?</summary><p><a href="https://vexs.me">VEX</a> est un espace de stockage de fichiers chiffrés, avec mail et messagerie. Plume en est l’éditeur de documents.</p></details>
+  </section>
+</main>
+
+<footer>
+  <div class="large">
+    <span>Plume fait partie de <a href="https://vexs.me">VEX</a></span>
+    <a href="https://app.vexs.me">app.vexs.me</a>
+    <a href="/web/">Version web</a>
+    <a href="https://github.com/TheSolar1/plume">Code source</a>
+    <span>Licence MIT</span>
+  </div>
+</footer>
+
+<script>
+  // Onglets de téléchargement et bouton principal selon le système de l'ordinateur
+  (function () {
+    var onglets = document.querySelectorAll('.onglet');
+    function montrer(os) {
+      onglets.forEach(function (o) { o.setAttribute('aria-selected', String(o.dataset.os === os)); });
+      document.querySelectorAll('.panneau[data-os]').forEach(function (p) { p.hidden = p.dataset.os !== os; });
+    }
+    onglets.forEach(function (o) { o.addEventListener('click', function () { montrer(o.dataset.os); }); });
+    document.querySelectorAll('.systemes a[data-os]').forEach(function (a) { a.addEventListener('click', function () { montrer(a.dataset.os); }); });
+    var ua = navigator.userAgent, os = null;
+    if (/Android|iPhone|iPad/i.test(ua)) os = 'mobile';
+    else if (/Windows/i.test(ua)) os = 'windows';
+    else if (/Macintosh|Mac OS X/i.test(ua)) os = 'mac';
+    else if (/FreeBSD/i.test(ua)) os = 'freebsd';
+    else if (/Linux|X11/i.test(ua)) os = 'linux';
+    var p = document.getElementById('principal'), t = document.getElementById('principal-texte'), s = document.getElementById('principal-taille');
+    var direct = { windows: ['/telecharger/Plume.exe', 'Télécharger pour Windows', '{{taille:Plume.exe}}'], mac: ['/telecharger/Plume.dmg', 'Télécharger pour Mac', '{{taille:Plume.dmg}}'] };
+    if (os === 'mobile') { p.href = '/web/'; t.textContent = 'Ouvrir Plume'; }
+    else if (direct[os]) { p.href = direct[os][0]; p.setAttribute('download', ''); t.textContent = direct[os][1]; s.textContent = direct[os][2]; montrer(os); }
+    else if (os) { t.textContent = os === 'linux' ? 'Télécharger pour Linux' : 'Télécharger pour FreeBSD'; montrer(os); }
+  })();
+</script>
+</body>
+</html>
