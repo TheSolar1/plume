@@ -1,0 +1,18 @@
+PLUME POUR FREEBSD
+==================
+
+Il faut WebKitGTK 4.1 :
+    sudo pkg install webkit2-gtk_41
+
+Lancer : ./plume
+
+Ajouter Plume au menu des applications :
+    mkdir -p ~/.local/bin ~/.local/share/applications ~/.local/share/icons/hicolor/256x256/apps
+    cp plume ~/.local/bin/
+    cp plume.png ~/.local/share/icons/hicolor/256x256/apps/
+    cp plume.desktop ~/.local/share/applications/
+
+Documents enregistrés dans l'application : ~/.local/share/plume
+Fichiers exportés (.docx, .pdf…) : Documents/Plume
+
+Site : https://plume.vexs.me/

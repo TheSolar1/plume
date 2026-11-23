@@ -4,3 +4,4 @@ node_modules/
 dist/*.map
 serveur/target/
 app-pc/target/
+sortie/

@@ -58,8 +58,8 @@ enum Evenement {
 }
 
 fn main() {
-    // Linux : évite la fenêtre blanche avec certaines cartes graphiques (NVIDIA)
-    #[cfg(target_os = "linux")]
+    // Linux, BSD : évite la fenêtre blanche avec certaines cartes graphiques (NVIDIA)
+    #[cfg(not(any(windows, target_os = "macos")))]
     if env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() { env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1"); }
     let boucle = EventLoopBuilder::<Evenement>::with_user_event().build();
     let proxy = boucle.create_proxy();
@@ -256,8 +256,8 @@ fn dossier_donnees() -> PathBuf {
 
 fn dossier_documents() -> PathBuf {
     let profil = dossier_perso();
-    // Linux : dossier Documents dans la langue du système (xdg-user-dir), sinon ~/Documents
-    #[cfg(target_os = "linux")]
+    // Linux, BSD : dossier Documents dans la langue du système (xdg-user-dir), sinon ~/Documents
+    #[cfg(not(any(windows, target_os = "macos")))]
     if let Ok(s) = Command::new("xdg-user-dir").arg("DOCUMENTS").output() {
         let d = PathBuf::from(String::from_utf8_lossy(&s.stdout).trim());
         if d.is_dir() && d != profil { return d; }
@@ -290,15 +290,15 @@ fn icone() -> Option<Icon> {
     Icon::from_rgba(rgba, info.width, info.height).ok()
 }
 
-/// Affichage de la page dans la fenêtre (Linux : dans le conteneur GTK, pour X11 et Wayland).
+/// Affichage de la page dans la fenêtre (Linux, BSD : dans le conteneur GTK, pour X11 et Wayland).
 fn construire(b: WebViewBuilder, f: &Window) -> wry::Result<WebView> {
-    #[cfg(target_os = "linux")]
+    #[cfg(not(any(windows, target_os = "macos")))]
     {
         use tao::platform::unix::WindowExtUnix;
         use wry::WebViewBuilderExtUnix;
         b.build_gtk(f.default_vbox().expect("conteneur GTK"))
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(any(windows, target_os = "macos"))]
     b.build(f)
 }
 

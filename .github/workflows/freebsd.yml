@@ -1,0 +1,33 @@
+# Compile Plume pour FreeBSD (x86_64), avec le serveur web, dans une machine
+# virtuelle FreeBSD. Lancement : étiquette v* (avec les autres paquets) ou freebsd-*.
+# Les fichiers produits sont récupérés à la main, rien n'est publié automatiquement.
+name: FreeBSD
+on:
+  push:
+    tags: ['v*', 'freebsd-*']
+
+jobs:
+  freebsd:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compilation dans FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "14.3"
+          usesh: true
+          envs: GITHUB_REF_NAME
+          mem: 12288
+          prepare: |
+            pkg install -y bash rust pkgconf gtk3 libsoup3 webkit2-gtk_41
+          run: |
+            set -e
+            V="${GITHUB_REF_NAME#v}"; V="${V#freebsd-}"
+            cargo build --release --manifest-path app-pc/Cargo.toml
+            cargo build --release --manifest-path serveur/Cargo.toml
+            VERSION="$V" bash app-pc/paquets/freebsd.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freebsd
+          path: sortie/*
