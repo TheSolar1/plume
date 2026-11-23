@@ -51,9 +51,11 @@
   .creux { background: var(--carte); color: var(--texte); border-color: var(--bord); }
   .creux:hover { border-color: var(--bleu); }
   .note { margin-top: 14px; font-size: 14px; color: var(--doux); }
-  .systemes { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; margin-top: 10px; font-size: 14px; }
-  .systemes a { color: var(--doux); text-decoration: none; border-bottom: 1px dotted var(--doux); }
-  .systemes a:hover { color: var(--texte); }
+  .systemes { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin-top: 18px; font-size: 14px; }
+  .systemes > span { color: var(--doux); margin-right: 2px; }
+  .systemes a { display: inline-flex; align-items: center; gap: 7px; color: var(--texte); text-decoration: none; background: var(--carte); border: 1px solid var(--bord); border-radius: 999px; padding: 6px 14px; font-weight: 600; }
+  .systemes a:hover { border-color: var(--bleu); }
+  .systemes a svg.i { width: 16px; height: 16px; color: var(--bleu); }
 
   .capture { margin: 0 auto; border-radius: 10px; overflow: hidden; border: 1px solid var(--bord); box-shadow: 0 12px 32px rgba(15, 23, 42, .12); background: var(--carte); }
   .capture img { display: block; width: 100%; height: auto; }
@@ -87,12 +89,13 @@
   .chiffres b { display: block; font-size: 26px; font-weight: 650; color: var(--bleu); }
   .chiffres span { color: var(--doux); font-size: 14px; }
 
-  .onglets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
-  .onglet { font: inherit; font-size: 15px; font-weight: 600; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--bord); background: var(--carte); color: var(--texte); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
-  .onglet[aria-selected="true"] { background: var(--bleu); border-color: var(--bleu); color: #fff; }
-  .panneau { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 24px; }
-  .panneau[hidden] { display: none; }
-  .panneau h3 { margin: 0 0 4px; font-size: 20px; }
+  .versions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 18px; align-items: start; }
+  .panneau { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 24px; scroll-margin-top: 72px; min-width: 0; }
+  .panneau.ici { border-color: var(--bleu); box-shadow: 0 0 0 1px var(--bleu); }
+  .panneau h3 { margin: 0 0 4px; font-size: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .panneau h3 svg.i { color: var(--bleu); width: 22px; height: 22px; }
+  .badge { display: none; font-size: 12px; font-weight: 600; color: #fff; background: var(--bleu); border-radius: 999px; padding: 2px 10px; }
+  .panneau.ici .badge { display: inline-block; }
   .panneau > p { margin: 0 0 16px; color: var(--doux); }
   .fichiers { display: grid; gap: 10px; }
   .fichier { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; border: 1px solid var(--bord); border-radius: 8px; padding: 12px 14px; }
@@ -185,11 +188,13 @@
       </a>
     </div>
     <div class="systemes">
-      <a href="#telecharger" data-os="windows">Windows</a>
-      <a href="#telecharger" data-os="mac">Mac</a>
-      <a href="#telecharger" data-os="linux">Linux</a>
-      <a href="#telecharger" data-os="freebsd">FreeBSD</a>
-      <a href="#heberger">Serveur web</a>
+      <span>Toutes les versions :</span>
+      <a href="#os-windows"><svg class="i"><use href="#i-win"/></svg>Windows</a>
+      <a href="#os-mac"><svg class="i"><use href="#i-pc"/></svg>Mac</a>
+      <a href="#os-linux"><svg class="i"><use href="#i-term"/></svg>Linux</a>
+      <a href="#os-freebsd"><svg class="i"><use href="#i-term"/></svg>FreeBSD</a>
+      <a href="#heberger"><svg class="i"><use href="#i-server"/></svg>Serveur web</a>
+      <a href="/web/"><svg class="i"><use href="#i-web"/></svg>Navigateur</a>
     </div>
     <p class="note">Version du 23 novembre 2026</p>
   </div>
@@ -290,16 +295,11 @@
 
   <section id="telecharger" class="large">
     <h2>Télécharger Plume</h2>
-    <p class="sous">L’application pour ordinateur : une fenêtre à part avec un onglet par document, qui marche sans connexion. Les mêmes applis que la version web.</p>
-    <div class="onglets" role="tablist">
-      <button class="onglet" role="tab" aria-selected="true" data-os="windows"><svg class="i"><use href="#i-win"/></svg>Windows</button>
-      <button class="onglet" role="tab" aria-selected="false" data-os="mac"><svg class="i"><use href="#i-pc"/></svg>Mac</button>
-      <button class="onglet" role="tab" aria-selected="false" data-os="linux"><svg class="i"><use href="#i-term"/></svg>Linux</button>
-      <button class="onglet" role="tab" aria-selected="false" data-os="freebsd"><svg class="i"><use href="#i-term"/></svg>FreeBSD</button>
-    </div>
+    <p class="sous">L’application pour ordinateur : une fenêtre à part avec un onglet par document, qui marche sans connexion. Les mêmes applis que la version web. Pour mettre Plume sur un serveur, voir <a href="#heberger">Héberger Plume</a>.</p>
+    <div class="versions">
 
-    <div class="panneau" data-os="windows">
-      <h3>Plume pour Windows</h3>
+    <div class="panneau" id="os-windows" data-os="windows">
+      <h3><svg class="i"><use href="#i-win"/></svg>Plume pour Windows<span class="badge">Ton ordinateur</span></h3>
       <p>Windows 10 et 11 (64 bits). Un seul fichier, rien à installer.</p>
       <div class="fichiers">
         <div class="fichier"><div><b>Plume.exe</b><div class="detail">Application Windows · Plume.exe · 8,5 Mo</div></div><a class="bouton plein" href="/telecharger/Plume.exe" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : 6f2ff88b21e31534cc244c329e6c3d0c055be0a5ad10e0281463533f32a46cd8</div></div>
@@ -307,8 +307,8 @@
       <p class="aide">Au premier lancement, Windows peut afficher « Windows a protégé votre ordinateur » : clique sur <b>Informations complémentaires</b>, puis <b>Exécuter quand même</b>.</p>
     </div>
 
-    <div class="panneau" data-os="mac" hidden>
-      <h3>Plume pour Mac</h3>
+    <div class="panneau" id="os-mac" data-os="mac">
+      <h3><svg class="i"><use href="#i-pc"/></svg>Plume pour Mac<span class="badge">Ton ordinateur</span></h3>
       <p>Mac Apple Silicon (M1 à M4) et Mac Intel, macOS 10.15 ou plus récent. Ouvre le fichier .dmg et glisse Plume dans Applications.</p>
       <div class="fichiers">
         <div class="fichier"><div><b>Plume.dmg</b><div class="detail">Application universelle, Apple Silicon et Intel · Plume.dmg · 8,8 Mo</div></div><a class="bouton plein" href="/telecharger/Plume.dmg" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : fda9cdd8ffe7498a6791f39431cbcb120fee7cd1d7b10a54055d750aa9522777</div></div>
@@ -316,8 +316,8 @@
       <p class="aide">Plume n’est pas encore signé par Apple. Au premier lancement, si le Mac affiche « Plume ne peut pas être ouvert » : ouvre <b>Réglages Système › Confidentialité et sécurité</b>, puis <b>Ouvrir quand même</b>. Sur macOS 14 et avant : clic droit sur Plume › <b>Ouvrir</b>.</p>
     </div>
 
-    <div class="panneau" data-os="linux" hidden>
-      <h3>Plume pour Linux</h3>
+    <div class="panneau" id="os-linux" data-os="linux">
+      <h3><svg class="i"><use href="#i-term"/></svg>Plume pour Linux<span class="badge">Ton ordinateur</span></h3>
       <p>PC (x86_64) et ARM 64 bits, Raspberry Pi compris. Il faut WebKitGTK 4.1, présent sur la plupart des bureaux : Ubuntu 22.04, Debian 12, Mint 21, Fedora 39 ou plus récents.</p>
       <div class="fichiers">
         <div class="fichier"><div><b>Paquet .deb, PC (x86_64)</b><div class="detail">Debian, Ubuntu, Mint, Pop!_OS, Zorin… · plume_2026.11.23.2_amd64.deb · 2,8 Mo</div></div><a class="bouton plein" href="/telecharger/plume_2026.11.23.2_amd64.deb" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : 58941a3a45076adf74252a5144a52aa845a40157232ff6817824f2ce41a20058</div></div>
@@ -329,14 +329,15 @@
       <p class="aide">Pour l’archive : décompresse-la et lance <b>./plume</b>. Si WebKitGTK manque : <b>sudo dnf install webkit2gtk4.1</b> (Fedora) ou <b>sudo pacman -S webkit2gtk-4.1</b> (Arch).</p>
     </div>
 
-    <div class="panneau" data-os="freebsd" hidden>
-      <h3>Plume pour FreeBSD</h3>
+    <div class="panneau" id="os-freebsd" data-os="freebsd">
+      <h3><svg class="i"><use href="#i-term"/></svg>Plume pour FreeBSD<span class="badge">Ton ordinateur</span></h3>
       <p>FreeBSD 14 (amd64), avec un bureau graphique (X11 ou Wayland).</p>
       <div class="fichiers">
         <div class="fichier"><div><b>Archive .tar.gz, amd64</b><div class="detail">Application FreeBSD · plume-freebsd-amd64.tar.gz · 3,7 Mo</div></div><a class="bouton plein" href="/telecharger/plume-freebsd-amd64.tar.gz" download><svg class="i"><use href="#i-dl"/></svg>Télécharger</a><div class="empreinte">SHA-256 : 479304f6712ed75254b42bff3b648e32938ac12284dca07d11fc7b0d0c6ddb19</div></div>
       </div>
       <pre>sudo pkg install webkit2-gtk_41
 tar xzf plume-freebsd-amd64.tar.gz && ./plume-freebsd-amd64/plume</pre>
+    </div>
     </div>
   </section>
 
@@ -407,13 +408,10 @@ tar xzf plume-freebsd-amd64.tar.gz && ./plume-freebsd-amd64/plume</pre>
 <script>
   // Onglets de téléchargement et bouton principal selon le système de l'ordinateur
   (function () {
-    var onglets = document.querySelectorAll('.onglet');
     function montrer(os) {
-      onglets.forEach(function (o) { o.setAttribute('aria-selected', String(o.dataset.os === os)); });
-      document.querySelectorAll('.panneau[data-os]').forEach(function (p) { p.hidden = p.dataset.os !== os; });
+      var p = document.getElementById('os-' + os);
+      if (p) p.classList.add('ici');
     }
-    onglets.forEach(function (o) { o.addEventListener('click', function () { montrer(o.dataset.os); }); });
-    document.querySelectorAll('.systemes a[data-os]').forEach(function (a) { a.addEventListener('click', function () { montrer(a.dataset.os); }); });
     var ua = navigator.userAgent, os = null;
     if (/Android|iPhone|iPad/i.test(ua)) os = 'mobile';
     else if (/Windows/i.test(ua)) os = 'windows';
@@ -423,8 +421,9 @@ tar xzf plume-freebsd-amd64.tar.gz && ./plume-freebsd-amd64/plume</pre>
     var p = document.getElementById('principal'), t = document.getElementById('principal-texte'), s = document.getElementById('principal-taille');
     var direct = { windows: ['/telecharger/Plume.exe', 'Télécharger pour Windows', '8,5 Mo'], mac: ['/telecharger/Plume.dmg', 'Télécharger pour Mac', '8,8 Mo'] };
     if (os === 'mobile') { p.href = '/web/'; t.textContent = 'Ouvrir Plume'; }
+    else if (os === 'linux' || os === 'freebsd') { p.href = '#os-' + os; }
     else if (direct[os]) { p.href = direct[os][0]; p.setAttribute('download', ''); t.textContent = direct[os][1]; s.textContent = direct[os][2]; montrer(os); }
-    else if (os) { t.textContent = os === 'linux' ? 'Télécharger pour Linux' : 'Télécharger pour FreeBSD'; montrer(os); }
+    if (os === 'linux' || os === 'freebsd') { t.textContent = os === 'linux' ? 'Télécharger pour Linux' : 'Télécharger pour FreeBSD'; montrer(os); }
   })();
 </script>
 </body>
