@@ -21,6 +21,8 @@ jobs:
           mem: 12288
           prepare: |
             pkg install -y bash rust pkgconf gtk3 libsoup3 webkit2-gtk_41
+            # bzip2 fait partie du système de base, sans fichier pkg-config (demandé par freetype2)
+            printf 'Name: bzip2\nDescription: bzip2\nVersion: 1.0.8\nLibs: -L/usr/lib -lbz2\nCflags: -I/usr/include\n' > /usr/local/libdata/pkgconfig/bzip2.pc
           run: |
             set -e
             V="${GITHUB_REF_NAME#v}"; V="${V#freebsd-}"
