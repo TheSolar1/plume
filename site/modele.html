@@ -84,40 +84,31 @@
   .chiffres span { color: var(--doux); font-size: 14px; }
 
   .bouton.grand { padding: 14px 26px; font-size: 17px; }
-  .partie { background: var(--carte); border: 1px solid var(--bord); border-radius: 12px; padding: 24px; margin-bottom: 20px; scroll-margin-top: 72px; }
-  .partie-tete { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .partie-tete { display: flex; gap: 16px; align-items: flex-start; margin: 34px 0 16px; scroll-margin-top: 72px; }
   .partie-ico { flex: none; width: 48px; height: 48px; border-radius: 12px; background: var(--bleu-pale); color: var(--bleu); display: grid; place-items: center; }
   .partie-ico svg.i { width: 26px; height: 26px; }
-  .partie h3 { margin: 0 0 4px; font-size: 22px; }
-  .partie h3 small { font-size: 15px; font-weight: 500; color: var(--doux); margin-left: 6px; }
-  .partie-tete p { margin: 0; color: var(--doux); max-width: 760px; }
-  .tableau { overflow-x: auto; border: 1px solid var(--bord); border-radius: 10px; }
-  table { width: 100%; border-collapse: collapse; font-size: 15px; }
-  th { text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--doux); background: var(--fond); padding: 10px 14px; border-bottom: 1px solid var(--bord); white-space: nowrap; }
-  td { padding: 11px 14px; border-bottom: 1px solid var(--bord); vertical-align: middle; }
-  tbody tr:last-child td { border-bottom: 0; }
-  tbody tr:hover td { background: color-mix(in srgb, var(--bleu) 4%, transparent); }
-  td.systeme { font-weight: 600; }
-  td.fichier-nom { white-space: nowrap; }
-  td.fichier-nom code { font: 13px Consolas, "Cascadia Mono", monospace; }
-  td.taille { color: var(--doux); white-space: nowrap; }
-  td.action { text-align: right; white-space: nowrap; }
-  td .bouton { padding: 7px 14px; font-size: 14px; }
-  tr.ici td { background: var(--bleu-pale); }
-  .ici-badge { display: none; margin-left: 8px; font-size: 11px; font-weight: 600; color: #fff; background: var(--bleu); border-radius: 999px; padding: 1px 8px; vertical-align: 1px; }
-  tr.ici .ici-badge { display: inline-block; }
-  .aide-details { margin-top: 14px; border: 0; padding: 0; background: none; }
-  .aide-details summary { font-size: 15px; color: var(--bleu); padding: 6px 0; }
-  .aide-details dl { margin: 6px 0 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; font-size: 14px; }
-  .aide-details dt { font-weight: 600; }
-  .aide-details dd { margin: 0; color: var(--doux); }
-  .aide-details code, .partie code, .demarrer code { font: 13px Consolas, "Cascadia Mono", monospace; background: var(--code); border: 1px solid var(--bord); border-radius: 4px; padding: 1px 4px; }
-  .empreintes { margin: 8px 0 0; font: 12px/1.6 Consolas, "Cascadia Mono", monospace; color: var(--doux); overflow-x: auto; }
-  .empreintes div { white-space: nowrap; }
-  .empreintes b { color: var(--texte); font-weight: 600; }
+  .partie-tete h3 { margin: 0 0 4px; font-size: 22px; }
+  .partie-tete h3 small { font-size: 15px; font-weight: 500; color: var(--doux); margin-left: 6px; }
+  .partie-tete p { margin: 0; color: var(--doux); max-width: 780px; }
+  .partie-tete code, .panneau code { font: 13px Consolas, "Cascadia Mono", monospace; background: var(--code); border: 1px solid var(--bord); border-radius: 4px; padding: 1px 4px; }
+  .versions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 18px; align-items: start; }
+  .panneau { background: var(--carte); border: 1px solid var(--bord); border-radius: 10px; padding: 22px; scroll-margin-top: 72px; min-width: 0; }
+  .panneau.ici { border-color: var(--bleu); box-shadow: 0 0 0 1px var(--bleu); }
+  .panneau h3 { margin: 0 0 4px; font-size: 20px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .panneau h3 svg.i { color: var(--bleu); width: 22px; height: 22px; }
+  .panneau > p { margin: 0 0 14px; color: var(--doux); font-size: 15px; }
+  .badge { display: none; font-size: 12px; font-weight: 600; color: #fff; background: var(--bleu); border-radius: 999px; padding: 2px 10px; }
+  .panneau.ici .badge { display: inline-block; }
+  .fichiers { display: grid; gap: 10px; }
+  .fichier { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; border: 1px solid var(--bord); border-radius: 8px; padding: 12px 14px; }
+  .fichier b { font-size: 15px; }
+  .fichier .detail { color: var(--doux); font-size: 13px; }
+  .fichier .bouton { padding: 9px 16px; font-size: 15px; grid-row: span 2; }
+  .empreinte { font: 11px/1.4 Consolas, "Cascadia Mono", monospace; color: var(--doux); word-break: break-all; grid-column: 1 / -1; }
+  .aide { font-size: 14px; color: var(--texte); background: var(--bleu-pale); border-radius: 8px; padding: 12px 14px; margin: 14px 0 0; }
+  .aide b { font-weight: 600; }
   .demarrer { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; margin-top: 18px; }
-  .demarrer b { font-size: 15px; }
-  .demarrer p { margin: 8px 0 0; font-size: 14px; color: var(--doux); }
+  .demarrer .panneau p { margin: 10px 0 0; font-size: 14px; color: var(--doux); }
   pre { margin: 10px 0 0; background: var(--code); border: 1px solid var(--bord); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font: 13px/1.5 Consolas, "Cascadia Mono", monospace; color: var(--texte); }
 
   .heberger { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
@@ -137,14 +128,14 @@
 
   @media (max-width: 860px) {
     .appli-bloc, .appli-bloc.inverse, .demarrer { grid-template-columns: minmax(0, 1fr); }
-    .aide-details dl { grid-template-columns: minmax(0, 1fr); }
     .appli-bloc.inverse .texte-bloc { order: 0; }
   }
   @media (max-width: 600px) {
     header nav a.option { display: none; }
     .entete { padding-top: 36px; }
     .boutons .bouton { width: 100%; justify-content: center; }
-    .partie { padding: 18px 14px; }
+    .fichier { grid-template-columns: minmax(0, 1fr); }
+    .fichier .bouton { grid-row: auto; justify-content: center; }
     .fichier { grid-template-columns: minmax(0, 1fr); }
     .fichier .bouton { grid-row: auto; justify-content: center; }
   }
@@ -304,82 +295,111 @@
     <h2>Télécharger</h2>
     <p class="sous">Plume existe en deux versions : le <b>client</b>, l’application à installer sur ton ordinateur, et le <b>serveur</b>, pour mettre la version web de Plume en ligne sur ta propre machine.</p>
 
-    <div class="partie">
-      <div class="partie-tete">
-        <span class="partie-ico"><svg class="i"><use href="#i-pc"/></svg></span>
-        <div>
-          <h3>Client <small>Plume pour ordinateur</small></h3>
-          <p>Une fenêtre à part avec un onglet par document. Marche sans connexion, documents enregistrés sur l’ordinateur.</p>
+    <div class="partie-tete">
+      <span class="partie-ico"><svg class="i"><use href="#i-pc"/></svg></span>
+      <div>
+        <h3>Client <small>Plume pour ordinateur</small></h3>
+        <p>Une fenêtre à part avec un onglet par document. Marche sans connexion, documents enregistrés sur l’ordinateur.</p>
+      </div>
+    </div>
+    <div class="versions">
+      <div class="panneau" id="os-windows" data-os="windows">
+        <h3><svg class="i"><use href="#i-win"/></svg>Windows<span class="badge">Ton ordinateur</span></h3>
+        <p>Windows 10 et 11, 64 bits. Un seul fichier, rien à installer.</p>
+        <div class="fichiers">
+          {{fichier:Plume.exe|Windows x64 (64 bits)|Application .exe}}
         </div>
+        <p class="aide">Si Windows affiche « Windows a protégé votre ordinateur » : clique sur <b>Informations complémentaires</b>, puis <b>Exécuter quand même</b>.</p>
       </div>
-      <div class="tableau">
-        <table>
-          <thead><tr><th>Système</th><th>Architecture</th><th>Fichier</th><th>Taille</th><th></th></tr></thead>
-          <tbody>
-            {{ligne:Plume.exe|windows|Windows 10 et 11|x64 (64 bits)}}
-            {{ligne:Plume.dmg|mac|macOS 10.15 ou plus récent|Universel : Apple Silicon et Intel}}
-            {{ligne:plume_{{version}}_amd64.deb|linux|Linux : Debian, Ubuntu, Mint|x86_64 (amd64)}}
-            {{ligne:plume_{{version}}_arm64.deb|linux|Linux : Debian, Ubuntu, Raspberry Pi OS|ARM64 (aarch64)}}
-            {{ligne:plume-linux-x86_64.tar.gz|linux|Linux : toutes distributions|x86_64 (amd64)}}
-            {{ligne:plume-linux-aarch64.tar.gz|linux|Linux : toutes distributions|ARM64 (aarch64)}}
-            {{ligne:plume-freebsd-amd64.tar.gz|freebsd|FreeBSD 14|amd64}}
-          </tbody>
-        </table>
+      <div class="panneau" id="os-mac" data-os="mac">
+        <h3><svg class="i"><use href="#i-apple"/></svg>macOS<span class="badge">Ton ordinateur</span></h3>
+        <p>macOS 10.15 ou plus récent. Ouvre le .dmg et glisse Plume dans Applications.</p>
+        <div class="fichiers">
+          {{fichier:Plume.dmg|macOS universel : Apple Silicon et Intel|Image disque .dmg}}
+        </div>
+        <p class="aide">Si le Mac affiche « Plume ne peut pas être ouvert » : <b>Réglages Système › Confidentialité et sécurité › Ouvrir quand même</b>. Sur macOS 14 et avant : clic droit sur Plume › <b>Ouvrir</b>.</p>
       </div>
-      <details class="aide-details">
-        <summary>Premier lancement : Windows, macOS, Linux, FreeBSD</summary>
-        <dl>
-          <dt>Windows</dt><dd>Si Windows affiche « Windows a protégé votre ordinateur » : <b>Informations complémentaires</b>, puis <b>Exécuter quand même</b>.</dd>
-          <dt>macOS</dt><dd>Ouvre Plume.dmg et glisse Plume dans Applications. Si le Mac affiche « Plume ne peut pas être ouvert » : <b>Réglages Système › Confidentialité et sécurité › Ouvrir quand même</b> (macOS 14 et avant : clic droit sur Plume › <b>Ouvrir</b>).</dd>
-          <dt>Linux</dt><dd>Paquet .deb : <code>sudo apt install ./plume_{{version}}_amd64.deb</code>. Archive .tar.gz : décompresse-la et lance <code>./plume</code>. Il faut WebKitGTK 4.1 (Ubuntu 22.04, Debian 12, Fedora 39 ou plus récents) : <code>sudo dnf install webkit2gtk4.1</code> sur Fedora, <code>sudo pacman -S webkit2gtk-4.1</code> sur Arch.</dd>
-          <dt>FreeBSD</dt><dd><code>sudo pkg install webkit2-gtk_41</code>, puis décompresse l’archive et lance <code>./plume</code>.</dd>
-        </dl>
-      </details>
+      <div class="panneau" id="os-linux" data-os="linux">
+        <h3><svg class="i"><use href="#i-tux"/></svg>Linux<span class="badge">Ton ordinateur</span></h3>
+        <p>Il faut WebKitGTK 4.1 : Ubuntu 22.04, Debian 12, Mint 21, Fedora 39 ou plus récents.</p>
+        <div class="fichiers">
+          {{fichier:plume_{{version}}_amd64.deb|Linux x86_64 (amd64), paquet .deb|Debian, Ubuntu, Mint, Pop!_OS}}
+          {{fichier:plume_{{version}}_arm64.deb|Linux ARM64 (aarch64), paquet .deb|Raspberry Pi OS 64 bits, Ubuntu ARM}}
+          {{fichier:plume-linux-x86_64.tar.gz|Linux x86_64 (amd64), archive .tar.gz|Toutes distributions}}
+          {{fichier:plume-linux-aarch64.tar.gz|Linux ARM64 (aarch64), archive .tar.gz|Toutes distributions}}
+        </div>
+        <p class="aide">Paquet .deb : <b>sudo apt install ./plume_{{version}}_amd64.deb</b>. Archive : décompresse-la et lance <b>./plume</b>. Fedora : <b>sudo dnf install webkit2gtk4.1</b> ; Arch : <b>sudo pacman -S webkit2gtk-4.1</b>.</p>
+      </div>
+      <div class="panneau" id="os-freebsd" data-os="freebsd">
+        <h3><svg class="i"><use href="#i-bsd"/></svg>FreeBSD<span class="badge">Ton ordinateur</span></h3>
+        <p>FreeBSD 14, avec un bureau graphique (X11 ou Wayland).</p>
+        <div class="fichiers">
+          {{fichier:plume-freebsd-amd64.tar.gz|FreeBSD amd64, archive .tar.gz|Application FreeBSD}}
+        </div>
+        <p class="aide">Installe WebKitGTK : <b>sudo pkg install webkit2-gtk_41</b>, puis décompresse l’archive et lance <b>./plume</b>.</p>
+      </div>
     </div>
 
-    <div class="partie" id="heberger">
-      <div class="partie-tete">
-        <span class="partie-ico"><svg class="i"><use href="#i-server"/></svg></span>
-        <div>
-          <h3>Serveur <small>Plume Serveur</small></h3>
-          <p>Met la version web de Plume en ligne sur ta machine, pour ta famille, ton association, ton école ou ton entreprise. Coédition en temps réel ; le serveur ne stocke aucun document. Chaque paquet contient le programme <code>plume-serveur</code> et les pages de Plume.</p>
+    <div class="partie-tete" id="heberger">
+      <span class="partie-ico"><svg class="i"><use href="#i-server"/></svg></span>
+      <div>
+        <h3>Serveur <small>Plume Serveur</small></h3>
+        <p>Met la version web de Plume en ligne sur ta machine, pour ta famille, ton association, ton école ou ton entreprise. Coédition en temps réel ; le serveur ne stocke aucun document. Chaque paquet contient le programme <code>plume-serveur</code> et les pages de Plume.</p>
+      </div>
+    </div>
+    <div class="versions">
+      <div class="panneau">
+        <h3><svg class="i"><use href="#i-tux"/></svg>Linux<span class="badge">Ton ordinateur</span></h3>
+        <p>Avec un service systemd prêt à l’emploi.</p>
+        <div class="fichiers">
+          {{fichier:plume-serveur-linux-x86_64.tar.gz|Linux x86_64 (amd64)|plume-serveur + pages}}
+          {{fichier:plume-serveur-linux-aarch64.tar.gz|Linux ARM64 (aarch64), dont Raspberry Pi|plume-serveur + pages}}
         </div>
       </div>
-      <div class="tableau">
-        <table>
-          <thead><tr><th>Système</th><th>Architecture</th><th>Fichier</th><th>Taille</th><th></th></tr></thead>
-          <tbody>
-            {{ligne:plume-serveur-linux-x86_64.tar.gz|srv|Linux|x86_64 (amd64)}}
-            {{ligne:plume-serveur-linux-aarch64.tar.gz|srv|Linux, dont Raspberry Pi|ARM64 (aarch64)}}
-            {{ligne:plume-serveur-windows.zip|srv|Windows 10, 11 et Server|x64 (64 bits)}}
-            {{ligne:plume-serveur-mac.tar.gz|srv|macOS 10.15 ou plus récent|Universel : Apple Silicon et Intel}}
-            {{ligne:plume-serveur-freebsd-amd64.tar.gz|srv|FreeBSD 14|amd64}}
-            {{ligne:plume-web.zip|srv|Pages web seules, sans coédition (Apache, nginx, Caddy)|Toutes}}
-          </tbody>
-        </table>
-      </div>
-      <div class="demarrer">
-        <div>
-          <b>Démarrer</b>
-          <pre>./plume-serveur 8080 . --reseau</pre>
-          <p>Puis ouvre <code>http://adresse-du-serveur:8080/</code>. Sous Windows : <code>plume-serveur.exe 8080 . --reseau</code>.</p>
+      <div class="panneau">
+        <h3><svg class="i"><use href="#i-win"/></svg>Windows<span class="badge">Ton ordinateur</span></h3>
+        <p>Windows 10, 11 et Windows Server, 64 bits.</p>
+        <div class="fichiers">
+          {{fichier:plume-serveur-windows.zip|Windows x64 (64 bits)|plume-serveur.exe + pages}}
         </div>
-        <div>
-          <b>Avec nginx (pages seules)</b>
-          <pre>server {
+      </div>
+      <div class="panneau">
+        <h3><svg class="i"><use href="#i-apple"/></svg>macOS<span class="badge">Ton ordinateur</span></h3>
+        <p>macOS 10.15 ou plus récent.</p>
+        <div class="fichiers">
+          {{fichier:plume-serveur-mac.tar.gz|macOS universel : Apple Silicon et Intel|plume-serveur + pages}}
+        </div>
+      </div>
+      <div class="panneau">
+        <h3><svg class="i"><use href="#i-bsd"/></svg>FreeBSD<span class="badge">Ton ordinateur</span></h3>
+        <p>FreeBSD 14.</p>
+        <div class="fichiers">
+          {{fichier:plume-serveur-freebsd-amd64.tar.gz|FreeBSD amd64|plume-serveur + pages}}
+        </div>
+      </div>
+      <div class="panneau">
+        <h3><svg class="i"><use href="#i-files"/></svg>Pages web seules<span class="badge">Ton ordinateur</span></h3>
+        <p>Pour Apache, nginx ou Caddy, sans la coédition.</p>
+        <div class="fichiers">
+          {{fichier:plume-web.zip|Toutes plateformes|Pages de Plume (HTML, JavaScript)}}
+        </div>
+      </div>
+    </div>
+    <div class="demarrer">
+      <div class="panneau">
+        <h3><svg class="i"><use href="#i-term"/></svg>Démarrer le serveur</h3>
+        <pre>./plume-serveur 8080 . --reseau</pre>
+        <p>Puis ouvre <code>http://adresse-du-serveur:8080/</code>. Sous Windows : <code>plume-serveur.exe 8080 . --reseau</code>. Le fichier LISEZMOI explique le démarrage automatique (systemd) et la configuration Apache ou nginx avec HTTPS.</p>
+      </div>
+      <div class="panneau">
+        <h3><svg class="i"><use href="#i-files"/></svg>Pages seules avec nginx</h3>
+        <pre>server {
     server_name plume.exemple.fr;
     root /var/www/plume;
     index index.html;
 }</pre>
-        </div>
       </div>
-      <p class="formats">Le fichier LISEZMOI de chaque paquet explique le service systemd (démarrage avec la machine) et la configuration Apache ou nginx avec HTTPS.</p>
     </div>
-
-    <details class="aide-details">
-      <summary>Empreintes SHA-256 des fichiers</summary>
-      {{empreintes}}
-    </details>
   </section>
 
   <section id="questions" class="large">
@@ -390,7 +410,7 @@
     <details><summary>Où sont enregistrés mes documents ?</summary><p>Sur ton appareil. L’application les garde dans son dossier (sous Windows : %LOCALAPPDATA%\Plume) et enregistre les fichiers exportés (.docx, .pdf…) dans Documents/Plume, sans jamais écraser un fichier existant. La version web les garde dans le navigateur.</p></details>
     <details><summary>Mes fichiers Word, Excel et PowerPoint restent-ils intacts ?</summary><p>Oui : Plume garde la mise en forme, les styles, les commentaires, les révisions, les graphiques et les propriétés des fichiers Office. Un fichier ouvert et enregistré dans Plume se rouvre à l’identique dans Office.</p></details>
     <details><summary>Quelle différence entre l’application et la version web ?</summary><p>Les applis sont les mêmes. L’application s’ouvre dans sa propre fenêtre avec un onglet par document, marche sans connexion et range les fichiers exportés dans Documents/Plume. La version web ne demande rien à installer et marche aussi sur tablette.</p></details>
-    <details><summary>Pourquoi Windows ou le Mac affichent-ils un avertissement ?</summary><p>Plume n’est pas encore signé par Microsoft ni par Apple, qui demandent un certificat payant. Le programme est le même que celui publié ici : tu peux vérifier son empreinte SHA-256, listée sous les tableaux de téléchargement.</p></details>
+    <details><summary>Pourquoi Windows ou le Mac affichent-ils un avertissement ?</summary><p>Plume n’est pas encore signé par Microsoft ni par Apple, qui demandent un certificat payant. Le programme est le même que celui publié ici : tu peux vérifier son empreinte SHA-256, affichée sous chaque fichier.</p></details>
     <details><summary>Comment désinstaller Plume ?</summary><p>Windows : supprime Plume.exe (et le dossier %LOCALAPPDATA%\Plume pour effacer les documents). Mac : mets Plume dans la corbeille. Linux : <b>sudo apt remove plume</b>, ou supprime le dossier de l’archive.</p></details>
     <details><summary>Qu’est-ce que VEX ?</summary><p><a href="https://vexs.me">VEX</a> est un espace de stockage de fichiers chiffrés, avec mail et messagerie. Plume en est l’éditeur de documents.</p></details>
   </section>
@@ -407,7 +427,7 @@
 </footer>
 
 <script>
-  // Met en avant, dans la partie Client, les fichiers du système de l'ordinateur
+  // Met en avant, dans la partie Client, la carte du système de l'ordinateur
   (function () {
     var ua = navigator.userAgent, os = null;
     if (/Android|iPhone|iPad/i.test(ua)) os = null;
@@ -415,7 +435,8 @@
     else if (/Macintosh|Mac OS X/i.test(ua)) os = 'mac';
     else if (/FreeBSD/i.test(ua)) os = 'freebsd';
     else if (/Linux|X11/i.test(ua)) os = 'linux';
-    if (os) document.querySelectorAll('tr[data-os="' + os + '"]').forEach(function (t) { t.classList.add('ici'); });
+    var carte = os && document.getElementById('os-' + os);
+    if (carte) carte.classList.add('ici');
   })();
 </script>
 </body>
